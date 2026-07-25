@@ -394,15 +394,22 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final profile = await ref.read(currentProfileProvider.future);
 
     if (project == null || profile == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Projet ou profil introuvable.')),
-        );
+      if (!context.mounted) {
+        return;
       }
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Projet ou profil introuvable.')),
+      );
+      return;
+    }
+
+    if (!context.mounted) {
       return;
     }
 
     final saved = await showDialog<bool>(
+      // ignore: use_build_context_synchronously
       context: context,
       builder: (_) => _ReportFormDialog(
         initialReport: initialReport,
@@ -460,6 +467,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       return;
     }
 
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Rapport supprimé.')),
     );

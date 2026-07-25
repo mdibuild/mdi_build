@@ -652,7 +652,7 @@ class _PlanningGantt extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        _GanttHeaderCell(
+                        const _GanttHeaderCell(
                           width: labelWidth,
                           height: headerHeight,
                           text: 'T\u00e2ches',

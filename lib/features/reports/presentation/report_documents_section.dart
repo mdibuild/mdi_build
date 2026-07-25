@@ -90,6 +90,10 @@ class _ReportDocumentsSectionState
       return;
     }
 
+    if (!mounted) {
+      return;
+    }
+
     final metadata = await showDialog<_DocumentMetadataResult>(
       context: context,
       builder: (_) => _DocumentMetadataDialog(

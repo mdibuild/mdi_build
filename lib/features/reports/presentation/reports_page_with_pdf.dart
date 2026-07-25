@@ -144,6 +144,10 @@ class ReportsPage extends ConsumerWidget {
       return;
     }
 
+    if (!context.mounted) {
+      return;
+    }
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (_) => _ReportFormDialog(

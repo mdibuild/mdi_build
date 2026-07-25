@@ -93,7 +93,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     ref.invalidate(activeDocumentsProvider);
     ref.invalidate(archivedDocumentsProvider);
 
-    if (!mounted) {
+    if (!context.mounted) {
       return;
     }
 
@@ -115,7 +115,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 
       await Clipboard.setData(ClipboardData(text: signedUrl));
 
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -123,7 +123,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
         const SnackBar(content: Text('Lien temporaire copié.')),
       );
     } catch (error) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 

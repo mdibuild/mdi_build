@@ -129,7 +129,7 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
     setState(() => saving = true);
 
     final repository = ref.read(documentsRepositoryProvider);
-    final bucketId = 'project-documents';
+    const bucketId = 'project-documents';
     final mimeType = _guessMimeType(selectedFile!.name);
     final storagePath = repository.buildStoragePath(
       projectId: project.id,

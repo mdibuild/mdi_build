@@ -292,7 +292,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     final bytes = byteData?.buffer.asUint8List();
 
-    if (bytes == null || !mounted) {
+    if (bytes == null || !context.mounted) {
       return;
     }
 
@@ -303,7 +303,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       signatureOverride: bytes,
     );
 
-    if (saved == null || !mounted) {
+    if (saved == null || !context.mounted) {
       return;
     }
 
@@ -327,7 +327,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       clearSignature: true,
     );
 
-    if (saved == null || !mounted) {
+    if (saved == null || !context.mounted) {
       return;
     }
 
@@ -345,7 +345,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       projectId: projectId,
     );
 
-    if (saved == null || !mounted) {
+    if (saved == null || !context.mounted) {
       return;
     }
 
@@ -409,7 +409,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         signatureBytes: savedSignatureBytes,
       );
 
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -419,7 +419,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         ),
       );
     } catch (error) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -437,7 +437,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final profile = await ref.read(currentProfileProvider.future);
 
     if (profile == null) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -474,7 +474,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       ref.invalidate(activeReportsProvider);
       ref.invalidate(archivedReportsProvider);
 
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 
@@ -485,7 +485,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         ),
       );
     } catch (error) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
 

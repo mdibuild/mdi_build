@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/settings_user_entry.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
-import '../data/settings_repository.dart';
 import 'providers/settings_providers.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {

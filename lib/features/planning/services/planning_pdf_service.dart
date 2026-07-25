@@ -69,7 +69,7 @@ class PlanningPdfService {
             ),
           ),
           pw.Text(
-            'ÃƒâDA°dité le : $generatedAt',
+            'Édité le : $generatedAt',
             style: const pw.TextStyle(
               color: PdfColors.white,
               fontSize: 11,
@@ -150,7 +150,7 @@ class PlanningPdfService {
       case 'brouillon':
         return 'Brouillon';
       case 'a_faire':
-        return 'ÃDA faire';
+        return 'À faire';
       case 'en_cours':
         return 'En cours';
       case 'bloquee':

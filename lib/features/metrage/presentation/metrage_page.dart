@@ -59,7 +59,7 @@ class MetragePage extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Modifier espace âDA¢ ${space.name}'),
+          title: Text('Modifier espace • ${space.name}'),
           content: SizedBox(
             width: 420,
             child: SpaceForm(
@@ -121,7 +121,7 @@ class MetragePage extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Nouvelle ouverture âDA¢ ${space.name}'),
+          title: Text('Nouvelle ouverture • ${space.name}'),
           content: SizedBox(
             width: 420,
             child: OpeningForm(
@@ -153,7 +153,7 @@ class MetragePage extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Modifier ouverture âDA¢ ${opening.name}'),
+          title: Text('Modifier ouverture • ${opening.name}'),
           content: SizedBox(
             width: 420,
             child: OpeningForm(
@@ -258,9 +258,9 @@ class MetragePage extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final item = spaces[index];
                         return ExpansionTile(
-                          title: Text('${item.name} âDA¢ ${item.type.label}'),
+                          title: Text('${item.name} • ${item.type.label}'),
                           subtitle: Text(
-                            'Sol=${item.floorArea.toStringAsFixed(2)} mÃƒâDAš² âDA¢ Murs nets=${item.netWallArea.toStringAsFixed(2)} mÃƒâDAš²',
+                            'Sol=${item.floorArea.toStringAsFixed(2)} m² • Murs nets=${item.netWallArea.toStringAsFixed(2)} m²',
                           ),
                           trailing: Text(item.status.label),
                           childrenPadding:
@@ -272,16 +272,16 @@ class MetragePage extends ConsumerWidget {
                               children: [
                                 Chip(
                                     label: Text(
-                                        'Brut murs: ${item.grossWallArea.toStringAsFixed(2)} mÃƒâDAš²')),
+                                        'Brut murs: ${item.grossWallArea.toStringAsFixed(2)} m²')),
                                 Chip(
                                     label: Text(
-                                        'Ouvertures: ${item.openingsArea.toStringAsFixed(2)} mÃƒâDAš²')),
+                                        'Ouvertures: ${item.openingsArea.toStringAsFixed(2)} m²')),
                                 Chip(
                                     label: Text(
-                                        'Net murs: ${item.netWallArea.toStringAsFixed(2)} mÃƒâDAš²')),
+                                        'Net murs: ${item.netWallArea.toStringAsFixed(2)} m²')),
                                 Chip(
                                     label: Text(
-                                        'Plafond: ${item.ceilingArea.toStringAsFixed(2)} mÃƒâDAš²')),
+                                        'Plafond: ${item.ceilingArea.toStringAsFixed(2)} m²')),
                                 Chip(
                                     label: Text(
                                         'Périmètre: ${item.perimeter.toStringAsFixed(2)} ml')),
@@ -324,16 +324,16 @@ class MetragePage extends ConsumerWidget {
                                     ListTile(
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
-                                          '${opening.name} âDA¢ ${opening.openingType}'),
+                                          '${opening.name} • ${opening.openingType}'),
                                       subtitle: Text(
-                                          '${opening.width} ÃƒâDAâDA ${opening.height} ÃƒâDAâDA ${opening.quantity}'),
+                                          '${opening.width} × ${opening.height} × ${opening.quantity}'),
                                       trailing: Wrap(
                                         spacing: 8,
                                         crossAxisAlignment:
                                             WrapCrossAlignment.center,
                                         children: [
                                           Text(
-                                              '${opening.area.toStringAsFixed(2)} mÃƒâDAš²'),
+                                              '${opening.area.toStringAsFixed(2)} m²'),
                                           IconButton(
                                             onPressed: () =>
                                                 _openEditOpeningDialog(context,

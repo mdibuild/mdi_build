@@ -91,13 +91,13 @@ class DashboardMetricsService {
     final highlights = <String>[
       if (projects.isNotEmpty) '${projects.length} projet(s) suivis',
       if (tasks.isNotEmpty)
-        '$doneTasks tÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš¢che(s) terminÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš©e(s)',
+        '$doneTasks tâche(s) terminée(s)',
       if (lateTasks > 0)
-        '$lateTasks tÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš¢che(s) en retard',
+        '$lateTasks tâche(s) en retard',
       if (quotes.isNotEmpty) '${quotes.length} devis disponibles',
       if (purchases.isNotEmpty) '${purchases.length} achat(s) suivis',
       if (reports.isNotEmpty)
-        '${reports.length} rapport(s) dÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš©jÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš  crÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAšÃ‚Â©ÃƒÆ’Ã†âDA™ÃƒâDA âDAâ„¢ÃƒâDAÅ¡ÃƒâDAš©(s)',
+        '${reports.length} rapport(s) déjà créé(s)',
     ];
 
     return DashboardMetrics(

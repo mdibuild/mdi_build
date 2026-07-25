@@ -63,7 +63,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Impossible dâDAÃ¢âDAž¢ouvrir le document.')),
+            content: Text('Impossible d’ouvrir le document.')),
       );
     }
   }
@@ -89,7 +89,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Impossible dâDAÃ¢âDAž¢ouvrir le document.')),
+            content: Text('Impossible d’ouvrir le document.')),
       );
     }
   }
@@ -182,7 +182,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
             errorBuilder: (_, __, ___) {
               return const Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Impossible dâDAÃ¢âDAž¢afficher cette image.'),
+                child: Text('Impossible d’afficher cette image.'),
               );
             },
             loadingBuilder: (context, child, progress) {
@@ -203,7 +203,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
       return _DocumentFallbackView(
         icon: Icons.picture_as_pdf_outlined,
         title: 'PDF détecté',
-        subtitle: 'Le PDF sâDAÃ¢âDAž¢ouvre dans la vue intégrée du téléphone.',
+        subtitle: 'Le PDF s’ouvre dans la vue intégrée du téléphone.',
         onOpen: () => _openInApp(signedUrl),
       );
     }
@@ -212,7 +212,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
       icon: Icons.insert_drive_file_outlined,
       title: document.fileName,
       subtitle:
-          'Ce type de fichier sâDAÃ¢âDAž¢ouvre via le navigateur intégré ou une application externe.',
+          'Ce type de fichier s’ouvre via le navigateur intégré ou une application externe.',
       onOpen: () => _openInApp(signedUrl),
     );
   }

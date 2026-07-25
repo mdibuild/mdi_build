@@ -395,7 +395,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           decoration: InputDecoration(
                             hintText: _recording
                                 ? 'Enregistrement audio...'
-                                : 'ÃƒâDA°crire un message',
+                                : 'Écrire un message',
                           ),
                         ),
                       ),

@@ -70,20 +70,20 @@ class PlanningNotificationsService {
       if (overdue) {
         title = 'Tâche en retard';
         body =
-            '$projectName âDA¢ ${task.title} devait finir le ${_frDate(plannedEnd)}';
+            '$projectName • ${task.title} devait finir le ${_frDate(plannedEnd)}';
         type = 'overdue';
       } else if (dueToday) {
-        title = 'ÃƒâDA°chéance aujourdâDAÃ¢âDAž¢hui';
-        body = '$projectName âDA¢ ${task.title} finit aujourdâDAÃ¢âDAž¢hui';
+        title = 'Échéance aujourd’hui';
+        body = '$projectName • ${task.title} finit aujourd’hui';
         type = 'due_today';
       } else if (startToday) {
-        title = 'Démarrage aujourdâDAÃ¢âDAž¢hui';
-        body = '$projectName âDA¢ ${task.title} commence aujourdâDAÃ¢âDAž¢hui';
+        title = 'Démarrage aujourd’hui';
+        body = '$projectName • ${task.title} commence aujourd’hui';
         type = 'start_today';
       } else if (dueSoon) {
-        title = 'ÃƒâDA°chéance proche';
+        title = 'Échéance proche';
         body =
-            '$projectName âDA¢ ${task.title} finit le ${_frDate(plannedEnd)}';
+            '$projectName • ${task.title} finit le ${_frDate(plannedEnd)}';
         type = 'due_soon';
       }
 

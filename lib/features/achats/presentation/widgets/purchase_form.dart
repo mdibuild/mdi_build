@@ -124,7 +124,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
 
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saisis le titre de lâDAÃ¢âDAž¢achat.')),
+        const SnackBar(content: Text('Saisis le titre de l’achat.')),
       );
       return;
     }
@@ -138,7 +138,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
 
     if (lot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saisis le lot / corps dâDAÃ¢âDAž¢état.')),
+        const SnackBar(content: Text('Saisis le lot / corps d’état.')),
       );
       return;
     }
@@ -228,7 +228,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
         TextField(
           controller: titleController,
           decoration: const InputDecoration(
-            labelText: 'Titre de lâDAÃ¢âDAž¢achat',
+            labelText: 'Titre de l’achat',
             prefixIcon: Icon(Icons.title_outlined),
           ),
         ),
@@ -248,7 +248,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
         TextField(
           controller: lotController,
           decoration: const InputDecoration(
-            labelText: 'Lot / corps dâDAÃ¢âDAž¢état',
+            labelText: 'Lot / corps d’état',
             prefixIcon: Icon(Icons.work_outline),
           ),
         ),
@@ -333,7 +333,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Enregistre dâDAÃ¢âDAž¢abord lâDAÃ¢âDAž¢achat, puis rouvre-le pour ajouter des documents liés.',
+                      'Enregistre d’abord l’achat, puis rouvre-le pour ajouter des documents liés.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),

@@ -154,7 +154,7 @@ class PurchaseDocumentsSection extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Documents liés à lâDAÃ¢âDAž¢achat',
+                    'Documents liés à l’achat',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),

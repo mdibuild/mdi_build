@@ -275,7 +275,7 @@ class ReportDashboardGenerationService {
         'Projet : $projectName',
         'Période : ${_date(periodStart)} au ${_date(periodEnd)}',
         'Total tâches : ${tasks.length}',
-        'ÃDA faire : $todo',
+        'À faire : $todo',
         'En cours : $inProgress',
         'Terminées : $done',
         'En retard : $late',

@@ -353,7 +353,7 @@ class QuotePdfService {
       case 'piece':
         return 'Par pièce';
       case 'corps_etat':
-        return 'Par corps dâDAÃ¢âDAž¢état';
+        return 'Par corps d’état';
       case 'mixte':
         return 'Mixte';
       default:

@@ -315,7 +315,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     TextField(
                       controller: lotController,
                       decoration: const InputDecoration(
-                        labelText: 'Lot / corps dâDAÃ¢âDAž¢état',
+                        labelText: 'Lot / corps d’état',
                         prefixIcon: Icon(Icons.work_outline),
                       ),
                     ),
@@ -359,7 +359,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                         DropdownMenuItem(
                             value: 'brouillon', child: Text('Brouillon')),
                         DropdownMenuItem(
-                            value: 'a_faire', child: Text('ÃDA faire')),
+                            value: 'a_faire', child: Text('À faire')),
                         DropdownMenuItem(
                             value: 'en_cours', child: Text('En cours')),
                         DropdownMenuItem(
@@ -515,7 +515,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Enregistre dâDAÃ¢âDAž¢abord la tâche, puis rouvre-la pour ajouter des documents liés.',
+                          'Enregistre d’abord la tâche, puis rouvre-la pour ajouter des documents liés.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
@@ -661,7 +661,7 @@ String _statusLabel(String status) {
     case 'brouillon':
       return 'Brouillon';
     case 'a_faire':
-      return 'ÃDA faire';
+      return 'À faire';
     case 'en_cours':
       return 'En cours';
     case 'bloquee':

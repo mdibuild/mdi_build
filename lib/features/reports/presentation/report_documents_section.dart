@@ -404,7 +404,7 @@ class _ReportDocumentTile extends StatelessWidget {
                       Text(document.fileName),
                       const SizedBox(height: 4),
                       Text(
-                        'Catégorie : ${_categoryLabel(document.category)} ÃƒâDAš· Ajouté le $createdAt',
+                        'Catégorie : ${_categoryLabel(document.category)} · Ajouté le $createdAt',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       if (document.description.trim().isNotEmpty) ...[

@@ -330,7 +330,7 @@ class _TaskLabelsColumn extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${task.progress.toStringAsFixed(0)}% âDA¢ ${_statusLabel(task.status)}',
+                    '${task.progress.toStringAsFixed(0)}% • ${_statusLabel(task.status)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -788,7 +788,7 @@ String _statusLabel(String status) {
     case 'brouillon':
       return 'Brouillon';
     case 'a_faire':
-      return 'ÃDA faire';
+      return 'À faire';
     case 'en_cours':
       return 'En cours';
     case 'bloquee':

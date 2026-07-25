@@ -198,7 +198,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                   PremiumHeroHeader(
                     title: 'Portefeuille chantiers',
                     subtitle: currentProject == null
-                        ? 'Vue globale de lâDAÃ¢âDAž¢entreprise'
+                        ? 'Vue globale de l’entreprise'
                         : 'Projet courant : ${currentProject.name}',
                     trailing: ElevatedButton.icon(
                       onPressed: () => context.go('/planning'),
@@ -320,7 +320,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                   const SizedBox(height: 10),
                                   PremiumInfoLine(
                                     label: 'Période',
-                                    value: '$startDate Ã¢âDA âDAâ„¢ $endDate',
+                                    value: '$startDate → $endDate',
                                   ),
                                   const SizedBox(height: 14),
                                   ClipRRect(
@@ -336,7 +336,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    '${(progress * 100).round()}% dâDAÃ¢âDAž¢avancement',
+                                    '${(progress * 100).round()}% d’avancement',
                                     style:
                                         Theme.of(context).textTheme.bodyMedium,
                                   ),

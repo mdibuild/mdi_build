@@ -59,7 +59,7 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content:
-                  Text('Une tâche ne peut pas dépendre dâDAÃ¢âDAž¢elle-même.')),
+                  Text('Une tâche ne peut pas dépendre d’elle-même.')),
         );
       }
       return;
@@ -202,19 +202,19 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
                 items: const [
                   DropdownMenuItem(
                     value: 'finish_to_start',
-                    child: Text('Fin Ã¢âDA âDAâ„¢ Début'),
+                    child: Text('Fin → Début'),
                   ),
                   DropdownMenuItem(
                     value: 'start_to_finish',
-                    child: Text('Début Ã¢âDA âDAâ„¢ Fin'),
+                    child: Text('Début → Fin'),
                   ),
                   DropdownMenuItem(
                     value: 'start_to_start',
-                    child: Text('Début Ã¢âDA âDAâ„¢ Début'),
+                    child: Text('Début → Début'),
                   ),
                   DropdownMenuItem(
                     value: 'finish_to_finish',
-                    child: Text('Fin Ã¢âDA âDAâ„¢ Fin'),
+                    child: Text('Fin → Fin'),
                   ),
                 ],
                 onChanged: (value) {
@@ -248,7 +248,7 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
                 (dependency) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    '${taskNamesById[dependency.predecessorTaskId] ?? dependency.predecessorTaskId} Ã¢âDA âDAâ„¢ ${taskNamesById[dependency.successorTaskId] ?? dependency.successorTaskId}',
+                    '${taskNamesById[dependency.predecessorTaskId] ?? dependency.predecessorTaskId} → ${taskNamesById[dependency.successorTaskId] ?? dependency.successorTaskId}',
                   ),
                   subtitle: Text(_dependencyLabel(dependency.dependencyType)),
                   trailing: IconButton(
@@ -266,13 +266,13 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
   String _dependencyLabel(String value) {
     switch (value) {
       case 'finish_to_start':
-        return 'Fin Ã¢âDA âDAâ„¢ Début';
+        return 'Fin → Début';
       case 'start_to_finish':
-        return 'Début Ã¢âDA âDAâ„¢ Fin';
+        return 'Début → Fin';
       case 'start_to_start':
-        return 'Début Ã¢âDA âDAâ„¢ Début';
+        return 'Début → Début';
       case 'finish_to_finish':
-        return 'Fin Ã¢âDA âDAâ„¢ Fin';
+        return 'Fin → Fin';
       default:
         return value;
     }

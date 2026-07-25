@@ -23,7 +23,7 @@ class DashboardPage extends ConsumerWidget {
         data: (metrics) => projectAsync.when(
           data: (project) {
             final subtitle = project == null
-                ? 'Pilotage global de lâDAÃ¢âDAž¢activité'
+                ? 'Pilotage global de l’activité'
                 : 'Projet courant : ${project.name}';
 
             return ListView(

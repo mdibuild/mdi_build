@@ -67,7 +67,7 @@ class PurchasePdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'BON DâDAÃ¢âDAž¢ACHAT',
+                  'BON D’ACHAT',
                   style: pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 24,

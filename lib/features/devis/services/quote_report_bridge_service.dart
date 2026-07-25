@@ -68,7 +68,7 @@ class QuoteReportBridgeService {
         companyId: companyId,
         reportId: '',
         sectionKey: 'quote_state',
-        sectionTitle: 'ÃƒâDA°tat du devis courant',
+        sectionTitle: 'État du devis courant',
         sectionType: 'text',
         sortOrder: 30,
         contentText: _buildState(quote),
@@ -160,7 +160,7 @@ class QuoteReportBridgeService {
       return 'Projet : $projectName\n'
           'Période : $period\n'
           'Rapport généré le ${_dateTime(generatedAt)}.\n'
-          'Aucun devis nâDAâ„¢a été trouvé pour ce projet.';
+          'Aucun devis n’a été trouvé pour ce projet.';
     }
 
     return 'Projet : $projectName\n'

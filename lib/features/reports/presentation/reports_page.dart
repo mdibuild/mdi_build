@@ -97,7 +97,7 @@ String _reportPeriodText(ProjectReport report) {
   if (report.periodStart == null || report.periodEnd == null) {
     return '-';
   }
-  return '${_dateLabel(report.periodStart!)} Ã¢âDA âDAâ„¢ ${_dateLabel(report.periodEnd!)}';
+  return '${_dateLabel(report.periodStart!)} → ${_dateLabel(report.periodEnd!)}';
 }
 
 class ReportsPage extends ConsumerStatefulWidget {
@@ -158,7 +158,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   String _formatRange(DateTimeRange range) {
-    return '${_dateLabel(range.start)} Ã¢âDA âDAâ„¢ ${_dateLabel(range.end)}';
+    return '${_dateLabel(range.start)} → ${_dateLabel(range.end)}';
   }
 
   Future<void> _pickCustomRange() async {

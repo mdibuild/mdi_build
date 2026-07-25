@@ -57,7 +57,7 @@ class PlanningRepository {
 
   Future<void> createDependency(ProjectTaskDependency dependency) async {
     if (dependency.predecessorTaskId == dependency.successorTaskId) {
-      throw Exception('Une tâche ne peut pas dépendre dâDAÃ¢âDAž¢elle-même.');
+      throw Exception('Une tâche ne peut pas dépendre d’elle-même.');
     }
 
     final existing = await _client

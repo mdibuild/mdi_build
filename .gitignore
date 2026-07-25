@@ -25,6 +25,7 @@ migrate_working_dir/
 
 # Environment / secrets
 .env
+dart_define.json
 
 # Flutter/Dart/Pub related
 **/doc/api/

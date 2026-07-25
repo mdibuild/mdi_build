@@ -234,7 +234,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: selectedProjectId,
+          initialValue: selectedProjectId,
           items: widget.projectOptions,
           onChanged: (value) {
             setState(() => selectedProjectId = value);

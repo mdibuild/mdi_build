@@ -555,7 +555,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedGenerationModule,
+                initialValue: _selectedGenerationModule,
                 decoration: const InputDecoration(labelText: 'Module'),
                 items: const [
                   DropdownMenuItem(value: 'global', child: Text('Tout')),
@@ -573,7 +573,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedPeriod,
+                initialValue: _selectedPeriod,
                 decoration: const InputDecoration(labelText: 'Période'),
                 items: const [
                   DropdownMenuItem(
@@ -601,7 +601,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedFormat,
+                initialValue: _selectedFormat,
                 decoration: const InputDecoration(labelText: 'Format'),
                 items: const [
                   DropdownMenuItem(value: 'pdf', child: Text('PDF')),
@@ -673,7 +673,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _historyModuleFilter,
+                initialValue: _historyModuleFilter,
                 decoration: const InputDecoration(
                   labelText: 'Filtre module',
                 ),

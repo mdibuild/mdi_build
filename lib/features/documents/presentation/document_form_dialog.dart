@@ -298,7 +298,7 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: category,
+                  initialValue: category,
                   decoration: const InputDecoration(
                     labelText: 'Catégorie',
                     prefixIcon: Icon(Icons.folder_outlined),

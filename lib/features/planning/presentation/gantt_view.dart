@@ -381,7 +381,7 @@ class _TimelineArea extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: i.isEven
                         ? Colors.white
-                        : AppColors.surfaceAlt.withOpacity(0.45),
+                        : AppColors.surfaceAlt.withValues(alpha: 0.45),
                     border: Border(
                       right: BorderSide(color: Colors.grey.shade300),
                     ),
@@ -449,7 +449,7 @@ class _TimelineArea extends StatelessWidget {
                       width: plannedWidth - 8,
                       height: rowHeight - 26,
                       decoration: BoxDecoration(
-                        color: AppColors.yellow.withOpacity(0.95),
+                        color: AppColors.yellow.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(
                           task.isMilestone ? 16 : 10,
                         ),

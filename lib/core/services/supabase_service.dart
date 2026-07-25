@@ -3,9 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseService {
   static Future<void> initialize({
     required String url,
-    required String anonKey,
+    required String publishableKey,
   }) async {
-    await Supabase.initialize(url: url, anonKey: anonKey);
+    await Supabase.initialize(url: url, publishableKey: publishableKey);
   }
 
   static SupabaseClient get client => Supabase.instance.client;

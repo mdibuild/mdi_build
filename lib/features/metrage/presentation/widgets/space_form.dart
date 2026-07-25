@@ -90,7 +90,7 @@ class _SpaceFormState extends State<SpaceForm> {
       shrinkWrap: true,
       children: [
         DropdownButtonFormField<SpaceType>(
-          value: selectedType,
+          initialValue: selectedType,
           items: SpaceType.values
               .map((item) =>
                   DropdownMenuItem(value: item, child: Text(item.label)))

@@ -401,7 +401,7 @@ class _DocumentsFilters extends StatelessWidget {
             SizedBox(
               width: isCompact ? double.infinity : 220,
               child: DropdownButtonFormField<String>(
-                value: categoryFilter,
+                initialValue: categoryFilter,
                 decoration: const InputDecoration(labelText: 'Catégorie'),
                 items: const [
                   DropdownMenuItem(value: 'toutes', child: Text('Toutes')),
@@ -422,7 +422,7 @@ class _DocumentsFilters extends StatelessWidget {
             SizedBox(
               width: isCompact ? double.infinity : 220,
               child: DropdownButtonFormField<String>(
-                value: relationFilter,
+                initialValue: relationFilter,
                 decoration: const InputDecoration(labelText: 'Liaison'),
                 items: const [
                   DropdownMenuItem(value: 'toutes', child: Text('Toutes')),
@@ -919,9 +919,9 @@ class _FallbackPreview extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Icon(icon, color: color, size: compact ? 30 : 34),
     );
@@ -985,8 +985,8 @@ class _CategoryChip extends StatelessWidget {
 
     return Chip(
       label: Text(_categoryLabel(category)),
-      backgroundColor: color.withOpacity(0.14),
-      side: BorderSide(color: color.withOpacity(0.35)),
+      backgroundColor: color.withValues(alpha: 0.14),
+      side: BorderSide(color: color.withValues(alpha: 0.35)),
       labelStyle: TextStyle(
         color: color,
         fontWeight: FontWeight.w700,

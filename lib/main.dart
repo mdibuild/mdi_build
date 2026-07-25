@@ -16,7 +16,7 @@ Future<void> main() async {
   );
   await SupabaseService.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    publishableKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
   await FirebasePushService.initialize();
   runApp(const ProviderScope(child: MdiBuildApp()));

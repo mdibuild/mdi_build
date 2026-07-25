@@ -176,7 +176,7 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
               )
             else ...[
               DropdownButtonFormField<String>(
-                value: predecessorTaskId,
+                initialValue: predecessorTaskId,
                 items: taskOptions,
                 onChanged: (value) {
                   setState(() => predecessorTaskId = value);
@@ -187,7 +187,7 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: successorTaskId,
+                initialValue: successorTaskId,
                 items: taskOptions,
                 onChanged: (value) {
                   setState(() => successorTaskId = value);
@@ -198,7 +198,7 @@ class _TaskDependenciesPanelState extends ConsumerState<TaskDependenciesPanel> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: dependencyType,
+                initialValue: dependencyType,
                 items: const [
                   DropdownMenuItem(
                     value: 'finish_to_start',

@@ -83,7 +83,7 @@ class PremiumHeroHeader extends StatelessWidget {
                           width: 56,
                           height: 56,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
+                            color: Colors.white.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(18),
                           ),
                           alignment: Alignment.center,
@@ -124,7 +124,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                     .textTheme
                                     .bodyMedium
                                     ?.copyWith(
-                                      color: Colors.white.withOpacity(0.88),
+                                      color: Colors.white.withValues(alpha: 0.88),
                                     ),
                               ),
                             ],
@@ -148,7 +148,7 @@ class PremiumHeroHeader extends StatelessWidget {
                       width: 62,
                       height: 62,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       alignment: Alignment.center,
@@ -188,7 +188,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(
-                                  color: Colors.white.withOpacity(0.88),
+                                  color: Colors.white.withValues(alpha: 0.88),
                                 ),
                           ),
                         ],

@@ -152,7 +152,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
-                            value: _roleFilter,
+                            initialValue: _roleFilter,
                             decoration: const InputDecoration(
                               labelText: 'Filtre rôle',
                             ),
@@ -226,7 +226,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     SizedBox(
                                       width: 220,
                                       child: DropdownButtonFormField<String>(
-                                        value: _roles.contains(user.role)
+                                        initialValue: _roles.contains(user.role)
                                             ? user.role
                                             : 'member',
                                         decoration: const InputDecoration(

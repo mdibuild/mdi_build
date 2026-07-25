@@ -383,7 +383,7 @@ class _PlanningFiltersCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: statusFilter,
+            initialValue: statusFilter,
             decoration: const InputDecoration(labelText: 'Statut'),
             items: const [
               DropdownMenuItem(value: 'all', child: Text('Tous')),
@@ -396,7 +396,7 @@ class _PlanningFiltersCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: priorityFilter,
+            initialValue: priorityFilter,
             decoration: const InputDecoration(labelText: 'Priorit\u00e9'),
             items: const [
               DropdownMenuItem(value: 'all', child: Text('Toutes')),
@@ -729,7 +729,7 @@ class _PlanningGantt extends StatelessWidget {
                                         color: i.isEven
                                             ? Colors.white
                                             : AppColors.surfaceAlt
-                                                .withOpacity(0.6),
+                                                .withValues(alpha: 0.6),
                                         border: Border(
                                           right: BorderSide(
                                             color: Colors.grey.shade200,
@@ -977,7 +977,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

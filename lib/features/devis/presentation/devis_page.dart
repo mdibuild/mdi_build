@@ -693,7 +693,7 @@ class _DevisHeroCard extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               AppColors.petrol,
-              AppColors.petrol.withOpacity(0.84),
+              AppColors.petrol.withValues(alpha: 0.84),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -786,9 +786,9 @@ class _HeroMetric extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 116),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.16)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -848,7 +848,7 @@ class _DevisConfigurationCard extends StatelessWidget {
           _ResponsiveFormGrid(
             children: [
               DropdownButtonFormField<String>(
-                value: _safeMode(mode),
+                initialValue: _safeMode(mode),
                 decoration: const InputDecoration(labelText: 'Mode de devis'),
                 items: const [
                   DropdownMenuItem(
@@ -867,7 +867,7 @@ class _DevisConfigurationCard extends StatelessWidget {
                 onChanged: onModeChanged,
               ),
               DropdownButtonFormField<String>(
-                value: _safeStatus(status),
+                initialValue: _safeStatus(status),
                 decoration: const InputDecoration(labelText: 'Statut'),
                 items: const [
                   DropdownMenuItem(
@@ -1242,7 +1242,7 @@ class _PremiumDevisCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppColors.yellow.withOpacity(0.22),
+                    color: AppColors.yellow.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: AppColors.petrol),
@@ -1333,9 +1333,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.13),
+        color: color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.22)),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Text(
         label,

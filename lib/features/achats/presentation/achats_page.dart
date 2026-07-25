@@ -320,7 +320,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                       SizedBox(
                         width: 220,
                         child: DropdownButtonFormField<String>(
-                          value: statusFilter,
+                          initialValue: statusFilter,
                           decoration:
                               const InputDecoration(labelText: 'Statut'),
                           items: const [

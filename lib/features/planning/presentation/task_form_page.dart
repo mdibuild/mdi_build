@@ -278,7 +278,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: taskType,
+                      initialValue: taskType,
                       decoration: const InputDecoration(
                         labelText: 'Type',
                         prefixIcon: Icon(Icons.category_outlined),
@@ -350,7 +350,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       decoration: const InputDecoration(
                         labelText: 'Statut',
                         prefixIcon: Icon(Icons.flag_outlined),
@@ -379,7 +379,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: priority,
+                      initialValue: priority,
                       decoration: const InputDecoration(
                         labelText: 'Priorité',
                         prefixIcon: Icon(Icons.priority_high),

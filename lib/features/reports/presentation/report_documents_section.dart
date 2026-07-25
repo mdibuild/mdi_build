@@ -542,7 +542,7 @@ class _DocumentMetadataDialogState extends State<_DocumentMetadataDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Catégorie'),
                 items: const [
                   DropdownMenuItem(value: 'photo', child: Text('Photo')),

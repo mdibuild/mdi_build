@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "857332923476",
+    "project_id": "mdi-build-premium",
+    "storage_bucket": "mdi-build-premium.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:857332923476:android:9d6e023f367c132ed681c1",
+        "android_client_info": {
+          "package_name": "com.medgrine.mdibuild"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAl5z4K1Ox0xVl8XdV0APODfsOYG73pw8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

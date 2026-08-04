@@ -74,7 +74,7 @@ class ReportsPage extends ConsumerWidget {
                             onPrint: (report) => _printReport(
                               context,
                               projectName:
-                                  selectedProjectAsync.valueOrNull?.name ??
+                                  selectedProjectAsync.value?.name ??
                                       'Projet',
                               report: report,
                             ),
@@ -100,7 +100,7 @@ class ReportsPage extends ConsumerWidget {
                             onPrint: (report) => _printReport(
                               context,
                               projectName:
-                                  selectedProjectAsync.valueOrNull?.name ??
+                                  selectedProjectAsync.value?.name ??
                                       'Projet',
                               report: report,
                             ),

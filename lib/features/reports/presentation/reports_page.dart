@@ -715,9 +715,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final archivedReportsAsync = ref.watch(archivedReportsProvider);
 
     final activeReports =
-        activeReportsAsync.valueOrNull ?? const <ProjectReport>[];
+        activeReportsAsync.value ?? const <ProjectReport>[];
     final archivedReports =
-        archivedReportsAsync.valueOrNull ?? const <ProjectReport>[];
+        archivedReportsAsync.value ?? const <ProjectReport>[];
 
     final totalReports = activeReports.length + archivedReports.length;
     final autoReports = [

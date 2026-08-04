@@ -432,7 +432,7 @@ class _ChatMessageTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentProfileAsync = ref.watch(currentProfileProvider);
-    final currentUserId = currentProfileAsync.valueOrNull?.id;
+    final currentUserId = currentProfileAsync.value?.id;
     final isMine = currentUserId != null && currentUserId == message.senderId;
 
     return Align(

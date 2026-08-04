@@ -23,7 +23,7 @@ class PlanningNotificationsService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidSettings);
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
 
     final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -99,10 +99,10 @@ class PlanningNotificationsService {
       }
 
       await _plugin.show(
-        _notificationId(task.id, type),
-        title,
-        body,
-        const NotificationDetails(
+        id: _notificationId(task.id, type),
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'planning_deadlines',
             'Planning deadlines',

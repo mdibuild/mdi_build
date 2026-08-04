@@ -11,7 +11,7 @@ class FirebasePushService {
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(
-      const InitializationSettings(android: androidInit),
+      settings: const InitializationSettings(android: androidInit),
     );
 
     FirebaseMessaging.onMessage.listen((message) async {
@@ -31,10 +31,10 @@ class FirebasePushService {
       );
 
       await _plugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        details,
+        id: notification.hashCode,
+        title: notification.title,
+        body: notification.body,
+        notificationDetails: details,
       );
     });
   }

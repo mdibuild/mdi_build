@@ -111,7 +111,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   Future<void> _pickFile() async {
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       allowMultiple: false,
       withData: true,
       type: FileType.any,

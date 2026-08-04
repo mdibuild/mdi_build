@@ -67,7 +67,7 @@ class _ReportDocumentsSectionState
       return;
     }
 
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       allowMultiple: false,
       withData: true,
       type: FileType.any,

@@ -49,7 +49,7 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
   }
 
   Future<void> pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       allowMultiple: false,
       withData: true,
     );

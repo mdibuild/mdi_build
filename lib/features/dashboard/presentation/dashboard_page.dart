@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/dashboard_providers.dart';
@@ -12,6 +12,7 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.palette;
     final projectAsync = ref.watch(selectedProjectProvider);
     final metricsAsync = ref.watch(dashboardMetricsProvider);
 
@@ -101,28 +102,28 @@ class DashboardPage extends ConsumerWidget {
                         icon: Icons.check_circle_outline,
                         label: 'Tâches terminées',
                         value: '${metrics.doneTasksCount}',
-                        color: AppColors.success,
+                        color: colors.success,
                       ),
                       const SizedBox(height: 12),
                       _StatusRow(
                         icon: Icons.warning_amber_outlined,
                         label: 'Tâches en retard',
                         value: '${metrics.lateTasksCount}',
-                        color: AppColors.danger,
+                        color: colors.danger,
                       ),
                       const SizedBox(height: 12),
                       _StatusRow(
                         icon: Icons.auto_awesome_outlined,
                         label: 'Rapports automatiques',
                         value: '${metrics.autoReportsCount}',
-                        color: AppColors.info,
+                        color: colors.info,
                       ),
                       const SizedBox(height: 12),
                       _StatusRow(
                         icon: Icons.edit_note_outlined,
                         label: 'Rapports manuels',
                         value: '${metrics.manualReportsCount}',
-                        color: AppColors.purple,
+                        color: colors.purple,
                       ),
                     ],
                   ),
@@ -193,10 +194,10 @@ class DashboardPage extends ConsumerWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.circle,
                                   size: 10,
-                                  color: AppColors.petrol,
+                                  color: colors.petrol,
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -231,15 +232,15 @@ class DashboardPage extends ConsumerWidget {
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceAlt,
+                              color: colors.surfaceAlt,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(color: colors.border),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.description_outlined,
-                                  color: AppColors.petrol,
+                                  color: colors.petrol,
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -285,12 +286,14 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: colors.surfaceAlt,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -313,7 +316,7 @@ class _StatusRow extends StatelessWidget {
           Text(
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.text,
+                  color: colors.text,
                   fontWeight: FontWeight.w900,
                 ),
           ),

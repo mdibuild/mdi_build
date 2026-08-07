@@ -6,12 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/estimate_item.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
 import '../../achats/presentation/widgets/purchase_form.dart';
 import '../../metrage/presentation/providers/spaces_providers.dart';
@@ -685,87 +686,26 @@ class _DevisHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.petrol,
-              AppColors.petrol.withValues(alpha: 0.84),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return PremiumHeroHeader(
+      title: 'Devis projet',
+      subtitle: projectName,
+      trailing: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _HeroMetric(
+            label: 'Total TTC',
+            value: _money(total),
           ),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 640;
-
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Devis projet',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  projectName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            );
-
-            final metrics = Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _HeroMetric(
-                  label: 'Total TTC',
-                  value: _money(total),
-                ),
-                _HeroMetric(
-                  label: 'Lignes',
-                  value: itemCount.toString(),
-                ),
-                _HeroMetric(
-                  label: 'Statut',
-                  value: _statusLabel(status),
-                ),
-              ],
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  titleBlock,
-                  const SizedBox(height: 16),
-                  metrics,
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: titleBlock),
-                const SizedBox(width: 18),
-                Flexible(child: metrics),
-              ],
-            );
-          },
-        ),
+          _HeroMetric(
+            label: 'Lignes',
+            value: itemCount.toString(),
+          ),
+          _HeroMetric(
+            label: 'Statut',
+            value: _statusLabel(status),
+          ),
+        ],
       ),
     );
   }
@@ -782,6 +722,8 @@ class _HeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Container(
       constraints: const BoxConstraints(minWidth: 116),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -804,8 +746,8 @@ class _HeroMetric extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: AppColors.yellow,
+            style: TextStyle(
+              color: colors.yellow,
               fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
@@ -949,15 +891,17 @@ class _SignatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return _PremiumDevisCard(
       title: 'Signature client',
       subtitle: 'Fais signer le client puis enregistre le devis.',
       icon: Icons.draw_outlined,
       trailing: savedSignatureBytes == null
           ? null
-          : const _StatusBadge(
+          : _StatusBadge(
               label: 'Enregistr\u00e9e',
-              color: AppColors.success,
+              color: colors.success,
             ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -967,9 +911,9 @@ class _SignatureCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
+                color: colors.surfaceAlt,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: colors.border),
               ),
               child: Image.memory(
                 savedSignatureBytes!,
@@ -1035,6 +979,8 @@ class _QuoteActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return _PremiumDevisCard(
       title: 'Actions devis',
       subtitle: 'Exporter, envoyer, convertir ou generer un rapport.',
@@ -1049,11 +995,11 @@ class _QuoteActionsCard extends StatelessWidget {
             children: [
               _StatusBadge(
                 label: 'Mode : ${_modeLabel(mode)}',
-                color: AppColors.petrol,
+                color: colors.petrol,
               ),
               _StatusBadge(
                 label: 'Statut : ${_statusLabel(status)}',
-                color: _statusColor(status),
+                color: _statusColor(colors, status),
               ),
             ],
           ),
@@ -1138,13 +1084,15 @@ class _EstimateItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: colors.surfaceAlt,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -1169,9 +1117,9 @@ class _EstimateItemRow extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             _money(item.total),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w900,
-              color: AppColors.petrol,
+              color: colors.petrol,
             ),
           ),
         ],
@@ -1196,7 +1144,7 @@ class _QuoteTotalLine extends StatelessWidget {
     final style = TextStyle(
       fontWeight: important ? FontWeight.w900 : FontWeight.w700,
       fontSize: important ? 18 : 14,
-      color: important ? AppColors.petrol : null,
+      color: important ? context.palette.petrol : null,
     );
 
     return Padding(
@@ -1228,6 +1176,8 @@ class _PremiumDevisCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -1242,10 +1192,10 @@ class _PremiumDevisCard extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppColors.yellow.withValues(alpha: 0.22),
+                    color: colors.yellow.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, color: AppColors.petrol),
+                  child: Icon(icon, color: colors.petrol),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1263,7 +1213,7 @@ class _PremiumDevisCard extends StatelessWidget {
                       Text(
                         subtitle,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSoft,
+                              color: colors.textSoft,
                             ),
                       ),
                     ],
@@ -1433,12 +1383,15 @@ class _SignaturePadState extends State<SignaturePad> {
         height: widget.compact ? 148 : 190,
         width: double.infinity,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.palette.border),
           borderRadius: BorderRadius.circular(18),
           color: Colors.white,
         ),
         child: CustomPaint(
-          painter: SignaturePainter(widget.controller.strokes),
+          painter: SignaturePainter(
+            widget.controller.strokes,
+            strokeColor: context.palette.petrol,
+          ),
           child: const SizedBox.expand(),
         ),
       ),
@@ -1447,14 +1400,15 @@ class _SignaturePadState extends State<SignaturePad> {
 }
 
 class SignaturePainter extends CustomPainter {
-  const SignaturePainter(this.strokes);
+  const SignaturePainter(this.strokes, {required this.strokeColor});
 
   final List<List<Offset>> strokes;
+  final Color strokeColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.petrol
+      ..color = strokeColor
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -1509,16 +1463,16 @@ String _statusLabel(String value) {
   }
 }
 
-Color _statusColor(String value) {
+Color _statusColor(AppPaletteColors colors, String value) {
   switch (value) {
     case 'brouillon':
-      return AppColors.textSoft;
+      return colors.textSoft;
     case 'envoye':
-      return AppColors.info;
+      return colors.info;
     case 'signe':
-      return AppColors.success;
+      return colors.success;
     default:
-      return AppColors.petrol;
+      return colors.petrol;
   }
 }
 

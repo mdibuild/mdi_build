@@ -3,8 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 
@@ -119,6 +120,7 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
     final projectAsync = ref.watch(selectedProjectProvider);
     final tasksAsync = ref.watch(_planningTasksProvider);
 
@@ -127,12 +129,12 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Planning'),
-          bottom: const TabBar(
-            labelColor: AppColors.yellow,
+          bottom: TabBar(
+            labelColor: colors.yellow,
             unselectedLabelColor: Colors.white70,
-            indicatorColor: AppColors.yellow,
+            indicatorColor: colors.yellow,
             indicatorWeight: 3,
-            tabs: [
+            tabs: const [
               Tab(text: 'En cours'),
               Tab(text: 'Archiv\u00e9es'),
             ],
@@ -473,7 +475,7 @@ class _PlanningSummaryCard extends StatelessWidget {
     return _PremiumBox(
       child: Row(
         children: [
-          const Icon(Icons.insights_outlined, color: AppColors.petrol),
+          Icon(Icons.insights_outlined, color: context.palette.petrol),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -530,6 +532,8 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return _PremiumBox(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,7 +552,7 @@ class _TaskCard extends StatelessWidget {
               ),
               _Badge(
                 label: _statusLabel(task.status),
-                color: _statusColor(task.status),
+                color: _statusColor(colors, task.status),
               ),
             ],
           ),
@@ -563,9 +567,8 @@ class _TaskCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: (task.progress / 100).clamp(0.0, 1.0),
               minHeight: 10,
-              color:
-                  task.progress >= 100 ? AppColors.success : AppColors.petrol,
-              backgroundColor: AppColors.border,
+              color: task.progress >= 100 ? colors.success : colors.petrol,
+              backgroundColor: colors.border,
             ),
           ),
           const SizedBox(height: 8),
@@ -728,7 +731,7 @@ class _PlanningGantt extends StatelessWidget {
                                       decoration: BoxDecoration(
                                         color: i.isEven
                                             ? Colors.white
-                                            : AppColors.surfaceAlt
+                                            : context.palette.surfaceAlt
                                                 .withValues(alpha: 0.6),
                                         border: Border(
                                           right: BorderSide(
@@ -799,7 +802,7 @@ class _GanttHeaderCell extends StatelessWidget {
       height: height,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: context.palette.surfaceAlt,
         border: Border(
           right: BorderSide(color: Colors.grey.shade300),
           bottom: BorderSide(color: Colors.grey.shade300),
@@ -835,6 +838,7 @@ class _GanttBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
     final start = _dateOnly(task.startDate!);
     final end = _dateOnly(task.endDate!);
     final left = start.difference(minDate).inDays * dayWidth;
@@ -843,10 +847,10 @@ class _GanttBar extends StatelessWidget {
     final progressWidth = width * (task.progress / 100).clamp(0.0, 1.0);
 
     final color = task.progress >= 100
-        ? AppColors.success
+        ? colors.success
         : _isLate(task)
-            ? AppColors.danger
-            : AppColors.info;
+            ? colors.danger
+            : colors.info;
 
     return Positioned(
       left: left + 3,
@@ -858,7 +862,7 @@ class _GanttBar extends StatelessWidget {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: AppColors.yellow,
+                color: colors.yellow,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -953,12 +957,9 @@ class _PremiumBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+    return PremiumSurfaceCard(
+      padding: padding,
+      child: child,
     );
   }
 }
@@ -974,20 +975,10 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
+    return PremiumStatusBadge(
+      label: label,
+      backgroundColor: color.withValues(alpha: 0.14),
+      foregroundColor: color,
     );
   }
 }
@@ -1089,18 +1080,18 @@ String _statusLabel(String status) {
   }
 }
 
-Color _statusColor(String status) {
+Color _statusColor(AppPaletteColors colors, String status) {
   switch (status) {
     case 'terminee':
-      return AppColors.success;
+      return colors.success;
     case 'bloquee':
-      return AppColors.danger;
+      return colors.danger;
     case 'en_cours':
-      return AppColors.info;
+      return colors.info;
     case 'a_faire':
-      return AppColors.petrol;
+      return colors.petrol;
     default:
-      return AppColors.textSoft;
+      return colors.textSoft;
   }
 }
 

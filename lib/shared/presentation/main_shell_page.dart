@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/theme/app_colors.dart';
+import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/supabase_service.dart';
 
 class MainShellPage extends StatelessWidget {
@@ -63,6 +63,7 @@ class MainShellPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
+    final colors = context.palette;
 
     return Scaffold(
       body: Row(
@@ -88,8 +89,8 @@ class MainShellPage extends StatelessWidget {
                     icon: const Icon(Icons.logout, size: 18),
                     label: const Text('Déconnexion'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: const BorderSide(color: AppColors.danger, width: 1.6),
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger, width: 1.6),
                       minimumSize: const Size(0, 44),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),

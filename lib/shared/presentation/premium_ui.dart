@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_colors.dart';
+import '../../app/theme/app_palette_colors.dart';
 import '../../app/theme/app_spacing.dart';
 
 const _premiumCardShadow = [
@@ -52,15 +52,17 @@ class _PremiumSurfaceCardState extends State<PremiumSurfaceCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
       margin: widget.margin,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: AppColors.border,
+          color: colors.border,
           width: 1.2,
         ),
         boxShadow: _hovered ? _premiumCardShadowHovered : _premiumCardShadow,
@@ -104,6 +106,8 @@ class PremiumHeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 900;
@@ -112,12 +116,12 @@ class PremiumHeroHeader extends StatelessWidget {
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.petrol,
-                AppColors.petrolAlt,
+                colors.petrol,
+                colors.petrolAlt,
               ],
             ),
           ),
@@ -136,10 +140,10 @@ class PremiumHeroHeader extends StatelessWidget {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           alignment: Alignment.center,
-                          child: const Text(
+                          child: Text(
                             'MDI',
                             style: TextStyle(
-                              color: AppColors.yellow,
+                              color: colors.yellow,
                               fontWeight: FontWeight.w900,
                               fontSize: 16,
                               letterSpacing: 0.5,
@@ -201,10 +205,10 @@ class PremiumHeroHeader extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
+                      child: Text(
                         'MDI',
                         style: TextStyle(
-                          color: AppColors.yellow,
+                          color: colors.yellow,
                           fontWeight: FontWeight.w900,
                           fontSize: 18,
                           letterSpacing: 0.5,
@@ -312,14 +316,16 @@ class PremiumMetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Container(
       width: 165,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: colors.surfaceAlt,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: AppColors.border,
+          color: colors.border,
           width: 1.1,
         ),
       ),
@@ -329,12 +335,12 @@ class PremiumMetricTile extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppColors.petrolSoft,
-              borderRadius: BorderRadius.circular(14),
+              color: colors.petrolSoft,
+              borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
             ),
             child: Icon(
               icon,
-              color: AppColors.petrol,
+              color: colors.petrol,
               size: 22,
             ),
           ),
@@ -346,7 +352,7 @@ class PremiumMetricTile extends StatelessWidget {
                 Text(
                   value,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.petrol,
+                        color: colors.petrol,
                         fontWeight: FontWeight.w900,
                       ),
                 ),
@@ -439,6 +445,7 @@ class PremiumInfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
     final safeValue = value.trim().isEmpty ? '-' : value.trim();
 
     return Column(
@@ -447,7 +454,7 @@ class PremiumInfoLine extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppColors.text,
+                color: colors.text,
                 fontWeight: FontWeight.w800,
               ),
         ),
@@ -455,9 +462,40 @@ class PremiumInfoLine extends StatelessWidget {
         Text(
           safeValue,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSoft,
+                color: colors.textSoft,
               ),
         ),
+      ],
+    );
+  }
+}
+
+class PremiumWatermarkBackground extends StatelessWidget {
+  const PremiumWatermarkBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.palette;
+
+    return Stack(
+      children: [
+        Positioned(
+          right: -40,
+          bottom: -40,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: 0.07,
+              child: Icon(
+                Icons.architecture,
+                size: 320,
+                color: colors.text,
+              ),
+            ),
+          ),
+        ),
+        child,
       ],
     );
   }

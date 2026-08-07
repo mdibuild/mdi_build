@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_report.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
@@ -534,9 +534,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
+                  color: context.palette.surfaceAlt,
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.palette.border),
                 ),
                 child: Wrap(
                   spacing: 12,
@@ -875,30 +875,32 @@ class _PremiumReportCard extends StatelessWidget {
   final Future<void> Function() onArchiveToggle;
   final Future<void> Function() onDelete;
 
-  Color _statusBg() {
+  Color _statusBg(AppPaletteColors colors) {
     switch (report.status) {
       case 'generated':
         return const Color(0xFFEAF7EE);
       case 'finalized':
         return const Color(0xFFE9F1FF);
       default:
-        return AppColors.yellowSoft;
+        return colors.yellowSoft;
     }
   }
 
-  Color _statusFg() {
+  Color _statusFg(AppPaletteColors colors) {
     switch (report.status) {
       case 'generated':
-        return AppColors.success;
+        return colors.success;
       case 'finalized':
-        return AppColors.info;
+        return colors.info;
       default:
-        return AppColors.petrol;
+        return colors.petrol;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return PremiumSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,26 +918,26 @@ class _PremiumReportCard extends StatelessWidget {
             children: [
               PremiumStatusBadge(
                 label: _moduleLabel(report.sourceModule),
-                backgroundColor: AppColors.petrolSoft,
-                foregroundColor: AppColors.petrol,
+                backgroundColor: colors.petrolSoft,
+                foregroundColor: colors.petrol,
                 icon: Icons.category_outlined,
               ),
               PremiumStatusBadge(
                 label: _reportTypeLabel(report.reportType),
-                backgroundColor: AppColors.surfaceAlt,
-                foregroundColor: AppColors.textSoft,
+                backgroundColor: colors.surfaceAlt,
+                foregroundColor: colors.textSoft,
                 icon: Icons.auto_mode_outlined,
               ),
               PremiumStatusBadge(
                 label: _statusLabel(report.status),
-                backgroundColor: _statusBg(),
-                foregroundColor: _statusFg(),
+                backgroundColor: _statusBg(colors),
+                foregroundColor: _statusFg(colors),
                 icon: Icons.flag_outlined,
               ),
               PremiumStatusBadge(
                 label: _dateLabel(report.reportDate),
-                backgroundColor: AppColors.surfaceAlt,
-                foregroundColor: AppColors.textSoft,
+                backgroundColor: colors.surfaceAlt,
+                foregroundColor: colors.textSoft,
                 icon: Icons.event_outlined,
               ),
             ],

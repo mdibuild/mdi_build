@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_task.dart';
 import '../../../core/models/project_task_dependency.dart';
 
@@ -230,6 +230,8 @@ class _GanttHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return Row(
       children: [
         Container(
@@ -238,7 +240,7 @@ class _GanttHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
+            color: colors.surfaceAlt,
             border: Border(
               right: BorderSide(color: Colors.grey.shade300),
               bottom: BorderSide(color: Colors.grey.shade300),
@@ -264,7 +266,7 @@ class _GanttHeader extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
+                    color: colors.surfaceAlt,
                     border: Border(
                       right: BorderSide(color: Colors.grey.shade300),
                       bottom: BorderSide(color: Colors.grey.shade300),
@@ -367,6 +369,8 @@ class _TimelineArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return SizedBox(
       width: timelineWidth,
       height: tasks.length * rowHeight,
@@ -381,7 +385,7 @@ class _TimelineArea extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: i.isEven
                         ? Colors.white
-                        : AppColors.surfaceAlt.withValues(alpha: 0.45),
+                        : colors.surfaceAlt.withValues(alpha: 0.45),
                     border: Border(
                       right: BorderSide(color: Colors.grey.shade300),
                     ),
@@ -431,10 +435,10 @@ class _TimelineArea extends StatelessWidget {
                 DateTime.now().isAfter(task.plannedEndDate!);
 
             final progressColor = delayed
-                ? AppColors.danger
+                ? colors.danger
                 : task.status == 'terminee'
-                    ? AppColors.success
-                    : AppColors.info;
+                    ? colors.success
+                    : colors.info;
 
             return Positioned(
               left: plannedLeft + 4,
@@ -449,7 +453,7 @@ class _TimelineArea extends StatelessWidget {
                       width: plannedWidth - 8,
                       height: rowHeight - 26,
                       decoration: BoxDecoration(
-                        color: AppColors.yellow.withValues(alpha: 0.95),
+                        color: colors.yellow.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(
                           task.isMilestone ? 16 : 10,
                         ),
@@ -512,6 +516,7 @@ class _TimelineArea extends StatelessWidget {
             columns: columns,
             unitWidth: unitWidth,
             rowHeight: rowHeight,
+            dependencyColor: colors.purple,
           ),
         ],
       ),
@@ -526,6 +531,7 @@ List<Widget> _buildDependencyWidgets({
   required List<_GanttColumn> columns,
   required double unitWidth,
   required double rowHeight,
+  required Color dependencyColor,
 }) {
   const lineThickness = 3.0;
   const arrowSize = 14.0;
@@ -599,7 +605,7 @@ List<Widget> _buildDependencyWidgets({
         child: Container(
           width: (elbowX - startX).abs().clamp(1, double.infinity),
           height: lineThickness,
-          color: AppColors.purple,
+          color: dependencyColor,
         ),
       ),
     );
@@ -611,7 +617,7 @@ List<Widget> _buildDependencyWidgets({
         child: Container(
           width: lineThickness,
           height: (endY - startY).abs().clamp(1, double.infinity),
-          color: AppColors.purple,
+          color: dependencyColor,
         ),
       ),
     );
@@ -623,7 +629,7 @@ List<Widget> _buildDependencyWidgets({
         child: Container(
           width: (endX - elbowX).abs().clamp(1, double.infinity),
           height: lineThickness,
-          color: AppColors.purple,
+          color: dependencyColor,
         ),
       ),
     );
@@ -635,8 +641,8 @@ List<Widget> _buildDependencyWidgets({
         child: Container(
           width: 6,
           height: 6,
-          decoration: const BoxDecoration(
-            color: AppColors.purple,
+          decoration: BoxDecoration(
+            color: dependencyColor,
             shape: BoxShape.circle,
           ),
         ),
@@ -650,7 +656,7 @@ List<Widget> _buildDependencyWidgets({
         child: Icon(
           direction >= 0 ? Icons.arrow_right : Icons.arrow_left,
           size: arrowSize,
-          color: AppColors.purple,
+          color: dependencyColor,
         ),
       ),
     );

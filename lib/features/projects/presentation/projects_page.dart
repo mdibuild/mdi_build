@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import 'providers/current_profile_provider.dart';
@@ -156,25 +156,27 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
   }
 
   Color _statusBg(String value) {
+    final colors = context.palette;
     final lower = value.toLowerCase();
     if (lower.contains('archive')) {
-      return AppColors.surfaceAlt;
+      return colors.surfaceAlt;
     }
     if (lower.contains('term') || lower.contains('livr')) {
       return const Color(0xFFEAF7EE);
     }
-    return AppColors.yellowSoft;
+    return colors.yellowSoft;
   }
 
   Color _statusFg(String value) {
+    final colors = context.palette;
     final lower = value.toLowerCase();
     if (lower.contains('archive')) {
-      return AppColors.textSoft;
+      return colors.textSoft;
     }
     if (lower.contains('term') || lower.contains('livr')) {
-      return AppColors.success;
+      return colors.success;
     }
-    return AppColors.petrol;
+    return colors.petrol;
   }
 
   @override
@@ -280,9 +282,9 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                               margin: const EdgeInsets.only(bottom: 14),
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceAlt,
+                                color: context.palette.surfaceAlt,
                                 borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: AppColors.border),
+                                border: Border.all(color: context.palette.border),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,10 +330,10 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                     child: LinearProgressIndicator(
                                       value: progress,
                                       minHeight: 12,
-                                      backgroundColor: AppColors.border,
+                                      backgroundColor: context.palette.border,
                                       color: progress >= 0.8
-                                          ? AppColors.success
-                                          : AppColors.petrol,
+                                          ? context.palette.success
+                                          : context.palette.petrol,
                                     ),
                                   ),
                                   const SizedBox(height: 8),

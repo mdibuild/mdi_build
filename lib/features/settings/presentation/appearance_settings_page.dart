@@ -35,6 +35,12 @@ class AppearanceSettingsPage extends ConsumerWidget {
                 }
                 notifier.selectAccent(index);
               },
+              onSelectTitleColor: (index) {
+                if (selection.paletteId != palette.id) {
+                  notifier.selectPalette(palette.id);
+                }
+                notifier.selectTitleColor(index);
+              },
             ),
             const SizedBox(height: 16),
           ],
@@ -50,12 +56,14 @@ class _PaletteCard extends StatelessWidget {
     required this.selection,
     required this.onSelectPalette,
     required this.onSelectAccent,
+    required this.onSelectTitleColor,
   });
 
   final AppPalette palette;
   final PaletteSelection selection;
   final VoidCallback onSelectPalette;
   final ValueChanged<int> onSelectAccent;
+  final ValueChanged<int> onSelectTitleColor;
 
   bool get _isSelected => selection.paletteId == palette.id;
 
@@ -119,6 +127,14 @@ class _PaletteCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          Text(
+            'Accent',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colors.textSoft,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -128,6 +144,27 @@ class _PaletteCard extends StatelessWidget {
                   option: palette.accentOptions[i],
                   selected: _isSelected && selection.accentIndex == i,
                   onTap: () => onSelectAccent(i),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Couleur des titres',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colors.textSoft,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (var i = 0; i < palette.accentOptions.length; i++)
+                _AccentSwatch(
+                  option: palette.accentOptions[i],
+                  selected: _isSelected && selection.titleColorIndex == i,
+                  onTap: () => onSelectTitleColor(i),
                 ),
             ],
           ),

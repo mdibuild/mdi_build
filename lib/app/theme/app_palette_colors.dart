@@ -19,6 +19,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
     required this.info,
     required this.danger,
     required this.purple,
+    required this.title,
   });
 
   final Color petrol;
@@ -36,6 +37,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
   final Color info;
   final Color danger;
   final Color purple;
+  final Color title;
 
   @override
   AppPaletteColors copyWith({
@@ -54,6 +56,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
     Color? info,
     Color? danger,
     Color? purple,
+    Color? title,
   }) {
     return AppPaletteColors(
       petrol: petrol ?? this.petrol,
@@ -71,6 +74,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
       info: info ?? this.info,
       danger: danger ?? this.danger,
       purple: purple ?? this.purple,
+      title: title ?? this.title,
     );
   }
 
@@ -96,13 +100,22 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
       info: Color.lerp(info, other.info, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
       purple: Color.lerp(purple, other.purple, t)!,
+      title: Color.lerp(title, other.title, t)!,
     );
   }
 }
 
-AppPaletteColors resolvePaletteColors(AppPalette palette, int accentIndex) {
+AppPaletteColors resolvePaletteColors(
+  AppPalette palette,
+  int accentIndex, {
+  int? titleColorIndex,
+}) {
   final safeIndex = accentIndex.clamp(0, palette.accentOptions.length - 1);
   final accent = palette.accentOptions[safeIndex].color;
+
+  final safeTitleIndex =
+      (titleColorIndex ?? safeIndex).clamp(0, palette.accentOptions.length - 1);
+  final titleColor = palette.accentOptions[safeTitleIndex].color;
 
   final hsl = HSLColor.fromColor(accent);
   final alt = hsl
@@ -129,6 +142,7 @@ AppPaletteColors resolvePaletteColors(AppPalette palette, int accentIndex) {
     info: palette.info,
     danger: palette.danger,
     purple: palette.purple,
+    title: titleColor,
   );
 }
 

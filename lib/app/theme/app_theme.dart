@@ -4,25 +4,50 @@ import 'app_palette.dart';
 import 'app_palette_colors.dart';
 
 class AppTheme {
-  static ThemeData build(AppPalette palette, int accentIndex) {
-    final colors = resolvePaletteColors(palette, accentIndex);
+  static ThemeData build(
+    AppPalette palette,
+    int accentIndex, {
+    int? titleColorIndex,
+  }) {
+    final colors = resolvePaletteColors(
+      palette,
+      accentIndex,
+      titleColorIndex: titleColorIndex,
+    );
     final isDark = palette.brightness == Brightness.dark;
     final onAccent = isDark ? Colors.black : Colors.white;
+
+    final baseColorScheme = isDark
+        ? ColorScheme.dark(
+            primary: colors.petrol,
+            onPrimary: onAccent,
+            secondary: colors.petrolSoft,
+            onSecondary: colors.petrol,
+            surface: colors.surface,
+            onSurface: colors.text,
+            error: colors.danger,
+            onError: Colors.white,
+          )
+        : ColorScheme.light(
+            primary: colors.petrol,
+            onPrimary: onAccent,
+            secondary: colors.petrolSoft,
+            onSecondary: colors.petrol,
+            surface: colors.surface,
+            onSurface: colors.text,
+            error: colors.danger,
+            onError: Colors.white,
+          );
 
     final base = ThemeData(
       useMaterial3: true,
       brightness: palette.brightness,
       scaffoldBackgroundColor: colors.background,
-      colorScheme: ColorScheme(
-        brightness: palette.brightness,
-        primary: colors.petrol,
-        onPrimary: onAccent,
-        secondary: colors.petrolSoft,
-        onSecondary: colors.petrol,
-        surface: colors.surface,
-        onSurface: colors.text,
-        error: colors.danger,
-        onError: Colors.white,
+      colorScheme: baseColorScheme.copyWith(
+        primaryContainer: colors.petrolSoft,
+        onPrimaryContainer: colors.petrol,
+        secondaryContainer: colors.petrolSoft,
+        onSecondaryContainer: colors.petrol,
       ),
     );
 
@@ -32,25 +57,25 @@ class AppTheme {
         headlineLarge: TextStyle(
           fontSize: 34,
           fontWeight: FontWeight.w800,
-          color: colors.text,
+          color: colors.title,
           letterSpacing: -0.6,
         ),
         headlineMedium: TextStyle(
           fontSize: 30,
           fontWeight: FontWeight.w800,
-          color: colors.text,
+          color: colors.title,
           letterSpacing: -0.4,
         ),
         titleLarge: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w800,
-          color: colors.text,
+          color: colors.title,
           letterSpacing: -0.2,
         ),
         titleMedium: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: colors.text,
+          color: colors.title,
         ),
         bodyLarge: TextStyle(
           fontSize: 17,

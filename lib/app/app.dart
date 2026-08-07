@@ -15,7 +15,11 @@ class MdiBuildApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final selection = ref.watch(paletteSelectionProvider);
     final palette = appPalettes[selection.paletteId]!;
-    final theme = AppTheme.build(palette, selection.accentIndex);
+    final theme = AppTheme.build(
+      palette,
+      selection.accentIndex,
+      titleColorIndex: selection.titleColorIndex,
+    );
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,

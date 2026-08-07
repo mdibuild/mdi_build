@@ -141,6 +141,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           subtitle: 'Préférences d\'alertes',
                           onTap: () => context.push('/settings/notifications'),
                         ),
+                        const Divider(height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.palette_outlined,
+                          title: 'Apparence',
+                          subtitle: 'Thème et couleur d\'accent',
+                          onTap: () => context.push('/settings/appearance'),
+                        ),
                       ],
                     ),
                   ),

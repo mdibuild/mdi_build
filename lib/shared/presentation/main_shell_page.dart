@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/supabase_service.dart';
+import 'premium_ui.dart';
 
 class MainShellPage extends StatelessWidget {
   const MainShellPage({super.key, required this.child});
@@ -100,7 +101,7 @@ class MainShellPage extends StatelessWidget {
             ),
           ),
           const VerticalDivider(width: 1),
-          Expanded(child: child),
+          Expanded(child: PremiumWatermarkBackground(child: child)),
         ],
       ),
     );

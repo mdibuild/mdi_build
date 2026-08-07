@@ -13,6 +13,7 @@ import '../../features/projects/presentation/project_form_page.dart';
 import '../../features/projects/presentation/projects_page.dart';
 import '../../features/quantitatif/presentation/quantitatif_page.dart';
 import '../../features/reports/presentation/reports_page.dart';
+import '../../features/settings/presentation/appearance_settings_page.dart';
 import '../../features/settings/presentation/clients_page.dart';
 import '../../features/settings/presentation/company_settings_page.dart';
 import '../../features/settings/presentation/notifications_settings_page.dart';
@@ -76,6 +77,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/settings/notifications',
               builder: (context, state) => const NotificationsSettingsPage()),
+          GoRoute(
+              path: '/settings/appearance',
+              builder: (context, state) => const AppearanceSettingsPage()),
         ],
       ),
     ],

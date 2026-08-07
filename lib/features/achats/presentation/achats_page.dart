@@ -906,12 +906,14 @@ class _StatusChip extends StatelessWidget {
     return Chip(
       label: Text(_statusLabel(status)),
       backgroundColor: color.withValues(alpha: 0.14),
-      side: BorderSide(color: color.withValues(alpha: 0.35)),
+      side: BorderSide(color: color, width: 1.8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       labelStyle: TextStyle(
         color: color,
-        fontWeight: FontWeight.w700,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.1,
       ),
-      visualDensity: VisualDensity.compact,
     );
   }
 }

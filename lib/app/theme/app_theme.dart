@@ -140,12 +140,12 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.text,
-          minimumSize: const Size(0, 52),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          foregroundColor: AppColors.petrol,
+          minimumSize: const Size(0, 54),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
           side: const BorderSide(
-            color: AppColors.border,
-            width: 1.4,
+            color: AppColors.petrol,
+            width: 1.8,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
@@ -153,6 +153,10 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
+          ),
+        ).copyWith(
+          overlayColor: WidgetStatePropertyAll(
+            AppColors.petrol.withValues(alpha: 0.06),
           ),
         ),
       ),

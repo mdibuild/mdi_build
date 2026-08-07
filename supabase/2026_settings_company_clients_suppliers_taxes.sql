@@ -97,3 +97,28 @@ for select using (bucket_id = 'company-logos');
 create policy company_logo_write on storage.objects
 for all using (bucket_id = 'company-logos' and auth.role() = 'authenticated')
 with check (bucket_id = 'company-logos' and auth.role() = 'authenticated');
+
+-- La table companies a RLS activé depuis le schéma initial mais n'a jamais eu de
+-- policy définie (contrairement à projects/spaces/...) : sans ça, toute lecture/
+-- écriture via le client renvoie 0 ligne silencieusement, d'où l'erreur PGRST116
+-- rencontrée sur la page Entreprise.
+create policy company_select_own on public.companies
+for select using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.company_id = companies.id
+  )
+);
+
+create policy company_update_own on public.companies
+for update using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.company_id = companies.id
+  )
+) with check (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.company_id = companies.id
+  )
+);

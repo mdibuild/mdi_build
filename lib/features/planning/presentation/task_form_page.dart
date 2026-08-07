@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/project_task.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/planning_providers.dart';
@@ -260,74 +261,71 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
         padding: const EdgeInsets.all(20),
         child: ListView(
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Informations générales',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
+            PremiumSurfaceCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Informations générales',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        _TypeChip(taskType: taskType),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: taskType,
-                      decoration: const InputDecoration(
-                        labelText: 'Type',
-                        prefixIcon: Icon(Icons.category_outlined),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'task', child: Text('Tâche')),
-                        DropdownMenuItem(
-                            value: 'milestone', child: Text('Jalon')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => taskType = value);
-                        }
-                      },
+                      _TypeChip(taskType: taskType),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: taskType,
+                    decoration: const InputDecoration(
+                      labelText: 'Type',
+                      prefixIcon: Icon(Icons.category_outlined),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Titre',
-                        prefixIcon: Icon(Icons.title_outlined),
-                      ),
+                    items: const [
+                      DropdownMenuItem(value: 'task', child: Text('Tâche')),
+                      DropdownMenuItem(
+                          value: 'milestone', child: Text('Jalon')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => taskType = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Titre',
+                      prefixIcon: Icon(Icons.title_outlined),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        prefixIcon: Icon(Icons.description_outlined),
-                      ),
-                      maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      prefixIcon: Icon(Icons.description_outlined),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: lotController,
-                      decoration: const InputDecoration(
-                        labelText: 'Lot / corps d’état',
-                        prefixIcon: Icon(Icons.work_outline),
-                      ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: lotController,
+                    decoration: const InputDecoration(
+                      labelText: 'Lot / corps d’état',
+                      prefixIcon: Icon(Icons.work_outline),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+            PremiumSurfaceCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                   children: [
                     Row(
                       children: [
@@ -434,13 +432,11 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     ),
                   ],
                 ),
-              ),
             ),
             const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+            PremiumSurfaceCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
@@ -481,10 +477,10 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                     ),
                   ],
                 ),
-              ),
             ),
             const SizedBox(height: 12),
-            Card(
+            PremiumSurfaceCard(
+              padding: EdgeInsets.zero,
               child: SwitchListTile(
                 value: isArchived,
                 onChanged: (value) {
@@ -505,22 +501,20 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
             if (editingTaskId != null)
               TaskDocumentsSection(taskId: editingTaskId!)
             else
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Enregistre d’abord la tâche, puis rouvre-la pour ajouter des documents liés.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+              PremiumSurfaceCard(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Enregistre d’abord la tâche, puis rouvre-la pour ajouter des documents liés.',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             const SizedBox(height: 16),

@@ -5,6 +5,7 @@ import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/services/quantity_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
 import '../../achats/presentation/widgets/purchase_form.dart';
 import '../../metrage/presentation/providers/spaces_providers.dart';
@@ -206,7 +207,8 @@ class QuantitatifPage extends ConsumerWidget {
 
                   return selectedProjectAsync.when(
                     data: (project) {
-                      return Card(
+                      return PremiumSurfaceCard(
+                        padding: EdgeInsets.zero,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(

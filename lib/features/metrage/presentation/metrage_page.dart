@@ -5,6 +5,7 @@ import '../../../core/enums/record_status.dart';
 import '../../../core/models/opening_item.dart';
 import '../../../core/models/space_item.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/spaces_providers.dart';
 import 'widgets/opening_form.dart';
@@ -242,15 +243,15 @@ class MetragePage extends ConsumerWidget {
               child: spacesAsync.when(
                 data: (spaces) {
                   if (spaces.isEmpty) {
-                    return const Card(
+                    return const PremiumSurfaceCard(
                       child: Center(
-                          child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Text('Aucun espace pour ce projet.'))),
+                        child: Text('Aucun espace pour ce projet.'),
+                      ),
                     );
                   }
 
-                  return Card(
+                  return PremiumSurfaceCard(
+                    padding: EdgeInsets.zero,
                     child: ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: spaces.length,

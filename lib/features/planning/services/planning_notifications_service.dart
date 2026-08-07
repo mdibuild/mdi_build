@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/models/project_task.dart';
 
+const planningNotificationsPrefKey = 'pref_planning_notifications_enabled';
+
 class PlanningNotificationsService {
   PlanningNotificationsService._();
 
@@ -40,6 +42,11 @@ class PlanningNotificationsService {
     await ensureInitialized();
 
     final prefs = await SharedPreferences.getInstance();
+
+    if (!(prefs.getBool(planningNotificationsPrefKey) ?? true)) {
+      return;
+    }
+
     final today = DateTime.now();
     final todayKey = _dayKey(today);
 

@@ -13,7 +13,12 @@ import '../../features/projects/presentation/project_form_page.dart';
 import '../../features/projects/presentation/projects_page.dart';
 import '../../features/quantitatif/presentation/quantitatif_page.dart';
 import '../../features/reports/presentation/reports_page.dart';
+import '../../features/settings/presentation/clients_page.dart';
+import '../../features/settings/presentation/company_settings_page.dart';
+import '../../features/settings/presentation/notifications_settings_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
+import '../../features/settings/presentation/suppliers_page.dart';
+import '../../features/settings/presentation/tax_rates_page.dart';
 import '../../shared/presentation/main_shell_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -56,6 +61,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/settings',
               builder: (context, state) => const SettingsPage()),
+          GoRoute(
+              path: '/settings/company',
+              builder: (context, state) => const CompanySettingsPage()),
+          GoRoute(
+              path: '/settings/clients',
+              builder: (context, state) => const ClientsPage()),
+          GoRoute(
+              path: '/settings/suppliers',
+              builder: (context, state) => const SuppliersPage()),
+          GoRoute(
+              path: '/settings/taxes',
+              builder: (context, state) => const TaxRatesPage()),
+          GoRoute(
+              path: '/settings/notifications',
+              builder: (context, state) => const NotificationsSettingsPage()),
         ],
       ),
     ],

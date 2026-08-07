@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/settings_user_entry.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
@@ -103,6 +104,47 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Card(
+                    child: Column(
+                      children: [
+                        _SettingsNavTile(
+                          icon: Icons.business_outlined,
+                          title: 'Entreprise',
+                          subtitle: 'Raison sociale, identifiants légaux, logo, RIB',
+                          onTap: () => context.push('/settings/company'),
+                        ),
+                        const Divider(height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.people_outline,
+                          title: 'Clients',
+                          subtitle: 'Référentiel client réutilisable',
+                          onTap: () => context.push('/settings/clients'),
+                        ),
+                        const Divider(height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Fournisseurs',
+                          subtitle: 'Référentiel fournisseur réutilisable',
+                          onTap: () => context.push('/settings/suppliers'),
+                        ),
+                        const Divider(height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.percent_outlined,
+                          title: 'Taxes & TVA',
+                          subtitle: 'Taux applicables aux devis',
+                          onTap: () => context.push('/settings/taxes'),
+                        ),
+                        const Divider(height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.notifications_outlined,
+                          title: 'Notifications',
+                          subtitle: 'Préférences d\'alertes',
+                          onTap: () => context.push('/settings/notifications'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -277,6 +319,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Erreur profil : $error')),
       ),
+    );
+  }
+}
+
+class _SettingsNavTile extends StatelessWidget {
+  const _SettingsNavTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }

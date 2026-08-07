@@ -68,7 +68,7 @@ class PurchasePdfService {
               children: [
                 pw.Text(
                   'BON D’ACHAT',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
@@ -188,7 +188,7 @@ class PurchasePdfService {
             pw.Expanded(
               child: pw.Text(
                 'TOTAL',
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   fontSize: 14,
                   fontWeight: pw.FontWeight.bold,
                 ),
@@ -196,7 +196,7 @@ class PurchasePdfService {
             ),
             pw.Text(
               total.toStringAsFixed(2),
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 fontSize: 14,
                 fontWeight: pw.FontWeight.bold,
               ),
@@ -220,7 +220,7 @@ class PurchasePdfService {
         children: [
           pw.Text(
             'Remarques',
-            style: pw.TextStyle(
+            style: const pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
             ),
           ),
@@ -241,7 +241,7 @@ class PurchasePdfService {
             width: 100,
             child: pw.Text(
               '$label :',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
             ),
           ),
           pw.Expanded(child: pw.Text(value)),

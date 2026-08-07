@@ -51,7 +51,7 @@ class PlanningPdfService {
               children: [
                 pw.Text(
                   'PLANNING PROJET',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 22,
                     fontWeight: pw.FontWeight.bold,

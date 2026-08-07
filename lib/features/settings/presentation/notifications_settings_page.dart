@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../shared/presentation/premium_ui.dart';
 import '../../planning/services/planning_notifications_service.dart';
 
 class NotificationsSettingsPage extends StatefulWidget {
@@ -51,7 +52,13 @@ class _NotificationsSettingsPageState
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Card(
+                const PremiumSectionHeader(
+                  title: 'Notifications',
+                  subtitle: 'Préférences d\'alertes',
+                ),
+                const SizedBox(height: 16),
+                PremiumSurfaceCard(
+                  padding: EdgeInsets.zero,
                   child: SwitchListTile(
                     title: const Text('Alertes planning'),
                     subtitle: const Text(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/models/company.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import 'providers/company_providers.dart';
 
 class CompanySettingsPage extends ConsumerWidget {
@@ -204,90 +205,115 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Center(
+        PremiumSurfaceCard(
+          child: Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundImage:
+                      logoUrl == null ? null : NetworkImage(logoUrl),
+                  child: logoUrl == null
+                      ? const Icon(Icons.business_outlined, size: 40)
+                      : null,
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _uploadingLogo ? null : _pickLogo,
+                  icon: _uploadingLogo
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.image_outlined),
+                  label: Text(_uploadingLogo ? 'Envoi...' : 'Changer le logo'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        PremiumSurfaceCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                backgroundImage: logoUrl == null ? null : NetworkImage(logoUrl),
-                child: logoUrl == null
-                    ? const Icon(Icons.business_outlined, size: 40)
-                    : null,
+              const PremiumSectionHeader(title: 'Informations générales'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Raison sociale'),
               ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _uploadingLogo ? null : _pickLogo,
-                icon: _uploadingLogo
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.image_outlined),
-                label: Text(_uploadingLogo ? 'Envoi...' : 'Changer le logo'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Téléphone'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: 'Adresse'),
+                maxLines: 2,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        Text('Informations générales', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Raison sociale'),
+        const SizedBox(height: 16),
+        PremiumSurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PremiumSectionHeader(title: 'Identifiants légaux'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: iceController,
+                decoration: const InputDecoration(labelText: 'ICE'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ifController,
+                decoration: const InputDecoration(labelText: 'IF'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: rcController,
+                decoration: const InputDecoration(labelText: 'RC'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: patenteController,
+                decoration: const InputDecoration(labelText: 'Patente'),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: phoneController,
-          decoration: const InputDecoration(labelText: 'Téléphone'),
+        const SizedBox(height: 16),
+        PremiumSurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PremiumSectionHeader(title: 'Coordonnées bancaires'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: bankNameController,
+                decoration: const InputDecoration(labelText: 'Banque'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: bankRibController,
+                decoration: const InputDecoration(labelText: 'RIB'),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: emailController,
-          decoration: const InputDecoration(labelText: 'Email'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: addressController,
-          decoration: const InputDecoration(labelText: 'Adresse'),
-          maxLines: 2,
-        ),
-        const SizedBox(height: 24),
-        Text('Identifiants légaux', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        TextField(
-          controller: iceController,
-          decoration: const InputDecoration(labelText: 'ICE'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: ifController,
-          decoration: const InputDecoration(labelText: 'IF'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: rcController,
-          decoration: const InputDecoration(labelText: 'RC'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: patenteController,
-          decoration: const InputDecoration(labelText: 'Patente'),
-        ),
-        const SizedBox(height: 24),
-        Text('Coordonnées bancaires', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        TextField(
-          controller: bankNameController,
-          decoration: const InputDecoration(labelText: 'Banque'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: bankRibController,
-          decoration: const InputDecoration(labelText: 'RIB'),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: Text(_saving ? 'Enregistrement...' : 'Enregistrer'),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/client.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import 'client_form_dialog.dart';
 import 'providers/clients_providers.dart';
 
@@ -101,8 +102,9 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
           itemBuilder: (context, index) {
             final client = filtered[index];
 
-            return Card(
+            return PremiumSurfaceCard(
               margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: ListTile(
                 title: Text(client.name),
                 subtitle: Text([

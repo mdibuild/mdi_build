@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/settings_user_entry.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import 'providers/settings_providers.dart';
 
@@ -104,7 +106,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Card(
+                  PremiumSurfaceCard(
+                    padding: EdgeInsets.zero,
                     child: Column(
                       children: [
                         _SettingsNavTile(
@@ -152,165 +155,152 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Gestion des privilèges',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Mets à jour les rôles de ton équipe depuis cet écran.',
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _roles
-                                .map(
-                                  (role) => Chip(
-                                    label: Text(role),
-                                    avatar: const Icon(Icons.shield_outlined,
-                                        size: 16),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ],
-                      ),
+                  PremiumSurfaceCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const PremiumSectionHeader(
+                          title: 'Gestion des privilèges',
+                          subtitle:
+                              'Mets à jour les rôles de ton équipe depuis cet écran.',
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _roles
+                              .map(
+                                (role) => Chip(
+                                  label: Text(role),
+                                  avatar: const Icon(Icons.shield_outlined,
+                                      size: 16),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: _searchController,
-                            onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'Recherche',
-                              hintText: 'Nom, email, rôle',
-                              prefixIcon: Icon(Icons.search),
-                            ),
+                  PremiumSurfaceCard(
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(
+                            labelText: 'Recherche',
+                            hintText: 'Nom, email, rôle',
+                            prefixIcon: Icon(Icons.search),
                           ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            initialValue: _roleFilter,
-                            decoration: const InputDecoration(
-                              labelText: 'Filtre rôle',
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: 'all', child: Text('Tous')),
-                              DropdownMenuItem(
-                                  value: 'owner', child: Text('owner')),
-                              DropdownMenuItem(
-                                  value: 'admin', child: Text('admin')),
-                              DropdownMenuItem(
-                                  value: 'manager', child: Text('manager')),
-                              DropdownMenuItem(
-                                  value: 'member', child: Text('member')),
-                              DropdownMenuItem(
-                                  value: 'viewer', child: Text('viewer')),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() => _roleFilter = value);
-                              }
-                            },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: _roleFilter,
+                          decoration: const InputDecoration(
+                            labelText: 'Filtre rôle',
                           ),
-                        ],
-                      ),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'all', child: Text('Tous')),
+                            DropdownMenuItem(
+                                value: 'owner', child: Text('owner')),
+                            DropdownMenuItem(
+                                value: 'admin', child: Text('admin')),
+                            DropdownMenuItem(
+                                value: 'manager', child: Text('manager')),
+                            DropdownMenuItem(
+                                value: 'member', child: Text('member')),
+                            DropdownMenuItem(
+                                value: 'viewer', child: Text('viewer')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _roleFilter = value);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
                   if (filtered.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Center(
-                          child: Text('Aucun utilisateur pour ce filtre.'),
-                        ),
+                    const PremiumSurfaceCard(
+                      child: Center(
+                        child: Text('Aucun utilisateur pour ce filtre.'),
                       ),
                     )
                   else
                     ...filtered.map(
                       (user) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.displayName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
+                        child: PremiumSurfaceCard(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.displayName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(user.email.isEmpty
+                                  ? 'Email non disponible'
+                                  : user.email),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  PremiumStatusBadge(
+                                    label: 'Rôle actuel : ${user.role}',
+                                    backgroundColor:
+                                        context.palette.petrolSoft,
+                                    foregroundColor: context.palette.petrol,
+                                    icon: Icons.verified_user_outlined,
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(user.email.isEmpty
-                                    ? 'Email non disponible'
-                                    : user.email),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Chip(
-                                      avatar: const Icon(
-                                          Icons.verified_user_outlined,
-                                          size: 16),
-                                      label: Text('Rôle actuel : ${user.role}'),
-                                    ),
-                                    SizedBox(
-                                      width: 220,
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: _roles.contains(user.role)
-                                            ? user.role
-                                            : 'member',
-                                        decoration: const InputDecoration(
-                                          labelText: 'Nouveau rôle',
-                                        ),
-                                        items: _roles
-                                            .map(
-                                              (role) => DropdownMenuItem(
-                                                value: role,
-                                                child: Text(role),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged:
-                                            _updatingIds.contains(user.id)
-                                                ? null
-                                                : (value) {
-                                                    if (value != null &&
-                                                        value != user.role) {
-                                                      _updateRole(user, value);
-                                                    }
-                                                  },
+                                  SizedBox(
+                                    width: 220,
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: _roles.contains(user.role)
+                                          ? user.role
+                                          : 'member',
+                                      decoration: const InputDecoration(
+                                        labelText: 'Nouveau rôle',
                                       ),
+                                      items: _roles
+                                          .map(
+                                            (role) => DropdownMenuItem(
+                                              value: role,
+                                              child: Text(role),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged:
+                                          _updatingIds.contains(user.id)
+                                              ? null
+                                              : (value) {
+                                                  if (value != null &&
+                                                      value != user.role) {
+                                                    _updateRole(user, value);
+                                                  }
+                                                },
                                     ),
-                                    if (_updatingIds.contains(user.id))
-                                      const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                  if (_updatingIds.contains(user.id))
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/tax_rate.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import 'providers/tax_rates_providers.dart';
 import 'tax_rate_form_dialog.dart';
 
@@ -77,8 +78,9 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
           itemBuilder: (context, index) {
             final taxRate = rates[index];
 
-            return Card(
+            return PremiumSurfaceCard(
               margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: ListTile(
                 leading: taxRate.isDefault
                     ? const Icon(Icons.star, color: Colors.amber)

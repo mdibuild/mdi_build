@@ -6,6 +6,7 @@ import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
 import '../services/purchase_pdf_service.dart';
@@ -455,17 +456,15 @@ class _PurchasesList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (purchases.isEmpty) {
-      return const Card(
+      return const PremiumSurfaceCard(
         child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text('Aucun achat.'),
-          ),
+          child: Text('Aucun achat.'),
         ),
       );
     }
 
-    return Card(
+    return PremiumSurfaceCard(
+      padding: EdgeInsets.zero,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: purchases.length,
@@ -655,25 +654,23 @@ class _PurchaseMetaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          children: [
-            _MetaRow(label: 'Projet', value: projectName),
-            const SizedBox(height: 8),
-            _MetaRow(label: 'Lot', value: purchase.lot),
-            const SizedBox(height: 8),
-            _MetaRow(label: 'Date', value: createdAtLabel),
-            const SizedBox(height: 8),
-            _MetaRow(label: 'Statut', value: _statusLabel(purchase.status)),
-            const SizedBox(height: 8),
-            _MetaRow(
-              label: 'Observations',
-              value: purchase.notes.isEmpty ? '-' : purchase.notes,
-            ),
-          ],
-        ),
+    return PremiumSurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          _MetaRow(label: 'Projet', value: projectName),
+          const SizedBox(height: 8),
+          _MetaRow(label: 'Lot', value: purchase.lot),
+          const SizedBox(height: 8),
+          _MetaRow(label: 'Date', value: createdAtLabel),
+          const SizedBox(height: 8),
+          _MetaRow(label: 'Statut', value: _statusLabel(purchase.status)),
+          const SizedBox(height: 8),
+          _MetaRow(
+            label: 'Observations',
+            value: purchase.notes.isEmpty ? '-' : purchase.notes,
+          ),
+        ],
       ),
     );
   }
@@ -687,24 +684,21 @@ class _PurchaseItemsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(14),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Aucune ligne article.'),
-          ),
+      return const PremiumSurfaceCard(
+        padding: EdgeInsets.all(14),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Aucune ligne article.'),
         ),
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          children: [
-            Row(
-              children: [
+    return PremiumSurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          Row(
+            children: [
                 Expanded(
                   flex: 4,
                   child: Text(
@@ -802,8 +796,7 @@ class _PurchaseItemsSection extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -814,34 +807,32 @@ class _PurchaseTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        child: Row(
-          children: [
-            const Icon(Icons.payments_outlined, size: 28),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total achat',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 2),
-                  Text('Montant cumulé des lignes'),
-                ],
-              ),
+    return PremiumSurfaceCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      child: Row(
+        children: [
+          const Icon(Icons.payments_outlined, size: 28),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total achat',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 2),
+                Text('Montant cumulé des lignes'),
+              ],
             ),
-            Text(
-              total.toStringAsFixed(2),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ),
+          ),
+          Text(
+            total.toStringAsFixed(2),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/models/project_document.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'document_form_dialog.dart';
 import 'document_view_page.dart';
@@ -294,65 +295,19 @@ class _DocumentsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = isCompact ? 'Documents' : 'Documents projet';
     final subtitle = unavailable
         ? 'Projet courant indisponible.'
         : projectName == null
             ? 'Chargement projet courant...'
             : 'Projet courant : $projectName';
 
-    final action = ElevatedButton.icon(
-      onPressed: onCreate,
-      icon: const Icon(Icons.upload_file_outlined),
-      label: Text(isCompact ? 'Nouveau' : 'Nouveau document'),
-    );
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: isCompact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: action,
-                  ),
-                ],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(subtitle),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  action,
-                ],
-              ),
+    return PremiumHeroHeader(
+      title: 'Documents projet',
+      subtitle: subtitle,
+      trailing: ElevatedButton.icon(
+        onPressed: onCreate,
+        icon: const Icon(Icons.upload_file_outlined),
+        label: Text(isCompact ? 'Nouveau' : 'Nouveau document'),
       ),
     );
   }
@@ -379,12 +334,11 @@ class _DocumentsFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
+    return PremiumSurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
           children: [
             SizedBox(
               width: isCompact ? double.infinity : 360,
@@ -448,7 +402,6 @@ class _DocumentsFilters extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -473,17 +426,15 @@ class _DocumentsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (documents.isEmpty) {
-      return const Card(
+      return const PremiumSurfaceCard(
         child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text('Aucun document.'),
-          ),
+          child: Text('Aucun document.'),
         ),
       );
     }
 
-    return Card(
+    return PremiumSurfaceCard(
+      padding: EdgeInsets.zero,
       child: ListView.separated(
         padding: EdgeInsets.all(isCompact ? 12 : 16),
         itemCount: documents.length,
@@ -605,12 +556,11 @@ class _DocumentTileState extends State<_DocumentTile> {
                   : _shortId(widget.document.purchaseId!),
             );
 
-        return Card(
-          child: Padding(
-            padding: EdgeInsets.all(widget.isCompact ? 12 : 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return PremiumSurfaceCard(
+          padding: EdgeInsets.all(widget.isCompact ? 12 : 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 if (widget.isCompact)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -778,8 +728,7 @@ class _DocumentTileState extends State<_DocumentTile> {
                     ],
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         );
       },

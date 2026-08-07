@@ -1,41 +1,90 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
+import '../../app/theme/app_spacing.dart';
 
-class PremiumSurfaceCard extends StatelessWidget {
+const _premiumCardShadow = [
+  BoxShadow(
+    color: Color(0x0A000000),
+    blurRadius: 4,
+    offset: Offset(0, 2),
+  ),
+  BoxShadow(
+    color: Color(0x14000000),
+    blurRadius: 24,
+    offset: Offset(0, 14),
+  ),
+];
+
+const _premiumCardShadowHovered = [
+  BoxShadow(
+    color: Color(0x0C000000),
+    blurRadius: 6,
+    offset: Offset(0, 3),
+  ),
+  BoxShadow(
+    color: Color(0x1C000000),
+    blurRadius: 30,
+    offset: Offset(0, 18),
+  ),
+];
+
+class PremiumSurfaceCard extends StatefulWidget {
   const PremiumSurfaceCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.margin,
+    this.onTap,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
+  final VoidCallback? onTap;
+
+  @override
+  State<PremiumSurfaceCard> createState() => _PremiumSurfaceCardState();
+}
+
+class _PremiumSurfaceCardState extends State<PremiumSurfaceCard> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
+    final content = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      margin: widget.margin,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
           color: AppColors.border,
           width: 1.2,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
+        boxShadow: _hovered ? _premiumCardShadowHovered : _premiumCardShadow,
       ),
+      transform: _hovered
+          ? Matrix4.translationValues(0, -2, 0)
+          : Matrix4.identity(),
       child: Padding(
-        padding: padding,
-        child: child,
+        padding: widget.padding,
+        child: widget.child,
+      ),
+    );
+
+    if (widget.onTap == null) {
+      return content;
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: content,
       ),
     );
   }

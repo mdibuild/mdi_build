@@ -77,7 +77,9 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 0,
+        elevation: 4,
+        shadowColor: Colors.black.withValues(alpha: 0.16),
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
@@ -100,6 +102,15 @@ class AppTheme {
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
+        ).copyWith(
+          elevation: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) return 1;
+            if (states.contains(WidgetState.hovered)) return 3;
+            return 0;
+          }),
+          shadowColor: WidgetStatePropertyAll(
+            Colors.black.withValues(alpha: 0.2),
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -115,6 +126,15 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
+          ),
+        ).copyWith(
+          elevation: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) return 1;
+            if (states.contains(WidgetState.hovered)) return 3;
+            return 0;
+          }),
+          shadowColor: WidgetStatePropertyAll(
+            Colors.black.withValues(alpha: 0.2),
           ),
         ),
       ),

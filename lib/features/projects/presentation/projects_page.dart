@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../core/enums/record_status.dart';
+import '../../../core/models/project.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import 'providers/current_profile_provider.dart';
+import 'providers/projects_providers.dart';
 import 'providers/selected_project_provider.dart';
 
 final companyProjectsProvider =
@@ -167,6 +170,74 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
     return colors.yellowSoft;
   }
 
+  Future<void> _deleteProject(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> row,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer le projet'),
+        content: Text(
+          'Supprimer "${_projectLabel(row)}" ? Cette action est définitive.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await ref.read(projectsRepositoryProvider).deleteProject(row['id'] as String);
+    ref.invalidate(companyProjectsProvider);
+    ref.invalidate(projectsProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Projet supprimé.')),
+    );
+  }
+
+  Future<void> _changeProjectStatus(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> row,
+    RecordStatus newStatus,
+  ) async {
+    final project = Project.fromMap(row);
+    if (newStatus == project.status) {
+      return;
+    }
+
+    await ref
+        .read(projectsRepositoryProvider)
+        .updateProject(project.copyWith(status: newStatus));
+    ref.invalidate(companyProjectsProvider);
+    ref.invalidate(projectsProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${project.name} : ${newStatus.label}')),
+    );
+  }
+
   Color _statusFg(String value) {
     final colors = context.palette;
     final lower = value.toLowerCase();
@@ -202,10 +273,21 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                     subtitle: currentProject == null
                         ? 'Vue globale de l’entreprise'
                         : 'Projet courant : ${currentProject.name}',
-                    trailing: ElevatedButton.icon(
-                      onPressed: () => context.go('/planning'),
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: const Text('Planning'),
+                    trailing: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => context.push('/projects/new'),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Nouveau projet'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => context.go('/planning'),
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: const Text('Planning'),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -302,10 +384,42 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                               ),
                                         ),
                                       ),
-                                      PremiumStatusBadge(
-                                        label: status,
-                                        backgroundColor: _statusBg(status),
-                                        foregroundColor: _statusFg(status),
+                                      IconButton(
+                                        tooltip: 'Modifier',
+                                        icon: const Icon(Icons.edit_outlined),
+                                        onPressed: () => context.push(
+                                          '/projects/new',
+                                          extra: Project.fromMap(row),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Supprimer',
+                                        icon: Icon(
+                                          Icons.delete_outline,
+                                          color: context.palette.danger,
+                                        ),
+                                        onPressed: () =>
+                                            _deleteProject(context, ref, row),
+                                      ),
+                                      PopupMenuButton<RecordStatus>(
+                                        tooltip: 'Changer le statut',
+                                        onSelected: (value) =>
+                                            _changeProjectStatus(
+                                                context, ref, row, value),
+                                        itemBuilder: (context) => [
+                                          for (final value
+                                              in RecordStatus.values)
+                                            PopupMenuItem(
+                                              value: value,
+                                              child: Text(value.label),
+                                            ),
+                                        ],
+                                        child: PremiumStatusBadge(
+                                          label: status,
+                                          backgroundColor: _statusBg(status),
+                                          foregroundColor: _statusFg(status),
+                                          icon: Icons.expand_more,
+                                        ),
                                       ),
                                     ],
                                   ),

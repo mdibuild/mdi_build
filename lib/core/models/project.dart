@@ -61,4 +61,28 @@ class Project {
       'status': status.dbValue,
     };
   }
+
+  Project copyWith({
+    String? id,
+    String? companyId,
+    String? name,
+    String? clientName,
+    String? location,
+    String? description,
+    double? budgetInitial,
+    double? progress,
+    RecordStatus? status,
+  }) {
+    return Project(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      name: name ?? this.name,
+      clientName: clientName ?? this.clientName,
+      location: location ?? this.location,
+      description: description ?? this.description,
+      budgetInitial: budgetInitial ?? this.budgetInitial,
+      progress: progress ?? this.progress,
+      status: status ?? this.status,
+    );
+  }
 }

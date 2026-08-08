@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/models/project.dart';
 import '../../features/achats/presentation/achats_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
@@ -38,7 +39,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, state) => const ProjectsPage()),
           GoRoute(
               path: '/projects/new',
-              builder: (context, state) => const ProjectFormPage()),
+              builder: (context, state) =>
+                  ProjectFormPage(project: state.extra as Project?)),
           GoRoute(
               path: '/planning',
               builder: (context, state) => const PlanningPage()),

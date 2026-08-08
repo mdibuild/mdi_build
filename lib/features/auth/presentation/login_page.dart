@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/username_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,7 +12,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailController = TextEditingController();
+  final usernameController = TextEditingController();
   final passwordController = TextEditingController();
 
   bool loading = false;
@@ -22,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await SupabaseService.client.auth.signInWithPassword(
-        email: emailController.text.trim(),
+        email: usernameToPseudoEmail(usernameController.text),
         password: passwordController.text,
       );
 
@@ -61,9 +62,10 @@ class _LoginPageState extends State<LoginPage> {
                   const FlutterLogo(size: 72),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    keyboardType: TextInputType.emailAddress,
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom d\'utilisateur',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(

@@ -287,10 +287,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   fontSize: 16,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(user.email.isEmpty
-                                  ? 'Email non disponible'
-                                  : user.email),
                               const SizedBox(height: 10),
                               Wrap(
                                 spacing: 12,
@@ -408,8 +404,7 @@ class _CreateUserDialog extends ConsumerStatefulWidget {
 
 class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController(text: _generatePassword());
 
   UserRole _role = UserRole.chefProjet;
@@ -418,8 +413,7 @@ class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -433,8 +427,7 @@ class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
 
     try {
       await ref.read(settingsRepositoryProvider).createUser(
-            fullName: _nameController.text.trim(),
-            email: _emailController.text.trim(),
+            username: _usernameController.text.trim(),
             password: _passwordController.text,
             role: _role.dbValue,
           );
@@ -471,19 +464,12 @@ class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nom complet'),
-                validator: (value) => (value == null || value.trim().isEmpty)
-                    ? 'Champ requis'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) => (value == null || !value.contains('@'))
-                    ? 'Email invalide'
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nom d\'utilisateur',
+                ),
+                validator: (value) => (value == null || value.trim().length < 3)
+                    ? 'Minimum 3 caractères'
                     : null,
               ),
               const SizedBox(height: 12),

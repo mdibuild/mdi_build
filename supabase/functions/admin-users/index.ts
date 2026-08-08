@@ -17,6 +17,19 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Supabase Auth n'a pas de notion de "nom d'utilisateur" — seulement email.
+// On dérive un email interne, jamais montré ni utilisé pour envoyer quoi que
+// ce soit. Doit rester identique à lib/core/utils/username_auth.dart.
+function usernameToPseudoEmail(username: string): string {
+  const sanitized = username
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9._-]/g, '');
+
+  return `${sanitized}@mdibuild.local`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -59,14 +72,15 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     if (body.action === 'create') {
-      const email = (body.email ?? '').trim();
+      const username = (body.username ?? '').trim();
       const password = (body.password ?? '').trim();
-      const fullName = (body.fullName ?? '').trim();
       const role = (body.role ?? '').trim();
 
-      if (!email || !password || !fullName || !role) {
+      if (!username || !password || !role) {
         return json({ error: 'Champs manquants.' }, 400);
       }
+
+      const email = usernameToPseudoEmail(username);
 
       const { data: created, error: createError } =
         await admin.auth.admin.createUser({
@@ -76,16 +90,17 @@ Deno.serve(async (req) => {
         });
 
       if (createError || !created.user) {
-        return json(
-          { error: createError?.message ?? 'Création impossible.' },
-          400,
-        );
+        const message = createError?.message ?? 'Création impossible.';
+        const friendly = message.toLowerCase().includes('already')
+          ? "Ce nom d'utilisateur est déjà pris."
+          : message;
+        return json({ error: friendly }, 400);
       }
 
       const { error: profileError } = await admin.from('profiles').insert({
         id: created.user.id,
         company_id: callerProfile.company_id,
-        full_name: fullName,
+        full_name: username,
         email,
         role,
       });

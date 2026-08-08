@@ -41,15 +41,13 @@ class SettingsRepository {
   }
 
   Future<void> createUser({
-    required String fullName,
-    required String email,
+    required String username,
     required String password,
     required String role,
   }) async {
     await _invokeAdminUsers({
       'action': 'create',
-      'fullName': fullName,
-      'email': email,
+      'username': username,
       'password': password,
       'role': role,
     });

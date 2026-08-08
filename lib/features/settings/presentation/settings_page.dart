@@ -110,6 +110,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Widget _buildNavCard(BuildContext context) {
+    return PremiumSurfaceCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _SettingsNavTile(
+            icon: Icons.business_outlined,
+            title: 'Entreprise',
+            subtitle: 'Raison sociale, identifiants légaux, logo, RIB',
+            onTap: () => context.push('/settings/company'),
+          ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.people_outline,
+            title: 'Clients',
+            subtitle: 'Référentiel client réutilisable',
+            onTap: () => context.push('/settings/clients'),
+          ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.local_shipping_outlined,
+            title: 'Fournisseurs',
+            subtitle: 'Référentiel fournisseur réutilisable',
+            onTap: () => context.push('/settings/suppliers'),
+          ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.percent_outlined,
+            title: 'Taxes & TVA',
+            subtitle: 'Taux applicables aux devis',
+            onTap: () => context.push('/settings/taxes'),
+          ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
+            subtitle: 'Préférences d\'alertes',
+            onTap: () => context.push('/settings/notifications'),
+          ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.palette_outlined,
+            title: 'Apparence',
+            subtitle: 'Thème et couleur d\'accent',
+            onTap: () => context.push('/settings/appearance'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
@@ -126,6 +177,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             );
           }
 
+          if (profile.role != UserRole.directeur) {
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [_buildNavCard(context)],
+            );
+          }
+
           final usersAsync = ref.watch(companyUsersProvider(profile.companyId));
 
           return usersAsync.when(
@@ -135,54 +193,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  PremiumSurfaceCard(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        _SettingsNavTile(
-                          icon: Icons.business_outlined,
-                          title: 'Entreprise',
-                          subtitle: 'Raison sociale, identifiants légaux, logo, RIB',
-                          onTap: () => context.push('/settings/company'),
-                        ),
-                        const Divider(height: 1),
-                        _SettingsNavTile(
-                          icon: Icons.people_outline,
-                          title: 'Clients',
-                          subtitle: 'Référentiel client réutilisable',
-                          onTap: () => context.push('/settings/clients'),
-                        ),
-                        const Divider(height: 1),
-                        _SettingsNavTile(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Fournisseurs',
-                          subtitle: 'Référentiel fournisseur réutilisable',
-                          onTap: () => context.push('/settings/suppliers'),
-                        ),
-                        const Divider(height: 1),
-                        _SettingsNavTile(
-                          icon: Icons.percent_outlined,
-                          title: 'Taxes & TVA',
-                          subtitle: 'Taux applicables aux devis',
-                          onTap: () => context.push('/settings/taxes'),
-                        ),
-                        const Divider(height: 1),
-                        _SettingsNavTile(
-                          icon: Icons.notifications_outlined,
-                          title: 'Notifications',
-                          subtitle: 'Préférences d\'alertes',
-                          onTap: () => context.push('/settings/notifications'),
-                        ),
-                        const Divider(height: 1),
-                        _SettingsNavTile(
-                          icon: Icons.palette_outlined,
-                          title: 'Apparence',
-                          subtitle: 'Thème et couleur d\'accent',
-                          onTap: () => context.push('/settings/appearance'),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildNavCard(context),
                   const SizedBox(height: 12),
                   PremiumSurfaceCard(
                     child: Column(

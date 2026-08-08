@@ -24,12 +24,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _roleFilter = 'all';
 
   static const List<String> _roles = <String>[
-    'owner',
-    'admin',
-    'manager',
-    'member',
-    'viewer',
+    'directeur',
+    'chef_projet',
+    'acheteur',
   ];
+
+  String _roleLabel(String dbValue) => UserRole.fromDb(dbValue).label;
 
   @override
   void dispose() {
@@ -212,7 +212,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           children: _roles
                               .map(
                                 (role) => Chip(
-                                  label: Text(role),
+                                  label: Text(_roleLabel(role)),
                                   avatar: const Icon(Icons.shield_outlined,
                                       size: 16),
                                 ),
@@ -241,19 +241,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'Filtre rôle',
                           ),
-                          items: const [
-                            DropdownMenuItem(
+                          items: [
+                            const DropdownMenuItem(
                                 value: 'all', child: Text('Tous')),
-                            DropdownMenuItem(
-                                value: 'owner', child: Text('owner')),
-                            DropdownMenuItem(
-                                value: 'admin', child: Text('admin')),
-                            DropdownMenuItem(
-                                value: 'manager', child: Text('manager')),
-                            DropdownMenuItem(
-                                value: 'member', child: Text('member')),
-                            DropdownMenuItem(
-                                value: 'viewer', child: Text('viewer')),
+                            for (final role in _roles)
+                              DropdownMenuItem(
+                                value: role,
+                                child: Text(_roleLabel(role)),
+                              ),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -294,7 +289,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   PremiumStatusBadge(
-                                    label: 'Rôle actuel : ${user.role}',
+                                    label:
+                                        'Rôle actuel : ${_roleLabel(user.role)}',
                                     backgroundColor:
                                         context.palette.petrolSoft,
                                     foregroundColor: context.palette.petrol,
@@ -305,7 +301,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     child: DropdownButtonFormField<String>(
                                       initialValue: _roles.contains(user.role)
                                           ? user.role
-                                          : 'member',
+                                          : UserRole.chefProjet.dbValue,
                                       decoration: const InputDecoration(
                                         labelText: 'Nouveau rôle',
                                       ),
@@ -313,7 +309,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                           .map(
                                             (role) => DropdownMenuItem(
                                               value: role,
-                                              child: Text(role),
+                                              child: Text(_roleLabel(role)),
                                             ),
                                           )
                                           .toList(),

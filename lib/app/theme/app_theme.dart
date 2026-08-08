@@ -11,6 +11,7 @@ class AppTheme {
     int accentIndex, {
     int? titleColorIndex,
     int? textColorIndex,
+    int? highlightColorIndex,
     String? fontId,
   }) {
     final colors = resolvePaletteColors(
@@ -18,6 +19,7 @@ class AppTheme {
       accentIndex,
       titleColorIndex: titleColorIndex,
       textColorIndex: textColorIndex,
+      highlightColorIndex: highlightColorIndex,
     );
     final isDark = palette.brightness == Brightness.dark;
     final onAccent = isDark ? Colors.black : Colors.white;

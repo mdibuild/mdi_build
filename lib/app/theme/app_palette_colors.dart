@@ -115,6 +115,7 @@ AppPaletteColors resolvePaletteColors(
   int accentIndex, {
   int? titleColorIndex,
   int? textColorIndex,
+  int? highlightColorIndex,
 }) {
   final safeIndex = accentIndex.clamp(0, palette.accentOptions.length - 1);
   final accent = palette.accentOptions[safeIndex].color;
@@ -127,6 +128,16 @@ AppPaletteColors resolvePaletteColors(
       (textColorIndex ?? safeIndex).clamp(0, palette.accentOptions.length - 1);
   final bodyTextColor = palette.accentOptions[safeTextIndex].color;
 
+  // Doit rester distinct de l'accent principal par défaut : c'est la couleur
+  // utilisée pour le texte/les badges affichés PAR-DESSUS un fond de la
+  // couleur d'accent (bandeau héros, onglets) — si elles sont identiques,
+  // le texte devient illisible.
+  final defaultHighlightIndex =
+      (safeIndex + 1) % palette.accentOptions.length;
+  final safeHighlightIndex = (highlightColorIndex ?? defaultHighlightIndex)
+      .clamp(0, palette.accentOptions.length - 1);
+  final highlightColor = palette.accentOptions[safeHighlightIndex].color;
+
   final hsl = HSLColor.fromColor(accent);
   final alt = hsl
       .withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0))
@@ -135,13 +146,17 @@ AppPaletteColors resolvePaletteColors(
     accent.withValues(alpha: 0.12),
     palette.surface,
   );
+  final highlightSoft = Color.alphaBlend(
+    highlightColor.withValues(alpha: 0.12),
+    palette.surface,
+  );
 
   return AppPaletteColors(
     petrol: accent,
     petrolAlt: alt,
     petrolSoft: soft,
-    yellow: accent,
-    yellowSoft: soft,
+    yellow: highlightColor,
+    yellowSoft: highlightSoft,
     background: palette.background,
     surface: palette.surface,
     surfaceAlt: palette.surfaceAlt,

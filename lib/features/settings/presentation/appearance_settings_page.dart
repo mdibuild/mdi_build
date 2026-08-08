@@ -49,6 +49,12 @@ class AppearanceSettingsPage extends ConsumerWidget {
                 }
                 notifier.selectTextColor(index);
               },
+              onSelectHighlightColor: (index) {
+                if (selection.paletteId != palette.id) {
+                  notifier.selectPalette(palette.id);
+                }
+                notifier.selectHighlightColor(index);
+              },
             ),
             const SizedBox(height: 16),
           ],
@@ -86,6 +92,7 @@ class _PaletteCard extends StatelessWidget {
     required this.onSelectAccent,
     required this.onSelectTitleColor,
     required this.onSelectTextColor,
+    required this.onSelectHighlightColor,
   });
 
   final AppPalette palette;
@@ -94,6 +101,7 @@ class _PaletteCard extends StatelessWidget {
   final ValueChanged<int> onSelectAccent;
   final ValueChanged<int> onSelectTitleColor;
   final ValueChanged<int> onSelectTextColor;
+  final ValueChanged<int> onSelectHighlightColor;
 
   bool get _isSelected => selection.paletteId == palette.id;
 
@@ -176,6 +184,13 @@ class _PaletteCard extends StatelessWidget {
             palette: palette,
             selectedIndex: _isSelected ? selection.textColorIndex : -1,
             onTap: onSelectTextColor,
+          ),
+          const SizedBox(height: 16),
+          _SwatchRow(
+            label: 'Couleur des surbrillances (badges, onglets, bandeaux)',
+            palette: palette,
+            selectedIndex: _isSelected ? selection.highlightColorIndex : -1,
+            onTap: onSelectHighlightColor,
           ),
         ],
       ),

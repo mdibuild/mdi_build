@@ -20,6 +20,7 @@ class MdiBuildApp extends ConsumerWidget {
       selection.accentIndex,
       titleColorIndex: selection.titleColorIndex,
       textColorIndex: selection.textColorIndex,
+      highlightColorIndex: selection.highlightColorIndex,
       fontId: selection.fontId,
     );
 

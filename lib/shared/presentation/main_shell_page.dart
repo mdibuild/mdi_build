@@ -66,26 +66,34 @@ class MainShellPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final colors = context.palette;
+    final selectedIndex = _currentIndex(location);
 
     return Scaffold(
       body: Row(
         children: [
-          NavigationRail(
-            selectedIndex: _currentIndex(location),
-            onDestinationSelected: (index) => context.go(items[index].$1),
-            labelType: NavigationRailLabelType.all,
-            destinations: [
-              for (final item in items)
-                NavigationRailDestination(
-                  icon: Icon(item.$2),
-                  label: Text(item.$3),
+          Container(
+            width: 96,
+            color: colors.surface,
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < items.length; i++)
+                          _RailItem(
+                            icon: items[i].$2,
+                            label: items[i].$3,
+                            selected: i == selectedIndex,
+                            onTap: () => context.go(items[i].$1),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-            ],
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16, left: 8, right: 8),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -115,12 +123,75 @@ class MainShellPage extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           const VerticalDivider(width: 1),
           Expanded(child: PremiumWatermarkBackground(child: child)),
         ],
+      ),
+    );
+  }
+}
+
+class _RailItem extends StatelessWidget {
+  const _RailItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.palette;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        decoration: BoxDecoration(
+          color: selected ? colors.petrolSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: colors.petrol.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: selected ? colors.petrol : colors.textSoft,
+              size: 24,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? colors.petrol : colors.textSoft,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

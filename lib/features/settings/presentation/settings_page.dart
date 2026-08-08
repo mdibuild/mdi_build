@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../app/theme/app_spacing.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../shared/presentation/premium_ui.dart';
@@ -111,6 +112,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildNavCard(BuildContext context) {
+    final colors = context.palette;
+
     return PremiumSurfaceCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -119,6 +122,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.business_outlined,
             title: 'Entreprise',
             subtitle: 'Raison sociale, identifiants légaux, logo, RIB',
+            accent: colors.petrol,
             onTap: () => context.push('/settings/company'),
           ),
           const Divider(height: 1),
@@ -126,6 +130,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.people_outline,
             title: 'Clients',
             subtitle: 'Référentiel client réutilisable',
+            accent: colors.info,
             onTap: () => context.push('/settings/clients'),
           ),
           const Divider(height: 1),
@@ -133,6 +138,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.local_shipping_outlined,
             title: 'Fournisseurs',
             subtitle: 'Référentiel fournisseur réutilisable',
+            accent: colors.success,
             onTap: () => context.push('/settings/suppliers'),
           ),
           const Divider(height: 1),
@@ -140,6 +146,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.percent_outlined,
             title: 'Taxes & TVA',
             subtitle: 'Taux applicables aux devis',
+            accent: colors.purple,
             onTap: () => context.push('/settings/taxes'),
           ),
           const Divider(height: 1),
@@ -147,6 +154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             subtitle: 'Préférences d\'alertes',
+            accent: colors.danger,
             onTap: () => context.push('/settings/notifications'),
           ),
           const Divider(height: 1),
@@ -154,6 +162,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: Icons.palette_outlined,
             title: 'Apparence',
             subtitle: 'Thème et couleur d\'accent',
+            accent: colors.yellow,
             onTap: () => context.push('/settings/appearance'),
           ),
         ],
@@ -375,21 +384,45 @@ class _SettingsNavTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.accent,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Color accent;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.palette;
+
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      leading: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: accent, size: 22),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
       subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Icon(Icons.chevron_right, color: colors.textSoft),
       onTap: onTap,
     );
   }

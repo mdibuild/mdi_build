@@ -19,6 +19,8 @@ class MdiBuildApp extends ConsumerWidget {
       palette,
       selection.accentIndex,
       titleColorIndex: selection.titleColorIndex,
+      textColorIndex: selection.textColorIndex,
+      fontId: selection.fontId,
     );
 
     return MaterialApp.router(

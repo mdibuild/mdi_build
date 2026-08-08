@@ -20,6 +20,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
     required this.danger,
     required this.purple,
     required this.title,
+    required this.bodyText,
   });
 
   final Color petrol;
@@ -38,6 +39,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
   final Color danger;
   final Color purple;
   final Color title;
+  final Color bodyText;
 
   @override
   AppPaletteColors copyWith({
@@ -57,6 +59,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
     Color? danger,
     Color? purple,
     Color? title,
+    Color? bodyText,
   }) {
     return AppPaletteColors(
       petrol: petrol ?? this.petrol,
@@ -75,6 +78,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
       danger: danger ?? this.danger,
       purple: purple ?? this.purple,
       title: title ?? this.title,
+      bodyText: bodyText ?? this.bodyText,
     );
   }
 
@@ -101,6 +105,7 @@ class AppPaletteColors extends ThemeExtension<AppPaletteColors> {
       danger: Color.lerp(danger, other.danger, t)!,
       purple: Color.lerp(purple, other.purple, t)!,
       title: Color.lerp(title, other.title, t)!,
+      bodyText: Color.lerp(bodyText, other.bodyText, t)!,
     );
   }
 }
@@ -109,6 +114,7 @@ AppPaletteColors resolvePaletteColors(
   AppPalette palette,
   int accentIndex, {
   int? titleColorIndex,
+  int? textColorIndex,
 }) {
   final safeIndex = accentIndex.clamp(0, palette.accentOptions.length - 1);
   final accent = palette.accentOptions[safeIndex].color;
@@ -116,6 +122,10 @@ AppPaletteColors resolvePaletteColors(
   final safeTitleIndex =
       (titleColorIndex ?? safeIndex).clamp(0, palette.accentOptions.length - 1);
   final titleColor = palette.accentOptions[safeTitleIndex].color;
+
+  final safeTextIndex =
+      (textColorIndex ?? safeIndex).clamp(0, palette.accentOptions.length - 1);
+  final bodyTextColor = palette.accentOptions[safeTextIndex].color;
 
   final hsl = HSLColor.fromColor(accent);
   final alt = hsl
@@ -143,6 +153,7 @@ AppPaletteColors resolvePaletteColors(
     danger: palette.danger,
     purple: palette.purple,
     title: titleColor,
+    bodyText: bodyTextColor,
   );
 }
 

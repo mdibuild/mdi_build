@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'app_font.dart';
 import 'app_palette.dart';
 import 'app_palette_colors.dart';
 
@@ -8,14 +10,21 @@ class AppTheme {
     AppPalette palette,
     int accentIndex, {
     int? titleColorIndex,
+    int? textColorIndex,
+    String? fontId,
   }) {
     final colors = resolvePaletteColors(
       palette,
       accentIndex,
       titleColorIndex: titleColorIndex,
+      textColorIndex: textColorIndex,
     );
     final isDark = palette.brightness == Brightness.dark;
     final onAccent = isDark ? Colors.black : Colors.white;
+
+    final fontOption = resolveFontOption(fontId ?? defaultAppFontId);
+    TextStyle f(TextStyle style) =>
+        GoogleFonts.getFont(fontOption.googleFontFamily, textStyle: style);
 
     final baseColorScheme = isDark
         ? ColorScheme.dark(
@@ -51,48 +60,53 @@ class AppTheme {
       ),
     );
 
+    final styledTextTheme = base.textTheme.copyWith(
+      headlineLarge: TextStyle(
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
+        color: colors.title,
+        letterSpacing: -0.6,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 30,
+        fontWeight: FontWeight.w800,
+        color: colors.title,
+        letterSpacing: -0.4,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        color: colors.title,
+        letterSpacing: -0.2,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: colors.title,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
+        color: colors.bodyText,
+        height: 1.35,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: colors.textSoft,
+        height: 1.35,
+      ),
+      labelLarge: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
     return base.copyWith(
       extensions: [colors],
-      textTheme: base.textTheme.copyWith(
-        headlineLarge: TextStyle(
-          fontSize: 34,
-          fontWeight: FontWeight.w800,
-          color: colors.title,
-          letterSpacing: -0.6,
-        ),
-        headlineMedium: TextStyle(
-          fontSize: 30,
-          fontWeight: FontWeight.w800,
-          color: colors.title,
-          letterSpacing: -0.4,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          color: colors.title,
-          letterSpacing: -0.2,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: colors.title,
-        ),
-        bodyLarge: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w500,
-          color: colors.text,
-          height: 1.35,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: colors.textSoft,
-          height: 1.35,
-        ),
-        labelLarge: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-        ),
+      textTheme: GoogleFonts.getTextTheme(
+        fontOption.googleFontFamily,
+        styledTextTheme,
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: colors.petrol,
@@ -100,11 +114,13 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          color: onAccent,
-          letterSpacing: -0.2,
+        titleTextStyle: f(
+          TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: onAccent,
+            letterSpacing: -0.2,
+          ),
         ),
       ),
       cardTheme: CardThemeData(
@@ -130,9 +146,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+          textStyle: f(
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ).copyWith(
           elevation: WidgetStateProperty.resolveWith((states) {
@@ -156,9 +171,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(22),
             side: BorderSide(color: colors.petrol.withValues(alpha: 0.35)),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
+          textStyle: f(
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
         ).copyWith(
           elevation: WidgetStateProperty.resolveWith((states) {
@@ -183,9 +197,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+          textStyle: f(
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ).copyWith(
           overlayColor: WidgetStatePropertyAll(
@@ -200,15 +213,19 @@ class AppTheme {
           horizontal: 18,
           vertical: 18,
         ),
-        labelStyle: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: colors.textSoft,
+        labelStyle: f(
+          TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: colors.textSoft,
+          ),
         ),
-        hintStyle: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: colors.textSoft,
+        hintStyle: f(
+          TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: colors.textSoft,
+          ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(22),
@@ -244,10 +261,12 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
         ),
-        labelStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: colors.text,
+        labelStyle: f(
+          TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: colors.text,
+          ),
         ),
       ),
       tabBarTheme: TabBarThemeData(
@@ -256,13 +275,11 @@ class AppTheme {
         indicatorColor: colors.yellow,
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,
-        labelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
+        labelStyle: f(
+          const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+        unselectedLabelStyle: f(
+          const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
       ),
       dividerColor: colors.border,
@@ -271,10 +288,7 @@ class AppTheme {
         indicatorColor: colors.petrolSoft,
         elevation: 0,
         labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+          f(const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
@@ -288,13 +302,11 @@ class AppTheme {
         backgroundColor: colors.surface,
         selectedItemColor: colors.petrol,
         unselectedItemColor: colors.textSoft,
-        selectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+        selectedLabelStyle: f(
+          const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+        unselectedLabelStyle: f(
+          const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
@@ -302,10 +314,12 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: colors.petrol,
-        contentTextStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: onAccent,
+        contentTextStyle: f(
+          TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: onAccent,
+          ),
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),

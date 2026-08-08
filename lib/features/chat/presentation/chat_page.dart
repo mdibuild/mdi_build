@@ -429,6 +429,41 @@ class _ChatMessageTile extends ConsumerWidget {
 
   final ChatMessage message;
 
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer le message'),
+        content: const Text('Ce message sera supprimé pour tout le monde.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref.read(chatRepositoryProvider).deleteMessage(message);
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur suppression : $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentProfileAsync = ref.watch(currentProfileProvider);
@@ -447,11 +482,28 @@ class _ChatMessageTile extends ConsumerWidget {
               crossAxisAlignment:
                   isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Text(
-                  isMine ? 'Vous' : message.senderName,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isMine ? 'Vous' : message.senderName,
+                      style:
+                          Theme.of(context).textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                    ),
+                    if (isMine) ...[
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _delete(context, ref),
+                        borderRadius: BorderRadius.circular(999),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.delete_outline, size: 16),
+                        ),
                       ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 6),
                 if (message.isText) Text(message.textContent),

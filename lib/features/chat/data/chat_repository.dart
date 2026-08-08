@@ -97,6 +97,20 @@ class ChatRepository {
     await _client.from('project_chat_messages').insert(message.toInsertMap());
   }
 
+  Future<void> deleteMessage(ChatMessage message) async {
+    await _client.from('project_chat_messages').delete().eq('id', message.id);
+
+    if (message.hasAttachment) {
+      try {
+        await _client.storage
+            .from(message.bucketId!)
+            .remove([message.filePath!]);
+      } catch (_) {
+        // Le message est supprimé ; la pièce jointe orpheline n'est pas bloquante.
+      }
+    }
+  }
+
   Future<String> createSignedUrl({
     required String bucketId,
     required String filePath,

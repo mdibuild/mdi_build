@@ -39,4 +39,42 @@ class SettingsRepository {
       'role': role,
     }).eq('id', userId);
   }
+
+  Future<void> createUser({
+    required String fullName,
+    required String email,
+    required String password,
+    required String role,
+  }) async {
+    await _invokeAdminUsers({
+      'action': 'create',
+      'fullName': fullName,
+      'email': email,
+      'password': password,
+      'role': role,
+    });
+  }
+
+  Future<void> resetUserPassword({
+    required String userId,
+    required String newPassword,
+  }) async {
+    await _invokeAdminUsers({
+      'action': 'reset_password',
+      'userId': userId,
+      'newPassword': newPassword,
+    });
+  }
+
+  Future<void> _invokeAdminUsers(Map<String, dynamic> body) async {
+    try {
+      await _client.functions.invoke('admin-users', body: body);
+    } on FunctionException catch (error) {
+      final details = error.details;
+      final message = details is Map && details['error'] != null
+          ? details['error'].toString()
+          : error.reasonPhrase ?? 'Erreur serveur (code ${error.status}).';
+      throw Exception(message);
+    }
+  }
 }

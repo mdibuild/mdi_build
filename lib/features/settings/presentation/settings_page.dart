@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../core/enums/user_role.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
@@ -78,6 +81,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (mounted) {
         setState(() => _updatingIds.remove(user.id));
       }
+    }
+  }
+
+  Future<void> _openCreateUserDialog(String companyId) async {
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _CreateUserDialog(),
+    );
+
+    if (created == true) {
+      ref.invalidate(companyUsersProvider(companyId));
+    }
+  }
+
+  Future<void> _openResetPasswordDialog(SettingsUserEntry user) async {
+    final reset = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ResetPasswordDialog(user: user),
+    );
+
+    if (reset == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mot de passe réinitialisé : ${user.displayName}'),
+        ),
+      );
     }
   }
 
@@ -159,10 +188,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const PremiumSectionHeader(
-                          title: 'Gestion des privilèges',
-                          subtitle:
-                              'Mets à jour les rôles de ton équipe depuis cet écran.',
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: PremiumSectionHeader(
+                                title: 'Gestion des privilèges',
+                                subtitle:
+                                    'Mets à jour les rôles de ton équipe depuis cet écran.',
+                              ),
+                            ),
+                            FilledButton.icon(
+                              onPressed: () => _openCreateUserDialog(profile.companyId),
+                              icon: const Icon(Icons.person_add_alt_1),
+                              label: const Text('Créer un utilisateur'),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -298,6 +339,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2),
                                     ),
+                                  OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _openResetPasswordDialog(user),
+                                    icon: const Icon(Icons.lock_reset, size: 18),
+                                    label: const Text('Réinitialiser le mot de passe'),
+                                  ),
                                 ],
                               ),
                             ],
@@ -341,6 +388,287 @@ class _SettingsNavTile extends StatelessWidget {
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+}
+
+String _generatePassword() {
+  const chars =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%*';
+  final random = Random.secure();
+  return List.generate(12, (_) => chars[random.nextInt(chars.length)]).join();
+}
+
+class _CreateUserDialog extends ConsumerStatefulWidget {
+  const _CreateUserDialog();
+
+  @override
+  ConsumerState<_CreateUserDialog> createState() => _CreateUserDialogState();
+}
+
+class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController(text: _generatePassword());
+
+  UserRole _role = UserRole.chefProjet;
+  bool _obscurePassword = true;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      await ref.read(settingsRepositoryProvider).createUser(
+            fullName: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            role: _role.dbValue,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur création utilisateur : $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Créer un utilisateur'),
+      content: Form(
+        key: _formKey,
+        child: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Nom complet'),
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'Champ requis'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => (value == null || !value.contains('@'))
+                    ? 'Email invalide'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Mot de passe',
+                  helperText: 'Généré automatiquement, modifiable.',
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Regénérer',
+                        onPressed: () => setState(
+                          () => _passwordController.text = _generatePassword(),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(_obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                validator: (value) => (value == null || value.length < 8)
+                    ? 'Minimum 8 caractères'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<UserRole>(
+                initialValue: _role,
+                decoration: const InputDecoration(labelText: 'Rôle'),
+                items: UserRole.values
+                    .map(
+                      (role) => DropdownMenuItem(
+                        value: role,
+                        child: Text(role.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _role = value);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Créer'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResetPasswordDialog extends ConsumerStatefulWidget {
+  const _ResetPasswordDialog({required this.user});
+
+  final SettingsUserEntry user;
+
+  @override
+  ConsumerState<_ResetPasswordDialog> createState() =>
+      _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends ConsumerState<_ResetPasswordDialog> {
+  late final _passwordController =
+      TextEditingController(text: _generatePassword());
+  bool _obscurePassword = true;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_passwordController.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Minimum 8 caractères.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      await ref.read(settingsRepositoryProvider).resetUserPassword(
+            userId: widget.user.id,
+            newPassword: _passwordController.text,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur réinitialisation : $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Réinitialiser le mot de passe : ${widget.user.displayName}'),
+      content: SizedBox(
+        width: 380,
+        child: TextField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            labelText: 'Nouveau mot de passe',
+            helperText: 'Communique-le à l\'utilisateur en dehors de l\'app.',
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Regénérer',
+                  onPressed: () => setState(
+                    () => _passwordController.text = _generatePassword(),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined),
+                  onPressed: () => setState(
+                    () => _obscurePassword = !_obscurePassword,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Réinitialiser'),
+        ),
+      ],
     );
   }
 }

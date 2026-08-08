@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_report.dart';
+import '../../../core/services/pdf_letterhead.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
+import '../../settings/presentation/providers/company_providers.dart';
 import '../services/report_dashboard_generation_service.dart';
 import '../services/report_export_service.dart';
 import 'providers/reports_providers.dart';
@@ -275,11 +277,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       final sources = await repository.fetchSources(report.id);
 
       if (_selectedFormat == 'pdf') {
+        final company = await ref.read(currentCompanyProvider.future);
+        final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
+
         await ReportExportService().exportPdf(
           projectName: project.name,
           report: report,
           sections: sections,
           sources: sources,
+          company: company,
+          logoBytes: logoBytes,
         );
 
         if (!mounted) {
@@ -345,11 +352,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       final sources = await repository.fetchSources(report.id);
 
       if (format == 'pdf') {
+        final company = await ref.read(currentCompanyProvider.future);
+        final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
+
         await ReportExportService().exportPdf(
           projectName: project.name,
           report: report,
           sections: sections,
           sources: sources,
+          company: company,
+          logoBytes: logoBytes,
         );
 
         if (!mounted) {

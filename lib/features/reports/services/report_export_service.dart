@@ -7,9 +7,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../core/models/company.dart';
 import '../../../core/models/project_report.dart';
 import '../../../core/models/project_report_section.dart';
 import '../../../core/models/project_report_source.dart';
+import '../../../core/services/pdf_letterhead.dart';
 
 class ReportExportService {
   Future<void> exportPdf({
@@ -17,12 +19,16 @@ class ReportExportService {
     required ProjectReport report,
     required List<ProjectReportSection> sections,
     required List<ProjectReportSource> sources,
+    Company? company,
+    Uint8List? logoBytes,
   }) async {
     final bytes = await buildPdf(
       projectName: projectName,
       report: report,
       sections: sections,
       sources: sources,
+      company: company,
+      logoBytes: logoBytes,
     );
 
     await Printing.layoutPdf(
@@ -36,6 +42,8 @@ class ReportExportService {
     required ProjectReport report,
     required List<ProjectReportSection> sections,
     required List<ProjectReportSource> sources,
+    Company? company,
+    Uint8List? logoBytes,
   }) async {
     final regularFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
@@ -50,21 +58,37 @@ class ReportExportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: pw.EdgeInsets.zero,
         build: (context) => [
-          _header(
-            projectName: projectName,
-            report: report,
+          PdfLetterhead.header(
+            company: company,
+            logoBytes: logoBytes,
+            documentTitle: 'RAPPORT',
             boldFont: boldFont,
+            regularFont: regularFont,
           ),
-          pw.SizedBox(height: 16),
-          _summaryCard(report),
-          pw.SizedBox(height: 16),
-          ...sections.map((section) => _sectionBlock(section, boldFont)),
-          if (sources.isNotEmpty) ...[
-            pw.SizedBox(height: 16),
-            _sourcesBlock(sources, boldFont),
-          ],
+          pw.Padding(
+            padding: const pw.EdgeInsets.fromLTRB(24, 18, 24, 20),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _reportMeta(projectName: projectName, report: report, boldFont: boldFont),
+                pw.SizedBox(height: 16),
+                _summaryCard(report),
+                pw.SizedBox(height: 16),
+                ...sections.map((section) => _sectionBlock(section, boldFont)),
+                if (sources.isNotEmpty) ...[
+                  pw.SizedBox(height: 16),
+                  _sourcesBlock(sources, boldFont),
+                ],
+              ],
+            ),
+          ),
+          PdfLetterhead.footer(
+            company: company,
+            boldFont: boldFont,
+            regularFont: regularFont,
+          ),
         ],
       ),
     );
@@ -186,64 +210,37 @@ class ReportExportService {
     return file.path;
   }
 
-  pw.Widget _header({
+  pw.Widget _reportMeta({
     required String projectName,
     required ProjectReport report,
     required pw.Font boldFont,
   }) {
-    return pw.Container(
-      width: double.infinity,
-      padding: const pw.EdgeInsets.all(16),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey900,
-        borderRadius: pw.BorderRadius.circular(8),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            'RAPPORT',
-            style: pw.TextStyle(
-              font: boldFont,
-              fontSize: 22,
-              color: PdfColors.white,
-            ),
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          report.title,
+          style: pw.TextStyle(
+            font: boldFont,
+            fontSize: 16,
           ),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            report.title,
-            style: pw.TextStyle(
-              font: boldFont,
-              fontSize: 14,
-              color: PdfColors.white,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'Projet : $projectName',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 11,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'Module : ${report.sourceModule} · Type : ${report.reportType}',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 11,
-            ),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'Période : ${_periodLabel(report)}',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
+        ),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          'Projet : $projectName',
+          style: const pw.TextStyle(fontSize: 11),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          'Module : ${report.sourceModule} · Type : ${report.reportType}',
+          style: const pw.TextStyle(fontSize: 11),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          'Période : ${_periodLabel(report)}',
+          style: const pw.TextStyle(fontSize: 11),
+        ),
+      ],
     );
   }
 

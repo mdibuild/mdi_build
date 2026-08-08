@@ -11,6 +11,7 @@ import '../../../core/models/estimate_item.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
@@ -19,6 +20,7 @@ import '../../metrage/presentation/providers/spaces_providers.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../reports/presentation/providers/reports_providers.dart';
+import '../../settings/presentation/providers/company_providers.dart';
 import 'providers/devis_providers.dart';
 import '../services/quote_pdf_service.dart';
 import '../services/quote_report_bridge_service.dart';
@@ -359,8 +361,13 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     required BuildContext context,
     required String projectName,
     required List<EstimateItem> items,
+    String? clientName,
+    String? location,
   }) async {
     try {
+      final company = await ref.read(currentCompanyProvider.future);
+      final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
+
       await QuotePdfService().printQuote(
         projectName: projectName,
         mode: mode,
@@ -369,6 +376,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         unitPriceCeiling: unitPriceCeiling,
         items: items,
         signatureBytes: savedSignatureBytes,
+        company: company,
+        logoBytes: logoBytes,
+        clientName: clientName,
+        location: location,
       );
     } catch (error) {
       if (!context.mounted) {
@@ -386,6 +397,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     required String projectId,
     required String projectName,
     required List<EstimateItem> items,
+    String? clientName,
+    String? location,
   }) async {
     final nextStatus = status == 'signe' ? 'signe' : 'envoye';
 
@@ -400,6 +413,9 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     }
 
     try {
+      final company = await ref.read(currentCompanyProvider.future);
+      final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
+
       await QuotePdfService().shareQuote(
         projectName: projectName,
         mode: mode,
@@ -408,6 +424,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         unitPriceCeiling: unitPriceCeiling,
         items: items,
         signatureBytes: savedSignatureBytes,
+        company: company,
+        logoBytes: logoBytes,
+        clientName: clientName,
+        location: location,
       );
 
       if (!context.mounted) {
@@ -624,12 +644,16 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                             context: context,
                             projectName: project.name,
                             items: items,
+                            clientName: project.clientName,
+                            location: project.location,
                           ),
                           onSend: () => _sendToClient(
                             context: context,
                             projectId: project.id,
                             projectName: project.name,
                             items: items,
+                            clientName: project.clientName,
+                            location: project.location,
                           ),
                           onReport: () => _generateQuoteReport(
                             context: context,

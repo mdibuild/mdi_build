@@ -4,11 +4,13 @@ import 'package:intl/intl.dart';
 
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
+import '../../settings/presentation/providers/company_providers.dart';
 import '../services/purchase_pdf_service.dart';
 import 'providers/purchases_providers.dart';
 import 'widgets/purchase_form.dart';
@@ -170,11 +172,15 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
       final items = await ref
           .read(purchasesRepositoryProvider)
           .fetchPurchaseItems(purchase.id);
+      final company = await ref.read(currentCompanyProvider.future);
+      final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
 
       await PurchasePdfService().printPurchase(
         purchase: purchase,
         projectName: projectName,
         items: items,
+        company: company,
+        logoBytes: logoBytes,
       );
     } catch (error) {
       if (context.mounted) {

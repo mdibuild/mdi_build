@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../core/models/company.dart';
 import '../../../core/models/estimate_item.dart';
+import '../../../core/services/pdf_letterhead.dart';
 
 class QuotePdfService {
   Future<Uint8List> buildQuotePdf({
@@ -15,6 +18,10 @@ class QuotePdfService {
     required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
+    Company? company,
+    Uint8List? logoBytes,
+    String? clientName,
+    String? location,
   }) async {
     final regularFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
@@ -29,39 +36,72 @@ class QuotePdfService {
     final subtotal = items.fold<double>(0, (sum, item) => sum + item.total);
     final tax = subtotal * 0.19;
     final total = subtotal + tax;
+    final issuedAt = DateFormat('dd/MM/yyyy').format(DateTime.now());
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: pw.EdgeInsets.zero,
         build: (context) => [
-          _buildHeader(
-            projectName: projectName,
-            mode: mode,
-            status: status,
+          PdfLetterhead.header(
+            company: company,
+            logoBytes: logoBytes,
+            documentTitle: 'DEVIS',
             boldFont: boldFont,
+            regularFont: regularFont,
           ),
-          pw.SizedBox(height: 16),
-          _buildPricingCard(
-            unitPriceWalls: unitPriceWalls,
-            unitPriceCeiling: unitPriceCeiling,
+          pw.Padding(
+            padding: const pw.EdgeInsets.fromLTRB(24, 18, 24, 6),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildMetaRow(
+                  clientName: clientName,
+                  location: location,
+                  projectName: projectName,
+                  mode: mode,
+                  status: status,
+                  issuedAt: issuedAt,
+                ),
+                pw.SizedBox(height: 14),
+                _buildPricingCard(
+                  unitPriceWalls: unitPriceWalls,
+                  unitPriceCeiling: unitPriceCeiling,
+                ),
+                pw.SizedBox(height: 18),
+              ],
+            ),
           ),
-          pw.SizedBox(height: 16),
-          _buildItemsTable(items),
-          pw.SizedBox(height: 16),
-          _buildTotals(
-            subtotal: subtotal,
-            tax: tax,
-            total: total,
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                PdfLetterhead.sectionBar(
+                  'DESCRIPTION DES TRAVAUX',
+                  boldFont: boldFont,
+                ),
+                _buildItemsTable(items),
+                pw.SizedBox(height: 10),
+                _buildTotals(subtotal: subtotal, tax: tax, total: total),
+                pw.SizedBox(height: 20),
+                PdfLetterhead.sectionBar(
+                  'CONDITIONS GÉNÉRALES',
+                  boldFont: boldFont,
+                ),
+                pw.SizedBox(height: 8),
+                _buildTerms(),
+                pw.SizedBox(height: 20),
+                _buildSignature(signatureBytes, boldFont: boldFont),
+                pw.SizedBox(height: 20),
+              ],
+            ),
+          ),
+          PdfLetterhead.footer(
+            company: company,
             boldFont: boldFont,
+            regularFont: regularFont,
           ),
-          pw.SizedBox(height: 24),
-          _buildSignature(
-            signatureBytes,
-            boldFont: boldFont,
-          ),
-          pw.SizedBox(height: 24),
-          _buildFooter(),
         ],
       ),
     );
@@ -77,6 +117,10 @@ class QuotePdfService {
     required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
+    Company? company,
+    Uint8List? logoBytes,
+    String? clientName,
+    String? location,
   }) async {
     final bytes = await buildQuotePdf(
       projectName: projectName,
@@ -86,6 +130,10 @@ class QuotePdfService {
       unitPriceCeiling: unitPriceCeiling,
       items: items,
       signatureBytes: signatureBytes,
+      company: company,
+      logoBytes: logoBytes,
+      clientName: clientName,
+      location: location,
     );
 
     await Printing.layoutPdf(
@@ -102,6 +150,10 @@ class QuotePdfService {
     required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
+    Company? company,
+    Uint8List? logoBytes,
+    String? clientName,
+    String? location,
   }) async {
     final bytes = await buildQuotePdf(
       projectName: projectName,
@@ -111,6 +163,10 @@ class QuotePdfService {
       unitPriceCeiling: unitPriceCeiling,
       items: items,
       signatureBytes: signatureBytes,
+      company: company,
+      logoBytes: logoBytes,
+      clientName: clientName,
+      location: location,
     );
 
     await Printing.sharePdf(
@@ -119,55 +175,62 @@ class QuotePdfService {
     );
   }
 
-  pw.Widget _buildHeader({
+  pw.Widget _buildMetaRow({
+    String? clientName,
+    String? location,
     required String projectName,
     required String mode,
     required String status,
-    required pw.Font boldFont,
+    required String issuedAt,
   }) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey900,
-        borderRadius: pw.BorderRadius.circular(8),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            'DEVIS',
-            style: pw.TextStyle(
-              font: boldFont,
-              color: PdfColors.white,
-              fontSize: 22,
-            ),
+    pw.Widget label(String text) => pw.Text(
+          text,
+          style: const pw.TextStyle(
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 9,
+            color: PdfLetterhead.ink,
+            letterSpacing: 0.5,
           ),
-          pw.SizedBox(height: 8),
-          pw.Text(
-            'Projet : $projectName',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 12,
-            ),
+        );
+    pw.Widget value(String text) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 2, bottom: 8),
+          child: pw.Text(text, style: const pw.TextStyle(fontSize: 10.5)),
+        );
+
+    final trimmedClient = clientName?.trim() ?? '';
+    final trimmedLocation = location?.trim() ?? '';
+
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              label('CLIENT'),
+              value(trimmedClient.isEmpty ? '-' : trimmedClient),
+              if (trimmedLocation.isNotEmpty) ...[
+                label('ADRESSE DU CHANTIER'),
+                value(trimmedLocation),
+              ],
+            ],
           ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'Mode : ${_modeLabel(mode)}',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 12,
-            ),
+        ),
+        pw.SizedBox(width: 24),
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              label('PROJET'),
+              value(projectName),
+              label('DATE'),
+              value(issuedAt),
+              label('MODE / STATUT'),
+              value('${_modeLabel(mode)} · ${_statusLabel(status)}'),
+            ],
           ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'Statut : ${_statusLabel(status)}',
-            style: const pw.TextStyle(
-              color: PdfColors.white,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -178,21 +241,23 @@ class QuotePdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        color: PdfColors.grey200,
-        borderRadius: pw.BorderRadius.circular(8),
-        border: pw.Border.all(color: PdfColors.grey400),
+        color: PdfColors.grey100,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: PdfColors.grey300),
       ),
       child: pw.Row(
         children: [
           pw.Expanded(
             child: pw.Text(
               'PU peinture murs : ${unitPriceWalls.toStringAsFixed(2)}',
+              style: const pw.TextStyle(fontSize: 10),
             ),
           ),
           pw.SizedBox(width: 12),
           pw.Expanded(
             child: pw.Text(
               'PU peinture plafond : ${unitPriceCeiling.toStringAsFixed(2)}',
+              style: const pw.TextStyle(fontSize: 10),
             ),
           ),
         ],
@@ -202,7 +267,7 @@ class QuotePdfService {
 
   pw.Widget _buildItemsTable(List<EstimateItem> items) {
     return pw.Table(
-      border: pw.TableBorder.all(color: PdfColors.grey400),
+      border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
       columnWidths: const {
         0: pw.FlexColumnWidth(4),
         1: pw.FlexColumnWidth(1.2),
@@ -212,7 +277,7 @@ class QuotePdfService {
       },
       children: [
         pw.TableRow(
-          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          decoration: const pw.BoxDecoration(color: PdfLetterhead.gold),
           children: [
             _cell('Désignation', bold: true),
             _cell('Qté', bold: true),
@@ -239,27 +304,72 @@ class QuotePdfService {
     required double subtotal,
     required double tax,
     required double total,
-    required pw.Font boldFont,
   }) {
-    return pw.Align(
-      alignment: pw.Alignment.centerRight,
-      child: pw.Container(
-        width: 220,
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          border: pw.Border.all(color: PdfColors.grey400),
-          borderRadius: pw.BorderRadius.circular(8),
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.end,
+      children: [
+        pw.SizedBox(
+          width: 240,
+          child: pw.Column(
+            children: [
+              _totalLine('Sous-total', subtotal),
+              pw.SizedBox(height: 4),
+              _totalLine('TVA 19 %', tax),
+            ],
+          ),
         ),
-        child: pw.Column(
-          children: [
-            _totalLine('Sous-total', subtotal),
-            pw.SizedBox(height: 6),
-            _totalLine('TVA 19 %', tax),
-            pw.Divider(color: PdfColors.grey500),
-            _totalLine('Total', total, bold: true, boldFont: boldFont),
-          ],
+        pw.SizedBox(height: 8),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: PdfLetterhead.gold,
+          child: pw.Row(
+            children: [
+              pw.Expanded(
+                child: pw.Text(
+                  'TOTAL DEVIS',
+                  style: const pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 13,
+                    color: PdfLetterhead.ink,
+                  ),
+                ),
+              ),
+              pw.Text(
+                total.toStringAsFixed(2),
+                style: const pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 14,
+                  color: PdfLetterhead.ink,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
+    );
+  }
+
+  pw.Widget _buildTerms() {
+    const terms = [
+      'Ce devis est valable 30 jours à compter de sa date d\'émission.',
+      'Un acompte peut être demandé à la signature pour le démarrage des travaux.',
+      'Toute modification du périmètre des travaux fera l\'objet d\'un avenant.',
+      'Le solde est exigible à la réception des travaux.',
+    ];
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < terms.length; i++)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 5),
+            child: pw.Text(
+              '${i + 1}. ${terms[i]}',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800),
+            ),
+          ),
+      ],
     );
   }
 
@@ -271,40 +381,29 @@ class QuotePdfService {
       width: double.infinity,
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey400),
-        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
             'Signature client',
-            style: pw.TextStyle(font: boldFont),
+            style: pw.TextStyle(font: boldFont, fontSize: 10),
           ),
           pw.SizedBox(height: 8),
           if (signatureBytes == null)
-            pw.Text('Aucune signature enregistrée.')
+            pw.Text(
+              'Aucune signature enregistrée.',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            )
           else
             pw.Image(
               pw.MemoryImage(signatureBytes),
-              height: 120,
+              height: 110,
               fit: pw.BoxFit.contain,
             ),
         ],
-      ),
-    );
-  }
-
-  pw.Widget _buildFooter() {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.grey200,
-        borderRadius: pw.BorderRadius.circular(8),
-      ),
-      child: pw.Text(
-        'Document généré depuis le module Devis.',
-        style: const pw.TextStyle(fontSize: 10),
       ),
     );
   }
@@ -317,31 +416,29 @@ class QuotePdfService {
         style: pw.TextStyle(
           fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
           fontSize: 10,
+          color: bold ? PdfLetterhead.ink : PdfColors.black,
         ),
       ),
     );
   }
 
-  pw.Widget _totalLine(
-    String label,
-    double value, {
-    bool bold = false,
-    pw.Font? boldFont,
-  }) {
+  pw.Widget _totalLine(String label, double value, {bool bold = false}) {
     return pw.Row(
       children: [
         pw.Expanded(
           child: pw.Text(
             label,
             style: pw.TextStyle(
-              font: bold ? boldFont : null,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              fontSize: 10,
             ),
           ),
         ),
         pw.Text(
           value.toStringAsFixed(2),
           style: pw.TextStyle(
-            font: bold ? boldFont : null,
+            fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            fontSize: 10,
           ),
         ),
       ],

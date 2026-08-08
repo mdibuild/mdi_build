@@ -1,112 +1,89 @@
+import 'dart:typed_data';
+
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../../core/models/company.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/services/pdf_letterhead.dart';
 
 class PurchasePdfService {
   Future<void> printPurchase({
     required Purchase purchase,
     required String projectName,
     required List<PurchaseItem> items,
+    Company? company,
+    Uint8List? logoBytes,
   }) async {
-    final pdf = pw.Document();
+    final regularFont = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: regularFont,
+        bold: boldFont,
+      ),
+    );
     final total = items.fold<double>(0, (sum, item) => sum + item.total);
     final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: pw.EdgeInsets.zero,
         build: (context) => [
-          _buildHeader(
-            purchase: purchase,
-            projectName: projectName,
-            generatedAt: generatedAt,
+          PdfLetterhead.header(
+            company: company,
+            logoBytes: logoBytes,
+            documentTitle: 'BON D’ACHAT',
+            boldFont: boldFont,
+            regularFont: regularFont,
+            trailing: [
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Édité le $generatedAt',
+                style: pw.TextStyle(
+                  font: regularFont,
+                  fontSize: 9,
+                  color: PdfColors.grey300,
+                ),
+              ),
+            ],
           ),
-          pw.SizedBox(height: 16),
-          _buildInfoCard(
-            purchase: purchase,
-            projectName: projectName,
+          pw.Padding(
+            padding: const pw.EdgeInsets.fromLTRB(24, 18, 24, 20),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildInfoCard(
+                  purchase: purchase,
+                  projectName: projectName,
+                ),
+                pw.SizedBox(height: 16),
+                _buildItemsTable(items),
+                pw.SizedBox(height: 16),
+                _buildTotalCard(total),
+                if (purchase.notes.trim().isNotEmpty) ...[
+                  pw.SizedBox(height: 16),
+                  _buildNotesCard(purchase.notes.trim()),
+                ],
+              ],
+            ),
           ),
-          pw.SizedBox(height: 16),
-          _buildItemsTable(items),
-          pw.SizedBox(height: 16),
-          _buildTotalCard(total),
-          if (purchase.notes.trim().isNotEmpty) ...[
-            pw.SizedBox(height: 16),
-            _buildNotesCard(purchase.notes.trim()),
-          ],
+          PdfLetterhead.footer(
+            company: company,
+            boldFont: boldFont,
+            regularFont: regularFont,
+          ),
         ],
       ),
     );
 
     await Printing.layoutPdf(
       onLayout: (format) async => pdf.save(),
-    );
-  }
-
-  pw.Widget _buildHeader({
-    required Purchase purchase,
-    required String projectName,
-    required String generatedAt,
-  }) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(18),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey900,
-        borderRadius: pw.BorderRadius.circular(8),
-      ),
-      child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'BON D’ACHAT',
-                  style: const pw.TextStyle(
-                    color: PdfColors.white,
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 6),
-                pw.Text(
-                  purchase.title,
-                  style: const pw.TextStyle(
-                    color: PdfColors.white,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              pw.Text(
-                'Projet : $projectName',
-                style: const pw.TextStyle(
-                  color: PdfColors.white,
-                  fontSize: 11,
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Date édition : $generatedAt',
-                style: const pw.TextStyle(
-                  color: PdfColors.white,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 

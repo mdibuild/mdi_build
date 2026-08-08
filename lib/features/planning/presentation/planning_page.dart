@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../core/models/project_task.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
+import 'providers/planning_providers.dart';
+import 'task_dependencies_panel.dart';
+import 'task_form_page.dart';
 
 enum _PlanningViewMode {
   list,
@@ -108,11 +112,117 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
     ref.invalidate(_planningTasksProvider);
   }
 
-  void _showTemporaryCreateMessage() {
+  Future<void> _openTaskForm(BuildContext context, {ProjectTask? task}) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => TaskFormPage(task: task)),
+    );
+
+    ref.invalidate(_planningTasksProvider);
+    ref.invalidate(activeTasksProvider);
+    ref.invalidate(archivedTasksProvider);
+  }
+
+  Future<ProjectTask?> _fetchFullTask(_PlanningTask task) async {
+    final project = await ref.read(selectedProjectProvider.future);
+    if (project == null) {
+      return null;
+    }
+
+    final tasks = await ref.read(planningRepositoryProvider).fetchTasks(
+          projectId: project.id,
+          archived: task.isArchived,
+        );
+
+    for (final full in tasks) {
+      if (full.id == task.id) {
+        return full;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _openEditTask(BuildContext context, _PlanningTask task) async {
+    final full = await _fetchFullTask(task);
+    if (full == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tâche introuvable.')),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _openTaskForm(context, task: full);
+  }
+
+  Future<void> _deleteTask(BuildContext context, _PlanningTask task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer la tâche'),
+        content: Text('Supprimer "${task.title}" ? Cette action est définitive.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await ref.read(planningRepositoryProvider).deleteTask(task.id);
+    ref.invalidate(_planningTasksProvider);
+    ref.invalidate(activeTasksProvider);
+    ref.invalidate(archivedTasksProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      const SnackBar(content: Text('Tâche supprimée.')),
+    );
+  }
+
+  Future<void> _toggleArchiveTask(
+      BuildContext context, _PlanningTask task) async {
+    final full = await _fetchFullTask(task);
+    if (full == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tâche introuvable.')),
+        );
+      }
+      return;
+    }
+
+    await ref
+        .read(planningRepositoryProvider)
+        .updateTask(full.copyWith(isArchived: !full.isArchived));
+    ref.invalidate(_planningTasksProvider);
+    ref.invalidate(activeTasksProvider);
+    ref.invalidate(archivedTasksProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         content: Text(
-          'Creation de tache stabilisee visuellement. Reconnexion metier a faire ensuite.',
+          full.isArchived ? 'Tâche désarchivée.' : 'Tâche archivée.',
         ),
       ),
     );
@@ -163,7 +273,11 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                       priorityFilter: _priorityFilter,
                       searchController: _searchController,
                       onRefresh: _refresh,
-                      onCreateTask: _showTemporaryCreateMessage,
+                      onCreateTask: () => _openTaskForm(context),
+                      onEditTask: (task) => _openEditTask(context, task),
+                      onDeleteTask: (task) => _deleteTask(context, task),
+                      onToggleArchive: (task) =>
+                          _toggleArchiveTask(context, task),
                       onModeChanged: (mode) => setState(() => _mode = mode),
                       onStatusChanged: (value) {
                         if (value != null) {
@@ -187,7 +301,11 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                       priorityFilter: _priorityFilter,
                       searchController: _searchController,
                       onRefresh: _refresh,
-                      onCreateTask: _showTemporaryCreateMessage,
+                      onCreateTask: () => _openTaskForm(context),
+                      onEditTask: (task) => _openEditTask(context, task),
+                      onDeleteTask: (task) => _deleteTask(context, task),
+                      onToggleArchive: (task) =>
+                          _toggleArchiveTask(context, task),
                       onModeChanged: (mode) => setState(() => _mode = mode),
                       onStatusChanged: (value) {
                         if (value != null) {
@@ -237,6 +355,9 @@ class _PlanningTabContent extends StatelessWidget {
     required this.searchController,
     required this.onRefresh,
     required this.onCreateTask,
+    required this.onEditTask,
+    required this.onDeleteTask,
+    required this.onToggleArchive,
     required this.onModeChanged,
     required this.onStatusChanged,
     required this.onPriorityChanged,
@@ -252,6 +373,9 @@ class _PlanningTabContent extends StatelessWidget {
   final TextEditingController searchController;
   final Future<void> Function() onRefresh;
   final VoidCallback onCreateTask;
+  final ValueChanged<_PlanningTask> onEditTask;
+  final ValueChanged<_PlanningTask> onDeleteTask;
+  final ValueChanged<_PlanningTask> onToggleArchive;
   final ValueChanged<_PlanningViewMode> onModeChanged;
   final ValueChanged<String?> onStatusChanged;
   final ValueChanged<String?> onPriorityChanged;
@@ -290,11 +414,37 @@ class _PlanningTabContent extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (mode == _PlanningViewMode.list)
-            _PlanningList(tasks: tasks)
+            _PlanningList(
+              tasks: tasks,
+              onEdit: onEditTask,
+              onDelete: onDeleteTask,
+              onToggleArchive: onToggleArchive,
+            )
           else if (mode == _PlanningViewMode.gantt)
             _PlanningGantt(tasks: tasks)
           else
-            _PlanningDependencies(tasks: tasks),
+            Consumer(
+              builder: (context, ref, _) {
+                final realTasksAsync = ref.watch(activeTasksProvider);
+                final depsAsync = ref.watch(taskDependenciesProvider);
+
+                return realTasksAsync.when(
+                  data: (realTasks) => depsAsync.when(
+                    data: (deps) => TaskDependenciesPanel(
+                      tasks: realTasks,
+                      dependencies: deps,
+                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, _) =>
+                        Text('Erreur dépendances : $error'),
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Text('Erreur tâches : $error'),
+                );
+              },
+            ),
           const SizedBox(height: 24),
         ],
       ),
@@ -494,9 +644,15 @@ class _PlanningSummaryCard extends StatelessWidget {
 class _PlanningList extends StatelessWidget {
   const _PlanningList({
     required this.tasks,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggleArchive,
   });
 
   final List<_PlanningTask> tasks;
+  final ValueChanged<_PlanningTask> onEdit;
+  final ValueChanged<_PlanningTask> onDelete;
+  final ValueChanged<_PlanningTask> onToggleArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -516,7 +672,12 @@ class _PlanningList extends StatelessWidget {
         for (final task in tasks)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _TaskCard(task: task),
+            child: _TaskCard(
+              task: task,
+              onEdit: () => onEdit(task),
+              onDelete: () => onDelete(task),
+              onToggleArchive: () => onToggleArchive(task),
+            ),
           ),
       ],
     );
@@ -526,9 +687,15 @@ class _PlanningList extends StatelessWidget {
 class _TaskCard extends StatelessWidget {
   const _TaskCard({
     required this.task,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggleArchive,
   });
 
   final _PlanningTask task;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onToggleArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -575,6 +742,39 @@ class _TaskCard extends StatelessWidget {
           Text(
             '${task.progress.toStringAsFixed(0)}% - ${_dateRangeLabel(task)}',
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Modifier'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onToggleArchive,
+                icon: Icon(
+                  task.isArchived
+                      ? Icons.unarchive_outlined
+                      : Icons.archive_outlined,
+                  size: 18,
+                ),
+                label: Text(task.isArchived ? 'D\u00e9sarchiver' : 'Archiver'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onDelete,
+                icon: Icon(Icons.delete_outline, size: 18, color: colors.danger),
+                label: Text(
+                  'Supprimer',
+                  style: TextStyle(color: colors.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.danger),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -888,59 +1088,6 @@ class _GanttBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PlanningDependencies extends StatelessWidget {
-  const _PlanningDependencies({
-    required this.tasks,
-  });
-
-  final List<_PlanningTask> tasks;
-
-  @override
-  Widget build(BuildContext context) {
-    return _PremiumBox(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'D\u00e9pendances',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Vue stabilis\u00e9e. Les liaisons m\u00e9tier pourront \u00eatre rebranch\u00e9es ensuite sans casser le Gantt.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 14),
-          if (tasks.length < 2)
-            const Text(
-                'Il faut au moins deux t\u00e2ches pour afficher des liaisons.')
-          else
-            ...tasks.take(8).map(
-                  (task) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.account_tree_outlined, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-        ],
       ),
     );
   }

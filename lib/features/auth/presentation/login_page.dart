@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/device_token_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/username_auth.dart';
 
@@ -26,6 +29,8 @@ class _LoginPageState extends State<LoginPage> {
         email: usernameToPseudoEmail(usernameController.text),
         password: passwordController.text,
       );
+
+      unawaited(DeviceTokenService.registerCurrentToken());
 
       if (!mounted) {
         return;

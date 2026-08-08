@@ -5,6 +5,7 @@ class ProjectQuote extends Equatable {
     required this.id,
     required this.companyId,
     required this.projectId,
+    required this.title,
     required this.mode,
     required this.status,
     required this.unitPriceWalls,
@@ -21,6 +22,7 @@ class ProjectQuote extends Equatable {
   final String id;
   final String companyId;
   final String projectId;
+  final String title;
   final String mode;
   final String status;
   final double unitPriceWalls;
@@ -38,6 +40,7 @@ class ProjectQuote extends Equatable {
       id: map['id'] as String,
       companyId: map['company_id'] as String,
       projectId: map['project_id'] as String,
+      title: (map['title'] as String?) ?? 'Devis',
       mode: (map['mode'] as String?) ?? 'piece',
       status: (map['status'] as String?) ?? 'brouillon',
       unitPriceWalls: _toDouble(map['unit_price_walls']),
@@ -56,10 +59,11 @@ class ProjectQuote extends Equatable {
     );
   }
 
-  Map<String, dynamic> toUpsertMap() {
-    final map = <String, dynamic>{
+  Map<String, dynamic> toInsertMap() {
+    return <String, dynamic>{
       'company_id': companyId,
       'project_id': projectId,
+      'title': title,
       'mode': mode,
       'status': status,
       'unit_price_walls': unitPriceWalls,
@@ -72,18 +76,28 @@ class ProjectQuote extends Equatable {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+  }
 
-    if (id.isNotEmpty) {
-      map['id'] = id;
-    }
-
-    return map;
+  Map<String, dynamic> toUpdateMap() {
+    return <String, dynamic>{
+      'title': title,
+      'mode': mode,
+      'status': status,
+      'unit_price_walls': unitPriceWalls,
+      'unit_price_ceiling': unitPriceCeiling,
+      'signature_base64': signatureBase64,
+      'sent_at': sentAt?.toIso8601String(),
+      'signed_at': signedAt?.toIso8601String(),
+      'updated_by': updatedBy,
+      'updated_at': updatedAt.toIso8601String(),
+    };
   }
 
   ProjectQuote copyWith({
     String? id,
     String? companyId,
     String? projectId,
+    String? title,
     String? mode,
     String? status,
     double? unitPriceWalls,
@@ -103,6 +117,7 @@ class ProjectQuote extends Equatable {
       id: id ?? this.id,
       companyId: companyId ?? this.companyId,
       projectId: projectId ?? this.projectId,
+      title: title ?? this.title,
       mode: mode ?? this.mode,
       status: status ?? this.status,
       unitPriceWalls: unitPriceWalls ?? this.unitPriceWalls,
@@ -136,6 +151,7 @@ class ProjectQuote extends Equatable {
         id,
         companyId,
         projectId,
+        title,
         mode,
         status,
         unitPriceWalls,

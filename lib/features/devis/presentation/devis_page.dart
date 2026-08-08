@@ -26,7 +26,9 @@ import '../services/quote_pdf_service.dart';
 import '../services/quote_report_bridge_service.dart';
 
 class DevisPage extends ConsumerStatefulWidget {
-  const DevisPage({super.key});
+  const DevisPage({super.key, this.quote});
+
+  final ProjectQuote? quote;
 
   @override
   ConsumerState<DevisPage> createState() => _DevisPageState();
@@ -35,20 +37,23 @@ class DevisPage extends ConsumerStatefulWidget {
 class _DevisPageState extends ConsumerState<DevisPage> {
   final _signatureController = SignaturePadController();
   final _signatureKey = GlobalKey();
+  late final TextEditingController _titleController;
 
-  String mode = 'piece';
-  String status = 'brouillon';
-  double unitPriceWalls = 850;
-  double unitPriceCeiling = 700;
+  late String mode;
+  late String status;
+  late double unitPriceWalls;
+  late double unitPriceCeiling;
   Uint8List? savedSignatureBytes;
 
-  String? _initializedProjectId;
   ProjectQuote? _currentQuote;
 
-  void _applyQuote(ProjectQuote? quote, String projectId) {
-    _currentQuote = quote;
-    _initializedProjectId = projectId;
+  @override
+  void initState() {
+    super.initState();
 
+    final quote = widget.quote;
+    _currentQuote = quote;
+    _titleController = TextEditingController(text: quote?.title ?? 'Devis');
     mode = quote?.mode ?? 'piece';
     status = quote?.status ?? 'brouillon';
     unitPriceWalls = quote?.unitPriceWalls ?? 850;
@@ -61,11 +66,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       } catch (_) {
         savedSignatureBytes = null;
       }
-    } else {
-      savedSignatureBytes = null;
     }
-
-    _signatureController.clearSilently();
   }
 
   Future<ProjectQuote?> _persistQuote({
@@ -98,6 +99,9 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       id: existing?.id ?? '',
       companyId: profile.companyId,
       projectId: projectId,
+      title: _titleController.text.trim().isEmpty
+          ? 'Devis'
+          : _titleController.text.trim(),
       mode: mode,
       status: nextStatus,
       unitPriceWalls: unitPriceWalls,
@@ -115,9 +119,12 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       updatedAt: now,
     );
 
-    final saved = await ref.read(devisRepositoryProvider).upsertQuote(quote);
+    final repository = ref.read(devisRepositoryProvider);
+    final saved = existing == null
+        ? await repository.createQuote(quote)
+        : await repository.updateQuote(quote);
 
-    ref.invalidate(currentProjectQuoteProvider(projectId));
+    ref.invalidate(projectQuotesProvider(projectId));
 
     if (!mounted) {
       return saved;
@@ -456,20 +463,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     }
 
     await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
-    ref.invalidate(currentProjectQuoteProvider(projectId));
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _currentQuote = null;
-      status = 'brouillon';
-      mode = 'piece';
-      unitPriceWalls = 850;
-      unitPriceCeiling = 700;
-      savedSignatureBytes = null;
-    });
+    ref.invalidate(projectQuotesProvider(projectId));
 
     if (!context.mounted) {
       return;
@@ -478,6 +472,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Devis supprimé.')),
     );
+    Navigator.of(context).pop();
   }
 
   Future<void> _printQuote({
@@ -642,6 +637,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   @override
   void dispose() {
     _signatureController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -652,7 +648,9 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final isCompact = MediaQuery.of(context).size.width < 760;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Devis')),
+      appBar: AppBar(
+        title: Text(_currentQuote == null ? 'Nouveau devis' : 'Modifier devis'),
+      ),
       body: SafeArea(
         child: selectedProjectAsync.when(
           data: (project) {
@@ -665,162 +663,144 @@ class _DevisPageState extends ConsumerState<DevisPage> {
               );
             }
 
-            final quoteAsync =
-                ref.watch(currentProjectQuoteProvider(project.id));
+            return spacesAsync.when(
+              data: (spaces) {
+                final items = <EstimateItem>[
+                  for (final space in spaces) ...[
+                    EstimateItem(
+                      label: 'Peinture murs ${space.name}',
+                      quantity: space.netWallArea,
+                      unit: 'm\u00b2',
+                      unitPrice: unitPriceWalls,
+                    ),
+                    EstimateItem(
+                      label: 'Peinture plafond ${space.name}',
+                      quantity: space.ceilingArea,
+                      unit: 'm\u00b2',
+                      unitPrice: unitPriceCeiling,
+                    ),
+                  ],
+                ];
 
-            return quoteAsync.when(
-              data: (quote) {
-                if (_initializedProjectId != project.id) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) {
-                      return;
-                    }
-                    setState(() => _applyQuote(quote, project.id));
-                  });
-                }
+                final subtotal = items.fold<double>(
+                  0,
+                  (sum, item) => sum + item.total,
+                );
+                final tax = subtotal * 0.19;
+                final total = subtotal + tax;
 
-                return spacesAsync.when(
-                  data: (spaces) {
-                    final items = <EstimateItem>[
-                      for (final space in spaces) ...[
-                        EstimateItem(
-                          label: 'Peinture murs ${space.name}',
-                          quantity: space.netWallArea,
-                          unit: 'm\u00b2',
-                          unitPrice: unitPriceWalls,
-                        ),
-                        EstimateItem(
-                          label: 'Peinture plafond ${space.name}',
-                          quantity: space.ceilingArea,
-                          unit: 'm\u00b2',
-                          unitPrice: unitPriceCeiling,
-                        ),
-                      ],
-                    ];
-
-                    final subtotal = items.fold<double>(
-                      0,
-                      (sum, item) => sum + item.total,
-                    );
-                    final tax = subtotal * 0.19;
-                    final total = subtotal + tax;
-
-                    return ListView(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.all(isCompact ? 12 : 20),
-                      children: [
-                        _DevisHeroCard(
-                          projectName: project.name,
-                          status: status,
-                          total: total,
-                          itemCount: items.length,
-                        ),
-                        const SizedBox(height: 16),
-                        _DevisConfigurationCard(
-                          mode: mode,
-                          status: status,
-                          unitPriceWalls: unitPriceWalls,
-                          unitPriceCeiling: unitPriceCeiling,
-                          onModeChanged: (value) {
-                            if (value != null) {
-                              setState(() => mode = value);
-                            }
-                          },
-                          onStatusChanged: (value) {
-                            if (value != null) {
-                              setState(() => status = value);
-                            }
-                          },
-                          onWallPriceChanged: (value) {
-                            setState(() => unitPriceWalls = value);
-                          },
-                          onCeilingPriceChanged: (value) {
-                            setState(() => unitPriceCeiling = value);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _SignatureCard(
-                          signatureKey: _signatureKey,
-                          signatureController: _signatureController,
-                          savedSignatureBytes: savedSignatureBytes,
-                          compact: isCompact,
-                          onSaveSignature: () => _saveSignature(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                          onClearSignature: () => _clearSignature(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                          onSaveDraft: () => _saveDraft(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _QuoteActionsCard(
-                          mode: mode,
-                          status: status,
-                          itemsEmpty: items.isEmpty,
-                          hasQuote: _currentQuote != null,
-                          onPrint: () => _printQuote(
-                            context: context,
-                            projectName: project.name,
-                            items: items,
-                            clientName: project.clientName,
-                            location: project.location,
-                          ),
-                          onSend: () => _sendToClient(
-                            context: context,
-                            projectId: project.id,
-                            projectName: project.name,
-                            items: items,
-                            clientName: project.clientName,
-                            location: project.location,
-                          ),
-                          onReport: () => _generateQuoteReport(
-                            context: context,
-                            projectId: project.id,
-                            projectName: project.name,
-                          ),
-                          onPurchase: () => _openGeneratePurchaseDialog(
-                            context,
-                            items: items,
-                            projectId: project.id,
-                            projectName: project.name,
-                          ),
-                          onCancel: () => _cancelQuote(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                          onArchive: () => _archiveQuote(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                          onDelete: () => _deleteQuote(
-                            context: context,
-                            projectId: project.id,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _EstimateItemsCard(
-                          items: items,
-                          subtotal: subtotal,
-                          tax: tax,
-                          total: total,
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(child: Text('Erreur : $error')),
+                return ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.all(isCompact ? 12 : 20),
+                  children: [
+                    _DevisHeroCard(
+                      projectName: project.name,
+                      status: status,
+                      total: total,
+                      itemCount: items.length,
+                    ),
+                    const SizedBox(height: 16),
+                    _DevisConfigurationCard(
+                      titleController: _titleController,
+                      mode: mode,
+                      status: status,
+                      unitPriceWalls: unitPriceWalls,
+                      unitPriceCeiling: unitPriceCeiling,
+                      onModeChanged: (value) {
+                        if (value != null) {
+                          setState(() => mode = value);
+                        }
+                      },
+                      onStatusChanged: (value) {
+                        if (value != null) {
+                          setState(() => status = value);
+                        }
+                      },
+                      onWallPriceChanged: (value) {
+                        setState(() => unitPriceWalls = value);
+                      },
+                      onCeilingPriceChanged: (value) {
+                        setState(() => unitPriceCeiling = value);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _SignatureCard(
+                      signatureKey: _signatureKey,
+                      signatureController: _signatureController,
+                      savedSignatureBytes: savedSignatureBytes,
+                      compact: isCompact,
+                      onSaveSignature: () => _saveSignature(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                      onClearSignature: () => _clearSignature(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                      onSaveDraft: () => _saveDraft(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _QuoteActionsCard(
+                      mode: mode,
+                      status: status,
+                      itemsEmpty: items.isEmpty,
+                      hasQuote: _currentQuote != null,
+                      onPrint: () => _printQuote(
+                        context: context,
+                        projectName: project.name,
+                        items: items,
+                        clientName: project.clientName,
+                        location: project.location,
+                      ),
+                      onSend: () => _sendToClient(
+                        context: context,
+                        projectId: project.id,
+                        projectName: project.name,
+                        items: items,
+                        clientName: project.clientName,
+                        location: project.location,
+                      ),
+                      onReport: () => _generateQuoteReport(
+                        context: context,
+                        projectId: project.id,
+                        projectName: project.name,
+                      ),
+                      onPurchase: () => _openGeneratePurchaseDialog(
+                        context,
+                        items: items,
+                        projectId: project.id,
+                        projectName: project.name,
+                      ),
+                      onCancel: () => _cancelQuote(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                      onArchive: () => _archiveQuote(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                      onDelete: () => _deleteQuote(
+                        context: context,
+                        projectId: project.id,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _EstimateItemsCard(
+                      items: items,
+                      subtotal: subtotal,
+                      tax: tax,
+                      total: total,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(child: Text('Erreur devis : $error')),
+              error: (error, _) => Center(child: Text('Erreur : $error')),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -920,6 +900,7 @@ class _HeroMetric extends StatelessWidget {
 
 class _DevisConfigurationCard extends StatelessWidget {
   const _DevisConfigurationCard({
+    required this.titleController,
     required this.mode,
     required this.status,
     required this.unitPriceWalls,
@@ -930,6 +911,7 @@ class _DevisConfigurationCard extends StatelessWidget {
     required this.onCeilingPriceChanged,
   });
 
+  final TextEditingController titleController;
   final String mode;
   final String status;
   final double unitPriceWalls;
@@ -943,10 +925,15 @@ class _DevisConfigurationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _PremiumDevisCard(
       title: 'Configuration du devis',
-      subtitle: 'Mode, statut et prix unitaires.',
+      subtitle: 'Titre, mode, statut et prix unitaires.',
       icon: Icons.tune_outlined,
       child: Column(
         children: [
+          TextFormField(
+            controller: titleController,
+            decoration: const InputDecoration(labelText: 'Titre du devis'),
+          ),
+          const SizedBox(height: 12),
           _ResponsiveFormGrid(
             children: [
               DropdownButtonFormField<String>(

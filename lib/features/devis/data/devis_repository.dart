@@ -6,27 +6,33 @@ import '../../../core/services/supabase_service.dart';
 class DevisRepository {
   final SupabaseClient _client = SupabaseService.client;
 
-  Future<ProjectQuote?> fetchQuoteByProject(String projectId) async {
-    final row = await _client
+  Future<List<ProjectQuote>> fetchQuotesByProject(String projectId) async {
+    final rows = await _client
         .from('project_quotes')
         .select()
         .eq('project_id', projectId)
-        .maybeSingle();
+        .order('created_at', ascending: false);
 
-    if (row == null) {
-      return null;
-    }
+    return (rows as List<dynamic>)
+        .map((row) => ProjectQuote.fromMap(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ProjectQuote> createQuote(ProjectQuote quote) async {
+    final row = await _client
+        .from('project_quotes')
+        .insert(quote.toInsertMap())
+        .select()
+        .single();
 
     return ProjectQuote.fromMap(row);
   }
 
-  Future<ProjectQuote> upsertQuote(ProjectQuote quote) async {
+  Future<ProjectQuote> updateQuote(ProjectQuote quote) async {
     final row = await _client
         .from('project_quotes')
-        .upsert(
-          quote.toUpsertMap(),
-          onConflict: 'project_id',
-        )
+        .update(quote.toUpdateMap())
+        .eq('id', quote.id)
         .select()
         .single();
 

@@ -7,7 +7,7 @@ final devisRepositoryProvider = Provider<DevisRepository>((ref) {
   return DevisRepository();
 });
 
-final currentProjectQuoteProvider =
-    FutureProvider.family<ProjectQuote?, String>((ref, projectId) async {
-  return ref.read(devisRepositoryProvider).fetchQuoteByProject(projectId);
+final projectQuotesProvider =
+    FutureProvider.family<List<ProjectQuote>, String>((ref, projectId) async {
+  return ref.read(devisRepositoryProvider).fetchQuotesByProject(projectId);
 });

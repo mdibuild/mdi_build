@@ -6,7 +6,7 @@ import '../../features/achats/presentation/achats_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
-import '../../features/devis/presentation/devis_page.dart';
+import '../../features/devis/presentation/devis_list_page.dart';
 import '../../features/documents/presentation/documents_page.dart';
 import '../../features/metrage/presentation/metrage_page.dart';
 import '../../features/planning/presentation/planning_page.dart';
@@ -51,7 +51,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               path: '/quantitatif',
               builder: (context, state) => const QuantitatifPage()),
           GoRoute(
-              path: '/devis', builder: (context, state) => const DevisPage()),
+              path: '/devis',
+              builder: (context, state) => const DevisListPage()),
           GoRoute(
               path: '/achats', builder: (context, state) => const AchatsPage()),
           GoRoute(

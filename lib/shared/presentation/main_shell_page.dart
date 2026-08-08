@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_refresh.dart';
 import 'premium_ui.dart';
 
 class MainShellPage extends StatelessWidget {
@@ -85,16 +86,33 @@ class MainShellPage extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16, left: 8, right: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: () => _confirmLogout(context),
-                    icon: const Icon(Icons.logout, size: 18),
-                    label: const Text('Déconnexion'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.danger,
-                      side: BorderSide(color: colors.danger, width: 1.6),
-                      minimumSize: const Size(0, 44),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: reloadApp,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Actualiser'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.petrol,
+                          side: BorderSide(color: colors.petrol, width: 1.6),
+                          minimumSize: const Size(0, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => _confirmLogout(context),
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text('Déconnexion'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.danger,
+                          side: BorderSide(color: colors.danger, width: 1.6),
+                          minimumSize: const Size(0, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

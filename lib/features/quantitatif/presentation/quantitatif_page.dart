@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
@@ -182,13 +183,21 @@ class QuantitatifPage extends ConsumerWidget {
         child: Column(
           children: [
             selectedProjectAsync.when(
-              data: (project) => Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  project == null
-                      ? 'Aucun projet courant.'
-                      : 'Projet courant : ${project.name}',
-                ),
+              data: (project) => Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      project == null
+                          ? 'Aucun projet courant.'
+                          : 'Projet courant : ${project.name}',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/metrage'),
+                    icon: const Icon(Icons.straighten_outlined),
+                    label: const Text('Ajouter / modifier un espace'),
+                  ),
+                ],
               ),
               loading: () => const Align(
                 alignment: Alignment.centerLeft,
@@ -197,6 +206,14 @@ class QuantitatifPage extends ConsumerWidget {
               error: (_, __) => const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Projet courant indisponible.'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Le quantitatif est calculé automatiquement depuis les espaces du Métré : pour créer, modifier, archiver ou annuler une ligne, fais-le depuis le module Métré.',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
             const SizedBox(height: 16),

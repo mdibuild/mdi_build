@@ -357,6 +357,129 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     );
   }
 
+  Future<void> _cancelQuote({
+    required BuildContext context,
+    required String projectId,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Annuler le devis'),
+        content: const Text(
+          'Le devis passera au statut "Annulé". Tu pourras le reprendre plus tard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Retour'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Annuler le devis'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final saved = await _persistQuote(
+      context: context,
+      projectId: projectId,
+      forcedStatus: 'annule',
+    );
+
+    if (saved == null || !context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Devis annulé.')),
+    );
+  }
+
+  Future<void> _archiveQuote({
+    required BuildContext context,
+    required String projectId,
+  }) async {
+    final saved = await _persistQuote(
+      context: context,
+      projectId: projectId,
+      forcedStatus: 'archive',
+    );
+
+    if (saved == null || !context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Devis archivé.')),
+    );
+  }
+
+  Future<void> _deleteQuote({
+    required BuildContext context,
+    required String projectId,
+  }) async {
+    final quote = _currentQuote;
+    if (quote == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun devis enregistré à supprimer.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Supprimer le devis'),
+        content: const Text(
+          'Cette action est définitive. Le devis enregistré pour ce projet sera supprimé.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
+    ref.invalidate(currentProjectQuoteProvider(projectId));
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _currentQuote = null;
+      status = 'brouillon';
+      mode = 'piece';
+      unitPriceWalls = 850;
+      unitPriceCeiling = 700;
+      savedSignatureBytes = null;
+    });
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Devis supprimé.')),
+    );
+  }
+
   Future<void> _printQuote({
     required BuildContext context,
     required String projectName,
@@ -640,6 +763,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                           mode: mode,
                           status: status,
                           itemsEmpty: items.isEmpty,
+                          hasQuote: _currentQuote != null,
                           onPrint: () => _printQuote(
                             context: context,
                             projectName: project.name,
@@ -665,6 +789,18 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                             items: items,
                             projectId: project.id,
                             projectName: project.name,
+                          ),
+                          onCancel: () => _cancelQuote(
+                            context: context,
+                            projectId: project.id,
+                          ),
+                          onArchive: () => _archiveQuote(
+                            context: context,
+                            projectId: project.id,
+                          ),
+                          onDelete: () => _deleteQuote(
+                            context: context,
+                            projectId: project.id,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -848,6 +984,14 @@ class _DevisConfigurationCard extends StatelessWidget {
                     value: 'signe',
                     child: Text('Sign\u00e9'),
                   ),
+                  DropdownMenuItem(
+                    value: 'annule',
+                    child: Text('Annul\u00e9'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'archive',
+                    child: Text('Archiv\u00e9'),
+                  ),
                 ],
                 onChanged: onStatusChanged,
               ),
@@ -987,19 +1131,27 @@ class _QuoteActionsCard extends StatelessWidget {
     required this.mode,
     required this.status,
     required this.itemsEmpty,
+    required this.hasQuote,
     required this.onPrint,
     required this.onSend,
     required this.onReport,
     required this.onPurchase,
+    required this.onCancel,
+    required this.onArchive,
+    required this.onDelete,
   });
 
   final String mode;
   final String status;
   final bool itemsEmpty;
+  final bool hasQuote;
   final VoidCallback onPrint;
   final VoidCallback onSend;
   final VoidCallback onReport;
   final VoidCallback onPurchase;
+  final VoidCallback onCancel;
+  final VoidCallback onArchive;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1051,6 +1203,40 @@ class _QuoteActionsCard extends StatelessWidget {
                 onPressed: itemsEmpty ? null : onPurchase,
                 icon: const Icon(Icons.shopping_cart_outlined),
                 label: const Text('G\u00e9n\u00e9rer achat'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onCancel,
+                icon: Icon(Icons.block_outlined, color: colors.danger),
+                label: Text(
+                  'Annuler le devis',
+                  style: TextStyle(color: colors.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.danger),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onArchive,
+                icon: const Icon(Icons.archive_outlined),
+                label: const Text('Archiver le devis'),
+              ),
+              OutlinedButton.icon(
+                onPressed: hasQuote ? onDelete : null,
+                icon: Icon(Icons.delete_outline, color: colors.danger),
+                label: Text(
+                  'Supprimer le devis',
+                  style: TextStyle(color: colors.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.danger),
+                ),
               ),
             ],
           ),
@@ -1482,6 +1668,10 @@ String _statusLabel(String value) {
       return 'Envoy\u00e9';
     case 'signe':
       return 'Sign\u00e9';
+    case 'annule':
+      return 'Annul\u00e9';
+    case 'archive':
+      return 'Archiv\u00e9';
     default:
       return value;
   }
@@ -1495,6 +1685,10 @@ Color _statusColor(AppPaletteColors colors, String value) {
       return colors.info;
     case 'signe':
       return colors.success;
+    case 'annule':
+      return colors.danger;
+    case 'archive':
+      return colors.purple;
     default:
       return colors.petrol;
   }
@@ -1506,7 +1700,7 @@ String _safeMode(String value) {
 }
 
 String _safeStatus(String value) {
-  const values = {'brouillon', 'envoye', 'signe'};
+  const values = {'brouillon', 'envoye', 'signe', 'annule', 'archive'};
   return values.contains(value) ? value : 'brouillon';
 }
 

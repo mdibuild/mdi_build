@@ -32,4 +32,8 @@ class DevisRepository {
 
     return ProjectQuote.fromMap(row);
   }
+
+  Future<void> deleteQuote(String quoteId) async {
+    await _client.from('project_quotes').delete().eq('id', quoteId);
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/enums/record_status.dart';
 import '../../../core/models/opening_item.dart';
 import '../../../core/models/space_item.dart';
@@ -10,6 +11,23 @@ import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/spaces_providers.dart';
 import 'widgets/opening_form.dart';
 import 'widgets/space_form.dart';
+
+Color _recordStatusColor(AppPaletteColors colors, RecordStatus status) {
+  switch (status) {
+    case RecordStatus.brouillon:
+      return colors.textSoft;
+    case RecordStatus.enCours:
+      return colors.info;
+    case RecordStatus.valide:
+      return colors.success;
+    case RecordStatus.annule:
+      return colors.danger;
+    case RecordStatus.termine:
+      return colors.petrol;
+    case RecordStatus.archive:
+      return colors.purple;
+  }
+}
 
 class MetragePage extends ConsumerWidget {
   const MetragePage({super.key});
@@ -114,6 +132,26 @@ class MetragePage extends ConsumerWidget {
 
     await ref.read(spacesRepositoryProvider).deleteSpace(space.id);
     ref.invalidate(spacesProvider);
+  }
+
+  Future<void> _changeSpaceStatus(BuildContext context, WidgetRef ref,
+      SpaceItem space, RecordStatus newStatus) async {
+    if (newStatus == space.status) {
+      return;
+    }
+
+    await ref
+        .read(spacesRepositoryProvider)
+        .updateSpace(space.copyWith(status: newStatus));
+    ref.invalidate(spacesProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${space.name} : ${newStatus.label}')),
+    );
   }
 
   Future<void> _openCreateOpeningDialog(
@@ -258,12 +296,32 @@ class MetragePage extends ConsumerWidget {
                       separatorBuilder: (_, __) => const Divider(),
                       itemBuilder: (context, index) {
                         final item = spaces[index];
+                        final statusColor =
+                            _recordStatusColor(context.palette, item.status);
                         return ExpansionTile(
                           title: Text('${item.name} • ${item.type.label}'),
                           subtitle: Text(
                             'Sol=${item.floorArea.toStringAsFixed(2)} m² • Murs nets=${item.netWallArea.toStringAsFixed(2)} m²',
                           ),
-                          trailing: Text(item.status.label),
+                          trailing: PopupMenuButton<RecordStatus>(
+                            tooltip: 'Changer le statut',
+                            onSelected: (value) =>
+                                _changeSpaceStatus(context, ref, item, value),
+                            itemBuilder: (context) => [
+                              for (final value in RecordStatus.values)
+                                PopupMenuItem(
+                                  value: value,
+                                  child: Text(value.label),
+                                ),
+                            ],
+                            child: PremiumStatusBadge(
+                              label: item.status.label,
+                              backgroundColor:
+                                  statusColor.withValues(alpha: 0.14),
+                              foregroundColor: statusColor,
+                              icon: Icons.expand_more,
+                            ),
+                          ),
                           childrenPadding:
                               const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           children: [

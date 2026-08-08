@@ -85,4 +85,34 @@ class SpaceItem {
       'status': status.dbValue,
     };
   }
+
+  SpaceItem copyWith({
+    String? id,
+    String? companyId,
+    String? projectId,
+    SpaceType? type,
+    String? name,
+    String? levelName,
+    double? length,
+    double? width,
+    double? height,
+    double? quantity,
+    RecordStatus? status,
+    List<OpeningItem>? openings,
+  }) {
+    return SpaceItem(
+      id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
+      projectId: projectId ?? this.projectId,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      levelName: levelName ?? this.levelName,
+      length: length ?? this.length,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      quantity: quantity ?? this.quantity,
+      status: status ?? this.status,
+      openings: openings ?? this.openings,
+    );
+  }
 }

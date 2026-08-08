@@ -72,13 +72,13 @@ class MainShellPage extends StatelessWidget {
       body: Row(
         children: [
           Container(
-            width: 96,
-            color: colors.surface,
+            width: 236,
+            color: colors.surfaceAlt,
             child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Column(
                       children: [
                         for (var i = 0; i < items.length; i++)
@@ -93,31 +93,40 @@ class MainShellPage extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  child: Row(
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: reloadApp,
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('Actualiser'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.petrol,
-                          side: BorderSide(color: colors.petrol, width: 1.6),
-                          minimumSize: const Size(0, 44),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                      Expanded(
+                        child: Tooltip(
+                          message: 'Actualiser',
+                          child: OutlinedButton(
+                            onPressed: reloadApp,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.petrol,
+                              backgroundColor: colors.surface,
+                              side: BorderSide(color: colors.petrol, width: 1.6),
+                              minimumSize: const Size(0, 46),
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                            ),
+                            child: const Icon(Icons.refresh, size: 20),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => _confirmLogout(context),
-                        icon: const Icon(Icons.logout, size: 18),
-                        label: const Text('Déconnexion'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.danger,
-                          side: BorderSide(color: colors.danger, width: 1.6),
-                          minimumSize: const Size(0, 44),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Tooltip(
+                          message: 'Déconnexion',
+                          child: OutlinedButton(
+                            onPressed: () => _confirmLogout(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.danger,
+                              backgroundColor: colors.surface,
+                              side: BorderSide(color: colors.danger, width: 1.6),
+                              minimumSize: const Size(0, 46),
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                            ),
+                            child: const Icon(Icons.logout, size: 20),
+                          ),
                         ),
                       ),
                     ],
@@ -153,41 +162,54 @@ class _RailItem extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? colors.petrolSoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: selected
-              ? [
+          color: selected ? colors.petrolSoft : colors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: selected
+              ? Border.all(color: colors.petrol, width: 1.4)
+              : Border.all(color: colors.border, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: selected ? 0.14 : 0.06),
+              blurRadius: selected ? 14 : 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.petrol,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
                   BoxShadow(
-                    color: colors.petrol.withValues(alpha: 0.28),
-                    blurRadius: 10,
+                    color: colors.petrol.withValues(alpha: 0.4),
+                    blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: selected ? colors.petrol : colors.textSoft,
-              size: 24,
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: colors.yellow, size: 20),
             ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? colors.petrol : colors.textSoft,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? colors.petrol : colors.text,
+                ),
               ),
             ),
           ],

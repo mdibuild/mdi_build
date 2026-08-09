@@ -62,83 +62,166 @@ class MainShellPage extends StatelessWidget {
     context.go('/login');
   }
 
+  static const _compactBreakpoint = 760.0;
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final colors = context.palette;
     final selectedIndex = _currentIndex(location);
 
-    return Scaffold(
-      body: Row(
-        children: [
-          Container(
-            width: 236,
-            color: colors.surfaceAlt,
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < items.length; i++)
-                          _RailItem(
-                            icon: items[i].$2,
-                            label: items[i].$3,
-                            selected: i == selectedIndex,
-                            onTap: () => context.go(items[i].$1),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < _compactBreakpoint;
+
+        if (isCompact) {
+          return Scaffold(
+            drawer: Drawer(
+              width: 236,
+              backgroundColor: colors.surfaceAlt,
+              child: SafeArea(
+                child: _NavRailContent(
+                  colors: colors,
+                  selectedIndex: selectedIndex,
+                  onSelect: (path) {
+                    Navigator.of(context).pop();
+                    context.go(path);
+                  },
+                  onLogout: () => _confirmLogout(context),
+                ),
+              ),
+            ),
+            body: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  Builder(
+                    builder: (context) => Container(
+                      color: colors.surfaceAlt,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.menu, color: colors.petrol),
+                            tooltip: 'Menu',
+                            onPressed: () => Scaffold.of(context).openDrawer(),
                           ),
-                      ],
+                          Text(
+                            items[selectedIndex].$3,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: colors.petrol,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                  const Divider(height: 1),
+                  Expanded(child: PremiumWatermarkBackground(child: child)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          body: Row(
+            children: [
+              Container(
+                width: 236,
+                color: colors.surfaceAlt,
+                child: _NavRailContent(
+                  colors: colors,
+                  selectedIndex: selectedIndex,
+                  onSelect: context.go,
+                  onLogout: () => _confirmLogout(context),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Tooltip(
-                          message: 'Actualiser',
-                          child: OutlinedButton(
-                            onPressed: reloadApp,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.petrol,
-                              backgroundColor: colors.surface,
-                              side: BorderSide(color: colors.petrol, width: 1.6),
-                              minimumSize: const Size(0, 46),
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
-                            ),
-                            child: const Icon(Icons.refresh, size: 20),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Tooltip(
-                          message: 'Déconnexion',
-                          child: OutlinedButton(
-                            onPressed: () => _confirmLogout(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.danger,
-                              backgroundColor: colors.surface,
-                              side: BorderSide(color: colors.danger, width: 1.6),
-                              minimumSize: const Size(0, 46),
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
-                            ),
-                            child: const Icon(Icons.logout, size: 20),
-                          ),
-                        ),
-                      ),
-                    ],
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: PremiumWatermarkBackground(child: child)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _NavRailContent extends StatelessWidget {
+  const _NavRailContent({
+    required this.colors,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.onLogout,
+  });
+
+  final AppPaletteColors colors;
+  final int selectedIndex;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              children: [
+                for (var i = 0; i < MainShellPage.items.length; i++)
+                  _RailItem(
+                    icon: MainShellPage.items[i].$2,
+                    label: MainShellPage.items[i].$3,
+                    selected: i == selectedIndex,
+                    onTap: () => onSelect(MainShellPage.items[i].$1),
                   ),
-                ),
               ],
             ),
           ),
-          const VerticalDivider(width: 1),
-          Expanded(child: PremiumWatermarkBackground(child: child)),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: 'Actualiser',
+                  child: OutlinedButton(
+                    onPressed: reloadApp,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.petrol,
+                      backgroundColor: colors.surface,
+                      side: BorderSide(color: colors.petrol, width: 1.6),
+                      minimumSize: const Size(0, 46),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                    child: const Icon(Icons.refresh, size: 20),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Tooltip(
+                  message: 'Déconnexion',
+                  child: OutlinedButton(
+                    onPressed: onLogout,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.danger,
+                      backgroundColor: colors.surface,
+                      side: BorderSide(color: colors.danger, width: 1.6),
+                      minimumSize: const Size(0, 46),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                    child: const Icon(Icons.logout, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

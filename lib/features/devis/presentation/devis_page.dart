@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/estimate_item.dart';
@@ -462,17 +463,26 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       return;
     }
 
-    await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
-    ref.invalidate(projectQuotesProvider(projectId));
+    try {
+      await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
+      ref.invalidate(projectQuotesProvider(projectId));
 
-    if (!context.mounted) {
-      return;
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Devis supprimé.')),
+      );
+      context.pop();
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur suppression : $error')),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Devis supprimé.')),
-    );
-    Navigator.of(context).pop();
   }
 
   Future<void> _printQuote({

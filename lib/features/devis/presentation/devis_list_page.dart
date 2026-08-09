@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
-import 'devis_page.dart';
 import 'providers/devis_providers.dart';
 
 class DevisListPage extends ConsumerWidget {
   const DevisListPage({super.key});
 
-  Future<void> _openQuote(
-    BuildContext context,
-    WidgetRef ref, {
+  void _openQuote(
+    BuildContext context, {
     ProjectQuote? quote,
-  }) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => DevisPage(quote: quote)),
-    );
+  }) {
+    context.push('/devis/edit', extra: quote);
   }
 
   Future<void> _changeStatus(
@@ -31,18 +28,27 @@ class DevisListPage extends ConsumerWidget {
       return;
     }
 
-    await ref.read(devisRepositoryProvider).updateQuote(
-          quote.copyWith(status: newStatus),
-        );
-    ref.invalidate(projectQuotesProvider(quote.projectId));
+    try {
+      await ref.read(devisRepositoryProvider).updateQuote(
+            quote.copyWith(status: newStatus),
+          );
+      ref.invalidate(projectQuotesProvider(quote.projectId));
 
-    if (!context.mounted) {
-      return;
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${quote.title} : ${_statusLabel(newStatus)}')),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur statut : $error')),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${quote.title} : ${_statusLabel(newStatus)}')),
-    );
   }
 
   Future<void> _deleteQuote(
@@ -74,16 +80,25 @@ class DevisListPage extends ConsumerWidget {
       return;
     }
 
-    await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
-    ref.invalidate(projectQuotesProvider(quote.projectId));
+    try {
+      await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
+      ref.invalidate(projectQuotesProvider(quote.projectId));
 
-    if (!context.mounted) {
-      return;
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Devis supprimé.')),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur suppression : $error')),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Devis supprimé.')),
-    );
   }
 
   @override
@@ -114,7 +129,7 @@ class DevisListPage extends ConsumerWidget {
                     title: 'Devis',
                     subtitle: 'Projet courant : ${project.name}',
                     trailing: FilledButton.icon(
-                      onPressed: () => _openQuote(context, ref),
+                      onPressed: () => _openQuote(context),
                       icon: const Icon(Icons.add),
                       label: const Text('Nouveau devis'),
                     ),
@@ -201,7 +216,7 @@ class DevisListPage extends ConsumerWidget {
                                 children: [
                                   FilledButton.icon(
                                     onPressed: () =>
-                                        _openQuote(context, ref, quote: quote),
+                                        _openQuote(context, quote: quote),
                                     icon: const Icon(Icons.edit_outlined),
                                     label: const Text('Ouvrir'),
                                   ),

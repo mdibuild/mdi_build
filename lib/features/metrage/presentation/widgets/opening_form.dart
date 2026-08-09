@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/enums/opening_type.dart';
 import '../../../../core/models/opening_item.dart';
 
 class OpeningFormValue {
@@ -34,10 +35,10 @@ class OpeningForm extends StatefulWidget {
 
 class _OpeningFormState extends State<OpeningForm> {
   late final TextEditingController nameController;
-  late final TextEditingController typeController;
   late final TextEditingController widthController;
   late final TextEditingController heightController;
   late final TextEditingController quantityController;
+  late OpeningType selectedType;
   bool saving = false;
 
   @override
@@ -45,8 +46,7 @@ class _OpeningFormState extends State<OpeningForm> {
     super.initState();
     final opening = widget.initialValue;
     nameController = TextEditingController(text: opening?.name ?? '');
-    typeController =
-        TextEditingController(text: opening?.openingType ?? 'fenetre');
+    selectedType = OpeningType.fromDb(opening?.openingType ?? 'fenetre');
     widthController = TextEditingController(
         text: opening == null ? '' : opening.width.toString());
     heightController = TextEditingController(
@@ -60,7 +60,7 @@ class _OpeningFormState extends State<OpeningForm> {
     await widget.onSubmit(
       OpeningFormValue(
         name: nameController.text.trim(),
-        openingType: typeController.text.trim(),
+        openingType: selectedType.dbValue,
         width: double.tryParse(widthController.text.trim()) ?? 0,
         height: double.tryParse(heightController.text.trim()) ?? 0,
         quantity: double.tryParse(quantityController.text.trim()) ?? 1,
@@ -81,9 +81,19 @@ class _OpeningFormState extends State<OpeningForm> {
             controller: nameController,
             decoration: const InputDecoration(labelText: 'Nom')),
         const SizedBox(height: 12),
-        TextField(
-            controller: typeController,
-            decoration: const InputDecoration(labelText: 'Type ouverture')),
+        DropdownButtonFormField<OpeningType>(
+          initialValue: selectedType,
+          decoration: const InputDecoration(labelText: 'Type ouverture'),
+          items: [
+            for (final type in OpeningType.values)
+              DropdownMenuItem(value: type, child: Text(type.label)),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => selectedType = value);
+            }
+          },
+        ),
         const SizedBox(height: 12),
         TextField(
             controller: widthController,

@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/models/quantity_line.dart';
 import '../../../core/services/quantity_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/project_selector_card.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
 import '../../achats/presentation/widgets/purchase_form.dart';
 import '../../metrage/presentation/providers/spaces_providers.dart';
@@ -208,6 +210,16 @@ class QuantitatifPage extends ConsumerWidget {
                 child: Text('Projet courant indisponible.'),
               ),
             ),
+            const SizedBox(height: 12),
+            selectedProjectAsync.maybeWhen(
+              data: (project) => project == null
+                  ? const SizedBox.shrink()
+                  : ProjectSelectorCard(
+                      currentProjectId: project.id,
+                      labelText: 'Projet du quantitatif',
+                    ),
+              orElse: () => const SizedBox.shrink(),
+            ),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
@@ -279,6 +291,8 @@ class QuantitatifPage extends ConsumerWidget {
                                       ),
                                     ],
                                   ),
+                                if (lines.isNotEmpty)
+                                  _totalsRow(context, lines),
                               ],
                             ),
                           ),
@@ -300,4 +314,33 @@ class QuantitatifPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+DataRow _totalsRow(BuildContext context, List<QuantityLine> lines) {
+  double sum(double Function(QuantityLine line) selector) =>
+      lines.fold<double>(0, (total, line) => total + selector(line));
+
+  final style = Theme.of(context)
+      .textTheme
+      .bodyMedium
+      ?.copyWith(fontWeight: FontWeight.w900);
+
+  Widget total(double value) => Text(value.toStringAsFixed(2), style: style);
+
+  return DataRow(
+    color: WidgetStateProperty.all(
+      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+    ),
+    cells: [
+      DataCell(Text('Total', style: style)),
+      const DataCell(SizedBox.shrink()),
+      DataCell(total(sum((line) => line.floorArea))),
+      DataCell(total(sum((line) => line.ceilingArea))),
+      DataCell(total(sum((line) => line.grossWallArea))),
+      DataCell(total(sum((line) => line.openingsArea))),
+      DataCell(total(sum((line) => line.netWallArea))),
+      DataCell(total(sum((line) => line.perimeter))),
+      const DataCell(SizedBox.shrink()),
+    ],
+  );
 }

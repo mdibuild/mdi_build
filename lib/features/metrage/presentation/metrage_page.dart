@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../core/enums/opening_type.dart';
 import '../../../core/enums/record_status.dart';
 import '../../../core/models/opening_item.dart';
 import '../../../core/models/space_item.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/project_selector_card.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/spaces_providers.dart';
 import 'widgets/opening_form.dart';
@@ -276,6 +278,19 @@ class MetragePage extends ConsumerWidget {
               error: (_, __) => const AppScaffoldTitle(
                   title: 'Métré', subtitle: 'Projet courant indisponible.'),
             ),
+            const SizedBox(height: 12),
+            selectedProjectAsync.maybeWhen(
+              data: (project) => project == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: ProjectSelectorCard(
+                        currentProjectId: project.id,
+                        labelText: 'Projet du métré',
+                      ),
+                    ),
+              orElse: () => const SizedBox.shrink(),
+            ),
             const SizedBox(height: 16),
             Expanded(
               child: spacesAsync.when(
@@ -383,7 +398,7 @@ class MetragePage extends ConsumerWidget {
                                     ListTile(
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
-                                          '${opening.name} • ${opening.openingType}'),
+                                          '${opening.name} • ${OpeningType.fromDb(opening.openingType).label}'),
                                       subtitle: Text(
                                           '${opening.width} × ${opening.height} × ${opening.quantity}'),
                                       trailing: Wrap(

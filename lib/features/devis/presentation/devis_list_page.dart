@@ -22,21 +22,6 @@ class DevisListPage extends ConsumerWidget {
     }
   }
 
-  void _showStep(BuildContext context, String label) {
-    if (!context.mounted) {
-      return;
-    }
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(label),
-        duration: const Duration(seconds: 15),
-        backgroundColor: Colors.deepPurple,
-      ),
-    );
-  }
-
   Future<void> _changeStatus(
     BuildContext context,
     WidgetRef ref,
@@ -75,62 +60,18 @@ class DevisListPage extends ConsumerWidget {
     WidgetRef ref,
     ProjectQuote quote,
   ) async {
-    _showStep(context, 'ÉTAPE 0 : bouton Supprimer cliqué');
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer le devis'),
-        content: Text(
-          'Supprimer "${quote.title}" ? Cette action est définitive.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-
-    debugPrint('DELETE devis: dialog closed, confirmed=$confirmed');
-
-    if (confirmed != true) {
-      return;
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-    _showStep(context, 'ÉTAPE 1 : dialogue fermé, confirmé');
-
     try {
-      debugPrint('DELETE devis: calling deleteQuote id=${quote.id}');
       await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
-      debugPrint('DELETE devis: deleteQuote returned OK');
-      if (context.mounted) {
-        _showStep(context, 'ÉTAPE 2 : suppression en base réussie');
-      }
-
       ref.invalidate(projectQuotesProvider(quote.projectId));
-      debugPrint('DELETE devis: provider invalidated');
+
       if (!context.mounted) {
-        debugPrint('DELETE devis: context unmounted after delete, stopping');
         return;
       }
-      _showStep(context, 'ÉTAPE 3 : liste rafraîchie');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Devis supprimé.')),
       );
-      debugPrint('DELETE devis: snackbar shown, flow complete');
-    } catch (error, stackTrace) {
-      debugPrint('DELETE devis: EXCEPTION $error');
-      debugPrint('$stackTrace');
+    } catch (error) {
       if (!context.mounted) {
         return;
       }
@@ -187,97 +128,12 @@ class DevisListPage extends ConsumerWidget {
                     ...quotes.map(
                       (quote) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: PremiumSurfaceCard(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      quote.title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                    ),
-                                  ),
-                                  PopupMenuButton<String>(
-                                    tooltip: 'Changer le statut',
-                                    onSelected: (value) => _changeStatus(
-                                        context, ref, quote, value),
-                                    itemBuilder: (context) => const [
-                                      PopupMenuItem(
-                                        value: 'brouillon',
-                                        child: Text('Brouillon'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'envoye',
-                                        child: Text('Envoyé'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'signe',
-                                        child: Text('Signé'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'annule',
-                                        child: Text('Annulé'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'archive',
-                                        child: Text('Archivé'),
-                                      ),
-                                    ],
-                                    child: PremiumStatusBadge(
-                                      label: _statusLabel(quote.status),
-                                      backgroundColor: _statusColor(
-                                              context.palette, quote.status)
-                                          .withValues(alpha: 0.14),
-                                      foregroundColor: _statusColor(
-                                          context.palette, quote.status),
-                                      icon: Icons.expand_more,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _modeLabel(quote.mode),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: 14),
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  FilledButton.icon(
-                                    onPressed: () =>
-                                        _openQuote(context, quote: quote),
-                                    icon: const Icon(Icons.edit_outlined),
-                                    label: const Text('Ouvrir'),
-                                  ),
-                                  OutlinedButton.icon(
-                                    onPressed: () =>
-                                        _deleteQuote(context, ref, quote),
-                                    icon: Icon(Icons.delete_outline,
-                                        color: context.palette.danger),
-                                    label: Text(
-                                      'Supprimer',
-                                      style: TextStyle(
-                                          color: context.palette.danger),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: BorderSide(
-                                          color: context.palette.danger),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        child: _QuoteCard(
+                          quote: quote,
+                          onOpen: () => _openQuote(context, quote: quote),
+                          onChangeStatus: (status) =>
+                              _changeStatus(context, ref, quote, status),
+                          onDelete: () => _deleteQuote(context, ref, quote),
                         ),
                       ),
                     ),
@@ -291,6 +147,152 @@ class DevisListPage extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Erreur projet : $error')),
+      ),
+    );
+  }
+}
+
+class _QuoteCard extends StatefulWidget {
+  const _QuoteCard({
+    required this.quote,
+    required this.onOpen,
+    required this.onChangeStatus,
+    required this.onDelete,
+  });
+
+  final ProjectQuote quote;
+  final VoidCallback onOpen;
+  final ValueChanged<String> onChangeStatus;
+  final Future<void> Function() onDelete;
+
+  @override
+  State<_QuoteCard> createState() => _QuoteCardState();
+}
+
+class _QuoteCardState extends State<_QuoteCard> {
+  bool _confirmingDelete = false;
+  bool _deleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final quote = widget.quote;
+
+    return PremiumSurfaceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  quote.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Changer le statut',
+                onSelected: widget.onChangeStatus,
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'brouillon', child: Text('Brouillon')),
+                  PopupMenuItem(value: 'envoye', child: Text('Envoyé')),
+                  PopupMenuItem(value: 'signe', child: Text('Signé')),
+                  PopupMenuItem(value: 'annule', child: Text('Annulé')),
+                  PopupMenuItem(value: 'archive', child: Text('Archivé')),
+                ],
+                child: PremiumStatusBadge(
+                  label: _statusLabel(quote.status),
+                  backgroundColor:
+                      _statusColor(context.palette, quote.status)
+                          .withValues(alpha: 0.14),
+                  foregroundColor: _statusColor(context.palette, quote.status),
+                  icon: Icons.expand_more,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _modeLabel(quote.mode),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          if (_confirmingDelete)
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Supprimer définitivement ce devis ?',
+                  style: TextStyle(
+                    color: context.palette.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _deleting
+                      ? null
+                      : () async {
+                          setState(() => _deleting = true);
+                          await widget.onDelete();
+                          if (mounted) {
+                            setState(() {
+                              _deleting = false;
+                              _confirmingDelete = false;
+                            });
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: context.palette.danger,
+                  ),
+                  icon: _deleting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.delete_forever_outlined),
+                  label: Text(_deleting ? 'Suppression...' : 'Oui, supprimer'),
+                ),
+                TextButton(
+                  onPressed: _deleting
+                      ? null
+                      : () => setState(() => _confirmingDelete = false),
+                  child: const Text('Annuler'),
+                ),
+              ],
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: widget.onOpen,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Ouvrir'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _confirmingDelete = true),
+                  icon: Icon(Icons.delete_outline,
+                      color: context.palette.danger),
+                  label: Text(
+                    'Supprimer',
+                    style: TextStyle(color: context.palette.danger),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: context.palette.danger),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }

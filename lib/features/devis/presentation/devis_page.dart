@@ -52,6 +52,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   ProjectQuote? _currentQuote;
   bool _loadingQuote = false;
   String? _loadError;
+  bool _confirmingDelete = false;
+  bool _deletingQuote = false;
 
   @override
   void initState() {
@@ -486,52 +488,27 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer le devis'),
-        content: const Text(
-          'Cette action est définitive. Le devis enregistré pour ce projet sera supprimé.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
+    setState(() => _deletingQuote = true);
 
     try {
-      debugPrint('DELETE devis (editor): calling deleteQuote id=${quote.id}');
       await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
-      debugPrint('DELETE devis (editor): deleteQuote returned OK');
-
       ref.invalidate(projectQuotesProvider(projectId));
-      debugPrint('DELETE devis (editor): provider invalidated');
 
       if (!context.mounted) {
-        debugPrint('DELETE devis (editor): context unmounted, stopping');
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Devis supprimé.')),
       );
-      debugPrint('DELETE devis (editor): popping route');
       context.pop();
-      debugPrint('DELETE devis (editor): flow complete');
-    } catch (error, stackTrace) {
-      debugPrint('DELETE devis (editor): EXCEPTION $error');
-      debugPrint('$stackTrace');
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _deletingQuote = false;
+          _confirmingDelete = false;
+        });
+      }
       if (!context.mounted) {
         return;
       }
@@ -828,6 +805,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                       status: status,
                       itemsEmpty: items.isEmpty,
                       hasQuote: _currentQuote != null,
+                      confirmingDelete: _confirmingDelete,
+                      deletingQuote: _deletingQuote,
                       onPrint: () => _printQuote(
                         context: context,
                         projectName: project.name,
@@ -862,7 +841,11 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                         context: context,
                         projectId: project.id,
                       ),
-                      onDelete: () => _deleteQuote(
+                      onDeleteRequest: () =>
+                          setState(() => _confirmingDelete = true),
+                      onDeleteCancel: () =>
+                          setState(() => _confirmingDelete = false),
+                      onDeleteConfirm: () => _deleteQuote(
                         context: context,
                         projectId: project.id,
                       ),
@@ -1198,26 +1181,34 @@ class _QuoteActionsCard extends StatelessWidget {
     required this.status,
     required this.itemsEmpty,
     required this.hasQuote,
+    required this.confirmingDelete,
+    required this.deletingQuote,
     required this.onPrint,
     required this.onSend,
     required this.onReport,
     required this.onPurchase,
     required this.onCancel,
     required this.onArchive,
-    required this.onDelete,
+    required this.onDeleteRequest,
+    required this.onDeleteConfirm,
+    required this.onDeleteCancel,
   });
 
   final String mode;
   final String status;
   final bool itemsEmpty;
   final bool hasQuote;
+  final bool confirmingDelete;
+  final bool deletingQuote;
   final VoidCallback onPrint;
   final VoidCallback onSend;
   final VoidCallback onReport;
   final VoidCallback onPurchase;
   final VoidCallback onCancel;
   final VoidCallback onArchive;
-  final VoidCallback onDelete;
+  final VoidCallback onDeleteRequest;
+  final VoidCallback onDeleteConfirm;
+  final VoidCallback onDeleteCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -1293,19 +1284,58 @@ class _QuoteActionsCard extends StatelessWidget {
                 icon: const Icon(Icons.archive_outlined),
                 label: const Text('Archiver le devis'),
               ),
-              OutlinedButton.icon(
-                onPressed: hasQuote ? onDelete : null,
-                icon: Icon(Icons.delete_outline, color: colors.danger),
-                label: Text(
-                  'Supprimer le devis',
-                  style: TextStyle(color: colors.danger),
+              if (!confirmingDelete)
+                OutlinedButton.icon(
+                  onPressed: hasQuote ? onDeleteRequest : null,
+                  icon: Icon(Icons.delete_outline, color: colors.danger),
+                  label: Text(
+                    'Supprimer le devis',
+                    style: TextStyle(color: colors.danger),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: colors.danger),
+                  ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: colors.danger),
-                ),
-              ),
             ],
           ),
+          if (confirmingDelete) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Supprimer définitivement ce devis ?',
+                  style: TextStyle(
+                    color: colors.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: deletingQuote ? null : onDeleteConfirm,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.danger,
+                  ),
+                  icon: deletingQuote
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.delete_forever_outlined),
+                  label: Text(deletingQuote ? 'Suppression...' : 'Oui, supprimer'),
+                ),
+                TextButton(
+                  onPressed: deletingQuote ? null : onDeleteCancel,
+                  child: const Text('Annuler'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

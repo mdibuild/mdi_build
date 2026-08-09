@@ -389,47 +389,46 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (recipients.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Destinataire : ',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              DropdownButton<String?>(
-                                value: _recipientId,
-                                isDense: true,
-                                underline: const SizedBox.shrink(),
-                                items: [
-                                  const DropdownMenuItem<String?>(
-                                    value: null,
-                                    child: Text('Tout le monde'),
-                                  ),
-                                  for (final entry in recipients)
-                                    DropdownMenuItem<String?>(
-                                      value: entry.id,
-                                      child: Text(
-                                        '${entry.displayName} · ${entry.role}',
-                                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Destinataire : ',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            DropdownButton<String?>(
+                              value: _recipientId,
+                              isDense: true,
+                              underline: const SizedBox.shrink(),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('Tout le monde'),
+                                ),
+                                for (final entry in recipients)
+                                  DropdownMenuItem<String?>(
+                                    value: entry.id,
+                                    child: Text(
+                                      '${entry.displayName} · ${entry.role}',
                                     ),
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    _recipientId = value;
-                                    _recipientName = value == null
-                                        ? null
-                                        : recipients
-                                            .firstWhere(
-                                                (entry) => entry.id == value)
-                                            .displayName;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
+                                  ),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _recipientId = value;
+                                  _recipientName = value == null
+                                      ? null
+                                      : recipients
+                                          .firstWhere(
+                                              (entry) => entry.id == value)
+                                          .displayName;
+                                });
+                              },
+                            ),
+                          ],
                         ),
+                      ),
                       Row(
                         children: [
                           IconButton(

@@ -14,8 +14,6 @@ class QuotePdfService {
     required String projectName,
     required String mode,
     required String status,
-    required double unitPriceWalls,
-    required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
     Company? company,
@@ -63,11 +61,6 @@ class QuotePdfService {
                   status: status,
                   issuedAt: issuedAt,
                 ),
-                pw.SizedBox(height: 14),
-                _buildPricingCard(
-                  unitPriceWalls: unitPriceWalls,
-                  unitPriceCeiling: unitPriceCeiling,
-                ),
                 pw.SizedBox(height: 18),
               ],
             ),
@@ -113,8 +106,6 @@ class QuotePdfService {
     required String projectName,
     required String mode,
     required String status,
-    required double unitPriceWalls,
-    required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
     Company? company,
@@ -126,8 +117,6 @@ class QuotePdfService {
       projectName: projectName,
       mode: mode,
       status: status,
-      unitPriceWalls: unitPriceWalls,
-      unitPriceCeiling: unitPriceCeiling,
       items: items,
       signatureBytes: signatureBytes,
       company: company,
@@ -146,8 +135,6 @@ class QuotePdfService {
     required String projectName,
     required String mode,
     required String status,
-    required double unitPriceWalls,
-    required double unitPriceCeiling,
     required List<EstimateItem> items,
     Uint8List? signatureBytes,
     Company? company,
@@ -159,8 +146,6 @@ class QuotePdfService {
       projectName: projectName,
       mode: mode,
       status: status,
-      unitPriceWalls: unitPriceWalls,
-      unitPriceCeiling: unitPriceCeiling,
       items: items,
       signatureBytes: signatureBytes,
       company: company,
@@ -231,37 +216,6 @@ class QuotePdfService {
           ),
         ),
       ],
-    );
-  }
-
-  pw.Widget _buildPricingCard({
-    required double unitPriceWalls,
-    required double unitPriceCeiling,
-  }) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.grey100,
-        borderRadius: pw.BorderRadius.circular(6),
-        border: pw.Border.all(color: PdfColors.grey300),
-      ),
-      child: pw.Row(
-        children: [
-          pw.Expanded(
-            child: pw.Text(
-              'PU peinture murs : ${unitPriceWalls.toStringAsFixed(2)}',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-          ),
-          pw.SizedBox(width: 12),
-          pw.Expanded(
-            child: pw.Text(
-              'PU peinture plafond : ${unitPriceCeiling.toStringAsFixed(2)}',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

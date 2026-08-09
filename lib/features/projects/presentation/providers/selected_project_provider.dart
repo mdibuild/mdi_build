@@ -53,3 +53,16 @@ final selectedProjectProvider = FutureProvider<Project?>((ref) async {
 
   return projects.first;
 });
+
+final projectByIdProvider =
+    FutureProvider.family<Project?, String>((ref, projectId) async {
+  final projects = await ref.watch(projectsProvider.future);
+
+  for (final project in projects) {
+    if (project.id == projectId) {
+      return project;
+    }
+  }
+
+  return null;
+});

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../projects/presentation/providers/projects_providers.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/devis_providers.dart';
 
@@ -33,9 +34,12 @@ class DevisListPage extends ConsumerWidget {
     }
 
     try {
-      await ref.read(devisRepositoryProvider).updateQuote(
-            quote.copyWith(status: newStatus),
-          );
+      final repository = ref.read(devisRepositoryProvider);
+      final items = await repository.fetchQuoteItems(quote.id);
+      await repository.updateQuote(
+        quote.copyWith(status: newStatus),
+        items,
+      );
       ref.invalidate(projectQuotesProvider(quote.projectId));
 
       if (!context.mounted) {
@@ -115,6 +119,8 @@ class DevisListPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  _ProjectSelectorCard(currentProjectId: project.id),
+                  const SizedBox(height: 16),
                   if (quotes.isEmpty)
                     const PremiumSurfaceCard(
                       child: Center(
@@ -148,6 +154,45 @@ class DevisListPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Erreur projet : $error')),
       ),
+    );
+  }
+}
+
+class _ProjectSelectorCard extends ConsumerWidget {
+  const _ProjectSelectorCard({required this.currentProjectId});
+
+  final String currentProjectId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projectsAsync = ref.watch(projectsProvider);
+
+    return projectsAsync.when(
+      data: (projects) {
+        return PremiumSurfaceCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: DropdownButtonFormField<String>(
+            initialValue: currentProjectId,
+            decoration: const InputDecoration(
+              labelText: 'Projet affecté',
+              prefixIcon: Icon(Icons.apartment_outlined),
+              border: InputBorder.none,
+            ),
+            items: [
+              for (final project in projects)
+                DropdownMenuItem(value: project.id, child: Text(project.name)),
+            ],
+            onChanged: (value) {
+              if (value == null || value == currentProjectId) {
+                return;
+              }
+              ref.read(selectedProjectIdProvider.notifier).setProjectId(value);
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (error, _) => const SizedBox.shrink(),
     );
   }
 }
@@ -204,9 +249,8 @@ class _QuoteCardState extends State<_QuoteCard> {
                 ],
                 child: PremiumStatusBadge(
                   label: _statusLabel(quote.status),
-                  backgroundColor:
-                      _statusColor(context.palette, quote.status)
-                          .withValues(alpha: 0.14),
+                  backgroundColor: _statusColor(context.palette, quote.status)
+                      .withValues(alpha: 0.14),
                   foregroundColor: _statusColor(context.palette, quote.status),
                   icon: Icons.expand_more,
                 ),
@@ -280,8 +324,8 @@ class _QuoteCardState extends State<_QuoteCard> {
                 ),
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _confirmingDelete = true),
-                  icon: Icon(Icons.delete_outline,
-                      color: context.palette.danger),
+                  icon:
+                      Icon(Icons.delete_outline, color: context.palette.danger),
                   label: Text(
                     'Supprimer',
                     style: TextStyle(color: context.palette.danger),

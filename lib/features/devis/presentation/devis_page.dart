@@ -12,6 +12,7 @@ import '../../../core/models/estimate_item.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/models/quote_line_item.dart';
 import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
@@ -48,6 +49,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   double unitPriceWalls = 0;
   double unitPriceCeiling = 0;
   Uint8List? savedSignatureBytes;
+  List<_QuoteItemDraft> _items = [];
 
   ProjectQuote? _currentQuote;
   bool _loadingQuote = false;
@@ -82,8 +84,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
 
   Future<void> _loadQuote(String quoteId) async {
     try {
-      final quote =
-          await ref.read(devisRepositoryProvider).fetchQuoteById(quoteId);
+      final repository = ref.read(devisRepositoryProvider);
+      final quote = await repository.fetchQuoteById(quoteId);
 
       if (!mounted) {
         return;
@@ -97,9 +99,15 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         return;
       }
 
+      final items = await repository.fetchQuoteItems(quoteId);
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _loadingQuote = false;
-        _applyLoadedQuote(quote);
+        _applyLoadedQuote(quote, items);
       });
     } catch (error) {
       if (!mounted) {
@@ -112,13 +120,18 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     }
   }
 
-  void _applyLoadedQuote(ProjectQuote quote) {
+  void _applyLoadedQuote(ProjectQuote quote, List<QuoteLineItem> items) {
     _currentQuote = quote;
     _titleController.text = quote.title;
     mode = quote.mode;
     status = quote.status;
     unitPriceWalls = quote.unitPriceWalls;
     unitPriceCeiling = quote.unitPriceCeiling;
+
+    for (final draft in _items) {
+      draft.dispose();
+    }
+    _items = [for (final item in items) _QuoteItemDraft.fromItem(item)];
 
     final signatureBase64 = quote.signatureBase64;
     if ((signatureBase64 ?? '').isNotEmpty) {
@@ -183,9 +196,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     );
 
     final repository = ref.read(devisRepositoryProvider);
+    final itemsToSave = _buildItemsForSave();
     final saved = existing == null
-        ? await repository.createQuote(quote)
-        : await repository.updateQuote(quote);
+        ? await repository.createQuote(quote, itemsToSave)
+        : await repository.updateQuote(quote, itemsToSave);
 
     ref.invalidate(projectQuotesProvider(projectId));
 
@@ -200,6 +214,103 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     });
 
     return saved;
+  }
+
+  List<QuoteLineItem> _buildItemsForSave() {
+    final now = DateTime.now();
+
+    return _items
+        .asMap()
+        .entries
+        .map(
+          (entry) => QuoteLineItem(
+            id: '',
+            quoteId: '',
+            label: entry.value.labelController.text.trim(),
+            quantity: entry.value.quantity,
+            unit: entry.value.unitController.text.trim().isEmpty
+                ? 'u'
+                : entry.value.unitController.text.trim(),
+            unitPrice: entry.value.unitPrice,
+            sortOrder: entry.key,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        )
+        .where((item) => item.label.isNotEmpty)
+        .toList();
+  }
+
+  void _addItem() {
+    setState(() => _items.add(_QuoteItemDraft.empty()));
+  }
+
+  void _removeItem(int index) {
+    setState(() {
+      final draft = _items.removeAt(index);
+      draft.dispose();
+    });
+  }
+
+  Future<void> _importFromMetre(
+    BuildContext context,
+    String projectId,
+  ) async {
+    try {
+      final spaces =
+          await ref.read(spacesRepositoryProvider).fetchSpaces(projectId);
+
+      if (spaces.isEmpty) {
+        if (!context.mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aucun espace dans le métré de ce projet.'),
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        for (final space in spaces) {
+          _items.add(
+            _QuoteItemDraft(
+              label: 'Peinture murs ${space.name}',
+              quantity: space.netWallArea.toStringAsFixed(2),
+              unit: 'm²',
+              unitPrice: unitPriceWalls.toStringAsFixed(2),
+            ),
+          );
+          _items.add(
+            _QuoteItemDraft(
+              label: 'Peinture plafond ${space.name}',
+              quantity: space.ceilingArea.toStringAsFixed(2),
+              unit: 'm²',
+              unitPrice: unitPriceCeiling.toStringAsFixed(2),
+            ),
+          );
+        }
+      });
+
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${spaces.length * 2} ligne(s) importée(s) depuis le métré.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur import métré : $error')),
+      );
+    }
   }
 
   Future<void> _openGeneratePurchaseDialog(
@@ -694,6 +805,9 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   void dispose() {
     _signatureController.dispose();
     _titleController.dispose();
+    for (final draft in _items) {
+      draft.dispose();
+    }
     super.dispose();
   }
 
@@ -712,8 +826,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       );
     }
 
-    final selectedProjectAsync = ref.watch(selectedProjectProvider);
-    final spacesAsync = ref.watch(spacesProvider);
+    final currentQuote = _currentQuote;
+    final activeProjectAsync = currentQuote != null
+        ? ref.watch(projectByIdProvider(currentQuote.projectId))
+        : ref.watch(selectedProjectProvider);
     final isCompact = MediaQuery.of(context).size.width < 760;
 
     return Scaffold(
@@ -721,7 +837,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         title: Text(_currentQuote == null ? 'Nouveau devis' : 'Modifier devis'),
       ),
       body: SafeArea(
-        child: selectedProjectAsync.when(
+        child: activeProjectAsync.when(
           data: (project) {
             if (project == null) {
               return const Center(
@@ -732,150 +848,134 @@ class _DevisPageState extends ConsumerState<DevisPage> {
               );
             }
 
-            return spacesAsync.when(
-              data: (spaces) {
-                final items = <EstimateItem>[
-                  for (final space in spaces) ...[
-                    EstimateItem(
-                      label: 'Peinture murs ${space.name}',
-                      quantity: space.netWallArea,
-                      unit: 'm\u00b2',
-                      unitPrice: unitPriceWalls,
-                    ),
-                    EstimateItem(
-                      label: 'Peinture plafond ${space.name}',
-                      quantity: space.ceilingArea,
-                      unit: 'm\u00b2',
-                      unitPrice: unitPriceCeiling,
-                    ),
-                  ],
-                ];
+            final items = [
+              for (final draft in _items) draft.toEstimateItem(),
+            ];
+            final subtotal = items.fold<double>(
+              0,
+              (sum, item) => sum + item.total,
+            );
+            final tax = subtotal * 0.19;
+            final total = subtotal + tax;
 
-                final subtotal = items.fold<double>(
-                  0,
-                  (sum, item) => sum + item.total,
-                );
-                final tax = subtotal * 0.19;
-                final total = subtotal + tax;
-
-                return ListView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.all(isCompact ? 12 : 20),
-                  children: [
-                    _DevisHeroCard(
-                      projectName: project.name,
-                      status: status,
-                      total: total,
-                      itemCount: items.length,
-                    ),
-                    const SizedBox(height: 16),
-                    _DevisConfigurationCard(
-                      titleController: _titleController,
-                      mode: mode,
-                      status: status,
-                      unitPriceWalls: unitPriceWalls,
-                      unitPriceCeiling: unitPriceCeiling,
-                      onModeChanged: (value) {
-                        if (value != null) {
-                          setState(() => mode = value);
-                        }
-                      },
-                      onStatusChanged: (value) {
-                        if (value != null) {
-                          setState(() => status = value);
-                        }
-                      },
-                      onWallPriceChanged: (value) {
-                        setState(() => unitPriceWalls = value);
-                      },
-                      onCeilingPriceChanged: (value) {
-                        setState(() => unitPriceCeiling = value);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _SignatureCard(
-                      signatureKey: _signatureKey,
-                      signatureController: _signatureController,
-                      savedSignatureBytes: savedSignatureBytes,
-                      compact: isCompact,
-                      onSaveSignature: () => _saveSignature(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                      onClearSignature: () => _clearSignature(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                      onSaveDraft: () => _saveDraft(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _QuoteActionsCard(
-                      mode: mode,
-                      status: status,
-                      itemsEmpty: items.isEmpty,
-                      hasQuote: _currentQuote != null,
-                      confirmingDelete: _confirmingDelete,
-                      deletingQuote: _deletingQuote,
-                      onPrint: () => _printQuote(
-                        context: context,
-                        projectName: project.name,
-                        items: items,
-                        clientName: project.clientName,
-                        location: project.location,
-                      ),
-                      onSend: () => _sendToClient(
-                        context: context,
-                        projectId: project.id,
-                        projectName: project.name,
-                        items: items,
-                        clientName: project.clientName,
-                        location: project.location,
-                      ),
-                      onReport: () => _generateQuoteReport(
-                        context: context,
-                        projectId: project.id,
-                        projectName: project.name,
-                      ),
-                      onPurchase: () => _openGeneratePurchaseDialog(
-                        context,
-                        items: items,
-                        projectId: project.id,
-                        projectName: project.name,
-                      ),
-                      onCancel: () => _cancelQuote(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                      onArchive: () => _archiveQuote(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                      onDeleteRequest: () =>
-                          setState(() => _confirmingDelete = true),
-                      onDeleteCancel: () =>
-                          setState(() => _confirmingDelete = false),
-                      onDeleteConfirm: () => _deleteQuote(
-                        context: context,
-                        projectId: project.id,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _EstimateItemsCard(
-                      items: items,
-                      subtotal: subtotal,
-                      tax: tax,
-                      total: total,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(child: Text('Erreur : $error')),
+            return ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.all(isCompact ? 12 : 20),
+              children: [
+                _DevisHeroCard(
+                  projectName: project.name,
+                  status: status,
+                  total: total,
+                  itemCount: items.length,
+                ),
+                const SizedBox(height: 16),
+                _DevisConfigurationCard(
+                  titleController: _titleController,
+                  mode: mode,
+                  status: status,
+                  unitPriceWalls: unitPriceWalls,
+                  unitPriceCeiling: unitPriceCeiling,
+                  onModeChanged: (value) {
+                    if (value != null) {
+                      setState(() => mode = value);
+                    }
+                  },
+                  onStatusChanged: (value) {
+                    if (value != null) {
+                      setState(() => status = value);
+                    }
+                  },
+                  onWallPriceChanged: (value) {
+                    setState(() => unitPriceWalls = value);
+                  },
+                  onCeilingPriceChanged: (value) {
+                    setState(() => unitPriceCeiling = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                _SignatureCard(
+                  signatureKey: _signatureKey,
+                  signatureController: _signatureController,
+                  savedSignatureBytes: savedSignatureBytes,
+                  compact: isCompact,
+                  onSaveSignature: () => _saveSignature(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                  onClearSignature: () => _clearSignature(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                  onSaveDraft: () => _saveDraft(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _QuoteActionsCard(
+                  mode: mode,
+                  status: status,
+                  itemsEmpty: items.isEmpty,
+                  hasQuote: _currentQuote != null,
+                  confirmingDelete: _confirmingDelete,
+                  deletingQuote: _deletingQuote,
+                  onPrint: () => _printQuote(
+                    context: context,
+                    projectName: project.name,
+                    items: items,
+                    clientName: project.clientName,
+                    location: project.location,
+                  ),
+                  onSend: () => _sendToClient(
+                    context: context,
+                    projectId: project.id,
+                    projectName: project.name,
+                    items: items,
+                    clientName: project.clientName,
+                    location: project.location,
+                  ),
+                  onReport: () => _generateQuoteReport(
+                    context: context,
+                    projectId: project.id,
+                    projectName: project.name,
+                  ),
+                  onPurchase: () => _openGeneratePurchaseDialog(
+                    context,
+                    items: items,
+                    projectId: project.id,
+                    projectName: project.name,
+                  ),
+                  onCancel: () => _cancelQuote(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                  onArchive: () => _archiveQuote(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                  onDeleteRequest: () =>
+                      setState(() => _confirmingDelete = true),
+                  onDeleteCancel: () =>
+                      setState(() => _confirmingDelete = false),
+                  onDeleteConfirm: () => _deleteQuote(
+                    context: context,
+                    projectId: project.id,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _EstimateItemsCard(
+                  items: _items,
+                  subtotal: subtotal,
+                  tax: tax,
+                  total: total,
+                  onAddItem: _addItem,
+                  onRemoveItem: _removeItem,
+                  onImportFromMetre: () =>
+                      _importFromMetre(context, project.id),
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: 24),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -1000,7 +1100,7 @@ class _DevisConfigurationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _PremiumDevisCard(
       title: 'Configuration du devis',
-      subtitle: 'Titre, mode, statut et prix unitaires.',
+      subtitle: 'Titre, mode, statut et prix de départ pour l’import métré.',
       icon: Icons.tune_outlined,
       child: Column(
         children: [
@@ -1340,7 +1440,8 @@ class _QuoteActionsCard extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.delete_forever_outlined),
-                  label: Text(deletingQuote ? 'Suppression...' : 'Oui, supprimer'),
+                  label:
+                      Text(deletingQuote ? 'Suppression...' : 'Oui, supprimer'),
                 ),
                 TextButton(
                   onPressed: deletingQuote ? null : onDeleteCancel,
@@ -1361,28 +1462,64 @@ class _EstimateItemsCard extends StatelessWidget {
     required this.subtotal,
     required this.tax,
     required this.total,
+    required this.onAddItem,
+    required this.onRemoveItem,
+    required this.onImportFromMetre,
+    required this.onChanged,
   });
 
-  final List<EstimateItem> items;
+  final List<_QuoteItemDraft> items;
   final double subtotal;
   final double tax;
   final double total;
+  final VoidCallback onAddItem;
+  final ValueChanged<int> onRemoveItem;
+  final VoidCallback onImportFromMetre;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _PremiumDevisCard(
       title: 'Lignes du devis',
-      subtitle: '${items.length} ligne(s) calculee(s) depuis le metrage.',
+      subtitle: '${items.length} ligne(s).',
       icon: Icons.receipt_long_outlined,
       child: Column(
         children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: onAddItem,
+                icon: const Icon(Icons.add),
+                label: const Text('Ajouter une ligne'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onImportFromMetre,
+                icon: const Icon(Icons.download_outlined),
+                label: const Text('Importer depuis le m\u00e9tr\u00e9'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           if (items.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('Aucune ligne disponible.'),
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                'Aucune ligne pour le moment. Ajoute une ligne ou importe '
+                'depuis le m\u00e9tr\u00e9.',
+              ),
             )
           else
-            for (final item in items) _EstimateItemRow(item: item),
+            for (int index = 0; index < items.length; index++) ...[
+              _QuoteItemDraftCard(
+                draft: items[index],
+                index: index,
+                onRemove: () => onRemoveItem(index),
+                onChanged: onChanged,
+              ),
+              const SizedBox(height: 12),
+            ],
           const Divider(height: 28),
           _QuoteTotalLine(label: 'Sous-total', value: subtotal),
           _QuoteTotalLine(label: 'TVA 19%', value: tax),
@@ -1394,56 +1531,156 @@ class _EstimateItemsCard extends StatelessWidget {
   }
 }
 
-class _EstimateItemRow extends StatelessWidget {
-  const _EstimateItemRow({
-    required this.item,
+class _QuoteItemDraftCard extends StatelessWidget {
+  const _QuoteItemDraftCard({
+    required this.draft,
+    required this.index,
+    required this.onRemove,
+    required this.onChanged,
   });
 
-  final EstimateItem item;
+  final _QuoteItemDraft draft;
+  final int index;
+  final VoidCallback onRemove;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.palette;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colors.surfaceAlt,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colors.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ligne ${index + 1}',
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.quantity.toStringAsFixed(2)} ${item.unit} \u00d7 ${_money(item.unitPrice)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                onPressed: onRemove,
+                icon: Icon(Icons.delete_outline, color: colors.danger),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text(
-            _money(item.total),
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: colors.petrol,
+          const SizedBox(height: 6),
+          TextField(
+            controller: draft.labelController,
+            onChanged: (_) => onChanged(),
+            decoration: const InputDecoration(labelText: 'D\u00e9signation'),
+          ),
+          const SizedBox(height: 10),
+          _ResponsiveFormGrid(
+            children: [
+              TextField(
+                controller: draft.quantityController,
+                onChanged: (_) => onChanged(),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Quantit\u00e9'),
+              ),
+              TextField(
+                controller: draft.unitController,
+                onChanged: (_) => onChanged(),
+                decoration: const InputDecoration(labelText: 'Unit\u00e9'),
+              ),
+              TextField(
+                controller: draft.unitPriceController,
+                onChanged: (_) => onChanged(),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Prix unitaire',
+                  suffixText: 'DA',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Sous-total : ${_money(draft.total)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _QuoteItemDraft {
+  _QuoteItemDraft({
+    required String label,
+    required String quantity,
+    required String unit,
+    required String unitPrice,
+  })  : labelController = TextEditingController(text: label),
+        quantityController = TextEditingController(text: quantity),
+        unitController = TextEditingController(text: unit),
+        unitPriceController = TextEditingController(text: unitPrice);
+
+  factory _QuoteItemDraft.empty() {
+    return _QuoteItemDraft(
+      label: '',
+      quantity: '0',
+      unit: 'u',
+      unitPrice: '0',
+    );
+  }
+
+  factory _QuoteItemDraft.fromItem(QuoteLineItem item) {
+    return _QuoteItemDraft(
+      label: item.label,
+      quantity: item.quantity.toStringAsFixed(2),
+      unit: item.unit,
+      unitPrice: item.unitPrice.toStringAsFixed(2),
+    );
+  }
+
+  final TextEditingController labelController;
+  final TextEditingController quantityController;
+  final TextEditingController unitController;
+  final TextEditingController unitPriceController;
+
+  double get quantity =>
+      double.tryParse(quantityController.text.trim().replaceAll(',', '.')) ?? 0;
+
+  double get unitPrice =>
+      double.tryParse(
+        unitPriceController.text.trim().replaceAll(',', '.'),
+      ) ??
+      0;
+
+  double get total => quantity * unitPrice;
+
+  EstimateItem toEstimateItem() {
+    final label = labelController.text.trim();
+    final unit = unitController.text.trim();
+
+    return EstimateItem(
+      label: label.isEmpty ? 'Ligne' : label,
+      quantity: quantity,
+      unit: unit.isEmpty ? 'u' : unit,
+      unitPrice: unitPrice,
+    );
+  }
+
+  void dispose() {
+    labelController.dispose();
+    quantityController.dispose();
+    unitController.dispose();
+    unitPriceController.dispose();
   }
 }
 

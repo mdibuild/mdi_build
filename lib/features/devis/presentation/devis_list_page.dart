@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../shared/presentation/premium_ui.dart';
-import '../../projects/presentation/providers/projects_providers.dart';
+import '../../../shared/presentation/project_selector_card.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/devis_providers.dart';
 
@@ -119,7 +119,10 @@ class DevisListPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _ProjectSelectorCard(currentProjectId: project.id),
+                  ProjectSelectorCard(
+                    currentProjectId: project.id,
+                    labelText: 'Projet affecté',
+                  ),
                   const SizedBox(height: 16),
                   if (quotes.isEmpty)
                     const PremiumSurfaceCard(
@@ -154,45 +157,6 @@ class DevisListPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Erreur projet : $error')),
       ),
-    );
-  }
-}
-
-class _ProjectSelectorCard extends ConsumerWidget {
-  const _ProjectSelectorCard({required this.currentProjectId});
-
-  final String currentProjectId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final projectsAsync = ref.watch(projectsProvider);
-
-    return projectsAsync.when(
-      data: (projects) {
-        return PremiumSurfaceCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: DropdownButtonFormField<String>(
-            initialValue: currentProjectId,
-            decoration: const InputDecoration(
-              labelText: 'Projet affecté',
-              prefixIcon: Icon(Icons.apartment_outlined),
-              border: InputBorder.none,
-            ),
-            items: [
-              for (final project in projects)
-                DropdownMenuItem(value: project.id, child: Text(project.name)),
-            ],
-            onChanged: (value) {
-              if (value == null || value == currentProjectId) {
-                return;
-              }
-              ref.read(selectedProjectIdProvider.notifier).setProjectId(value);
-            },
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (error, _) => const SizedBox.shrink(),
     );
   }
 }

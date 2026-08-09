@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/settings_user_entry.dart';
+import '../../../shared/presentation/project_selector_card.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../settings/presentation/providers/settings_providers.dart';
@@ -347,6 +348,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: ProjectSelectorCard(
+                  currentProjectId: project.id,
+                  labelText: 'Discussion du projet',
                 ),
               ),
               Expanded(

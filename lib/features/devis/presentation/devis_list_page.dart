@@ -22,6 +22,21 @@ class DevisListPage extends ConsumerWidget {
     }
   }
 
+  void _showStep(BuildContext context, String label) {
+    if (!context.mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(label),
+        duration: const Duration(seconds: 15),
+        backgroundColor: Colors.deepPurple,
+      ),
+    );
+  }
+
   Future<void> _changeStatus(
     BuildContext context,
     WidgetRef ref,
@@ -60,6 +75,8 @@ class DevisListPage extends ConsumerWidget {
     WidgetRef ref,
     ProjectQuote quote,
   ) async {
+    _showStep(context, 'ÉTAPE 0 : bouton Supprimer cliqué');
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -86,18 +103,26 @@ class DevisListPage extends ConsumerWidget {
       return;
     }
 
+    if (!context.mounted) {
+      return;
+    }
+    _showStep(context, 'ÉTAPE 1 : dialogue fermé, confirmé');
+
     try {
       debugPrint('DELETE devis: calling deleteQuote id=${quote.id}');
       await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
       debugPrint('DELETE devis: deleteQuote returned OK');
+      if (context.mounted) {
+        _showStep(context, 'ÉTAPE 2 : suppression en base réussie');
+      }
 
       ref.invalidate(projectQuotesProvider(quote.projectId));
       debugPrint('DELETE devis: provider invalidated');
-
       if (!context.mounted) {
         debugPrint('DELETE devis: context unmounted after delete, stopping');
         return;
       }
+      _showStep(context, 'ÉTAPE 3 : liste rafraîchie');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Devis supprimé.')),

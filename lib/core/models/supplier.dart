@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../enums/entity_type.dart';
+
 class Supplier extends Equatable {
   const Supplier({
     required this.id,
@@ -9,7 +11,11 @@ class Supplier extends Equatable {
     required this.phone,
     required this.email,
     required this.address,
-    required this.taxId,
+    required this.entityType,
+    required this.legalNif,
+    required this.legalNis,
+    required this.legalRc,
+    required this.legalArticleImposition,
     required this.notes,
     required this.isArchived,
     required this.createdAt,
@@ -23,7 +29,11 @@ class Supplier extends Equatable {
   final String phone;
   final String email;
   final String address;
-  final String taxId;
+  final EntityType entityType;
+  final String legalNif;
+  final String legalNis;
+  final String legalRc;
+  final String legalArticleImposition;
   final String notes;
   final bool isArchived;
   final DateTime createdAt;
@@ -38,7 +48,14 @@ class Supplier extends Equatable {
       phone: (map['phone'] as String?) ?? '',
       email: (map['email'] as String?) ?? '',
       address: (map['address'] as String?) ?? '',
-      taxId: (map['tax_id'] as String?) ?? '',
+      entityType: EntityType.fromDb(
+        (map['entity_type'] as String?) ?? 'entreprise',
+      ),
+      legalNif: (map['legal_nif'] as String?) ?? '',
+      legalNis: (map['legal_nis'] as String?) ?? '',
+      legalRc: (map['legal_rc'] as String?) ?? '',
+      legalArticleImposition:
+          (map['legal_article_imposition'] as String?) ?? '',
       notes: (map['notes'] as String?) ?? '',
       isArchived: (map['is_archived'] as bool?) ?? false,
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -54,7 +71,11 @@ class Supplier extends Equatable {
       'phone': phone,
       'email': email,
       'address': address,
-      'tax_id': taxId,
+      'entity_type': entityType.dbValue,
+      'legal_nif': legalNif,
+      'legal_nis': legalNis,
+      'legal_rc': legalRc,
+      'legal_article_imposition': legalArticleImposition,
       'notes': notes,
       'is_archived': isArchived,
       'created_at': createdAt.toIso8601String(),
@@ -69,7 +90,11 @@ class Supplier extends Equatable {
       'phone': phone,
       'email': email,
       'address': address,
-      'tax_id': taxId,
+      'entity_type': entityType.dbValue,
+      'legal_nif': legalNif,
+      'legal_nis': legalNis,
+      'legal_rc': legalRc,
+      'legal_article_imposition': legalArticleImposition,
       'notes': notes,
       'is_archived': isArchived,
       'updated_at': updatedAt.toIso8601String(),
@@ -84,7 +109,11 @@ class Supplier extends Equatable {
     String? phone,
     String? email,
     String? address,
-    String? taxId,
+    EntityType? entityType,
+    String? legalNif,
+    String? legalNis,
+    String? legalRc,
+    String? legalArticleImposition,
     String? notes,
     bool? isArchived,
     DateTime? createdAt,
@@ -98,7 +127,12 @@ class Supplier extends Equatable {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       address: address ?? this.address,
-      taxId: taxId ?? this.taxId,
+      entityType: entityType ?? this.entityType,
+      legalNif: legalNif ?? this.legalNif,
+      legalNis: legalNis ?? this.legalNis,
+      legalRc: legalRc ?? this.legalRc,
+      legalArticleImposition:
+          legalArticleImposition ?? this.legalArticleImposition,
       notes: notes ?? this.notes,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
@@ -115,7 +149,11 @@ class Supplier extends Equatable {
         phone,
         email,
         address,
-        taxId,
+        entityType,
+        legalNif,
+        legalNis,
+        legalRc,
+        legalArticleImposition,
         notes,
         isArchived,
         createdAt,

@@ -7,10 +7,10 @@ class Company extends Equatable {
     required this.phone,
     required this.email,
     required this.address,
-    required this.legalIce,
-    required this.legalIf,
+    required this.legalNif,
+    required this.legalNis,
     required this.legalRc,
-    required this.legalPatente,
+    required this.legalArticleImposition,
     required this.logoPath,
     required this.bankName,
     required this.bankRib,
@@ -23,10 +23,10 @@ class Company extends Equatable {
   final String phone;
   final String email;
   final String address;
-  final String legalIce;
-  final String legalIf;
+  final String legalNif;
+  final String legalNis;
   final String legalRc;
-  final String legalPatente;
+  final String legalArticleImposition;
   final String? logoPath;
   final String bankName;
   final String bankRib;
@@ -40,10 +40,11 @@ class Company extends Equatable {
       phone: (map['phone'] as String?) ?? '',
       email: (map['email'] as String?) ?? '',
       address: (map['address'] as String?) ?? '',
-      legalIce: (map['legal_ice'] as String?) ?? '',
-      legalIf: (map['legal_if'] as String?) ?? '',
+      legalNif: (map['legal_nif'] as String?) ?? '',
+      legalNis: (map['legal_nis'] as String?) ?? '',
       legalRc: (map['legal_rc'] as String?) ?? '',
-      legalPatente: (map['legal_patente'] as String?) ?? '',
+      legalArticleImposition:
+          (map['legal_article_imposition'] as String?) ?? '',
       logoPath: map['logo_path'] as String?,
       bankName: (map['bank_name'] as String?) ?? '',
       bankRib: (map['bank_rib'] as String?) ?? '',
@@ -60,10 +61,10 @@ class Company extends Equatable {
       'phone': phone,
       'email': email,
       'address': address,
-      'legal_ice': legalIce,
-      'legal_if': legalIf,
+      'legal_nif': legalNif,
+      'legal_nis': legalNis,
       'legal_rc': legalRc,
-      'legal_patente': legalPatente,
+      'legal_article_imposition': legalArticleImposition,
       'logo_path': logoPath,
       'bank_name': bankName,
       'bank_rib': bankRib,
@@ -77,10 +78,10 @@ class Company extends Equatable {
     String? phone,
     String? email,
     String? address,
-    String? legalIce,
-    String? legalIf,
+    String? legalNif,
+    String? legalNis,
     String? legalRc,
-    String? legalPatente,
+    String? legalArticleImposition,
     String? logoPath,
     bool clearLogoPath = false,
     String? bankName,
@@ -94,10 +95,11 @@ class Company extends Equatable {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       address: address ?? this.address,
-      legalIce: legalIce ?? this.legalIce,
-      legalIf: legalIf ?? this.legalIf,
+      legalNif: legalNif ?? this.legalNif,
+      legalNis: legalNis ?? this.legalNis,
       legalRc: legalRc ?? this.legalRc,
-      legalPatente: legalPatente ?? this.legalPatente,
+      legalArticleImposition:
+          legalArticleImposition ?? this.legalArticleImposition,
       logoPath: clearLogoPath ? null : logoPath ?? this.logoPath,
       bankName: bankName ?? this.bankName,
       bankRib: bankRib ?? this.bankRib,
@@ -113,10 +115,10 @@ class Company extends Equatable {
         phone,
         email,
         address,
-        legalIce,
-        legalIf,
+        legalNif,
+        legalNis,
         legalRc,
-        legalPatente,
+        legalArticleImposition,
         logoPath,
         bankName,
         bankRib,

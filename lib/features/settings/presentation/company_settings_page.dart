@@ -46,10 +46,10 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
   late final TextEditingController phoneController;
   late final TextEditingController emailController;
   late final TextEditingController addressController;
-  late final TextEditingController iceController;
-  late final TextEditingController ifController;
+  late final TextEditingController nifController;
+  late final TextEditingController nisController;
   late final TextEditingController rcController;
-  late final TextEditingController patenteController;
+  late final TextEditingController articleImpositionController;
   late final TextEditingController bankNameController;
   late final TextEditingController bankRibController;
 
@@ -64,10 +64,11 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
     phoneController = TextEditingController(text: company.phone);
     emailController = TextEditingController(text: company.email);
     addressController = TextEditingController(text: company.address);
-    iceController = TextEditingController(text: company.legalIce);
-    ifController = TextEditingController(text: company.legalIf);
+    nifController = TextEditingController(text: company.legalNif);
+    nisController = TextEditingController(text: company.legalNis);
     rcController = TextEditingController(text: company.legalRc);
-    patenteController = TextEditingController(text: company.legalPatente);
+    articleImpositionController =
+        TextEditingController(text: company.legalArticleImposition);
     bankNameController = TextEditingController(text: company.bankName);
     bankRibController = TextEditingController(text: company.bankRib);
   }
@@ -78,10 +79,10 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
     phoneController.dispose();
     emailController.dispose();
     addressController.dispose();
-    iceController.dispose();
-    ifController.dispose();
+    nifController.dispose();
+    nisController.dispose();
     rcController.dispose();
-    patenteController.dispose();
+    articleImpositionController.dispose();
     bankNameController.dispose();
     bankRibController.dispose();
     super.dispose();
@@ -161,10 +162,10 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
           phone: phoneController.text.trim(),
           email: emailController.text.trim(),
           address: addressController.text.trim(),
-          legalIce: iceController.text.trim(),
-          legalIf: ifController.text.trim(),
+          legalNif: nifController.text.trim(),
+          legalNis: nisController.text.trim(),
           legalRc: rcController.text.trim(),
-          legalPatente: patenteController.text.trim(),
+          legalArticleImposition: articleImpositionController.text.trim(),
           bankName: bankNameController.text.trim(),
           bankRib: bankRibController.text.trim(),
           updatedAt: DateTime.now(),
@@ -270,26 +271,37 @@ class _CompanyFormState extends ConsumerState<_CompanyForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PremiumSectionHeader(title: 'Identifiants légaux'),
+              const PremiumSectionHeader(
+                title: 'Identifiants légaux',
+                subtitle: 'Législation algérienne',
+              ),
               const SizedBox(height: 16),
               TextField(
-                controller: iceController,
-                decoration: const InputDecoration(labelText: 'ICE'),
+                controller: nifController,
+                decoration: const InputDecoration(
+                  labelText: 'NIF (Numéro d\'Identification Fiscale)',
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: ifController,
-                decoration: const InputDecoration(labelText: 'IF'),
+                controller: nisController,
+                decoration: const InputDecoration(
+                  labelText: 'NIS (Numéro d\'Identification Statistique)',
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: rcController,
-                decoration: const InputDecoration(labelText: 'RC'),
+                decoration: const InputDecoration(
+                  labelText: 'RC (Registre de Commerce)',
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: patenteController,
-                decoration: const InputDecoration(labelText: 'Patente'),
+                controller: articleImpositionController,
+                decoration: const InputDecoration(
+                  labelText: 'Article d\'imposition',
+                ),
               ),
             ],
           ),

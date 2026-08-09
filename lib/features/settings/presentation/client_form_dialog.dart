@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/enums/entity_type.dart';
 import '../../../core/models/client.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import 'providers/clients_providers.dart';
@@ -20,8 +21,12 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
   late final TextEditingController phoneController;
   late final TextEditingController emailController;
   late final TextEditingController addressController;
-  late final TextEditingController taxIdController;
+  late final TextEditingController nifController;
+  late final TextEditingController nisController;
+  late final TextEditingController rcController;
+  late final TextEditingController articleImpositionController;
   late final TextEditingController notesController;
+  late EntityType entityType;
 
   bool _saving = false;
 
@@ -36,7 +41,12 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
     phoneController = TextEditingController(text: client?.phone ?? '');
     emailController = TextEditingController(text: client?.email ?? '');
     addressController = TextEditingController(text: client?.address ?? '');
-    taxIdController = TextEditingController(text: client?.taxId ?? '');
+    entityType = client?.entityType ?? EntityType.particulier;
+    nifController = TextEditingController(text: client?.legalNif ?? '');
+    nisController = TextEditingController(text: client?.legalNis ?? '');
+    rcController = TextEditingController(text: client?.legalRc ?? '');
+    articleImpositionController =
+        TextEditingController(text: client?.legalArticleImposition ?? '');
     notesController = TextEditingController(text: client?.notes ?? '');
   }
 
@@ -47,7 +57,10 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
     phoneController.dispose();
     emailController.dispose();
     addressController.dispose();
-    taxIdController.dispose();
+    nifController.dispose();
+    nisController.dispose();
+    rcController.dispose();
+    articleImpositionController.dispose();
     notesController.dispose();
     super.dispose();
   }
@@ -79,7 +92,11 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
             phone: phoneController.text.trim(),
             email: emailController.text.trim(),
             address: addressController.text.trim(),
-            taxId: taxIdController.text.trim(),
+            entityType: entityType,
+            legalNif: nifController.text.trim(),
+            legalNis: nisController.text.trim(),
+            legalRc: rcController.text.trim(),
+            legalArticleImposition: articleImpositionController.text.trim(),
             notes: notesController.text.trim(),
             updatedAt: now,
           ),
@@ -99,7 +116,11 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
             phone: phoneController.text.trim(),
             email: emailController.text.trim(),
             address: addressController.text.trim(),
-            taxId: taxIdController.text.trim(),
+            entityType: entityType,
+            legalNif: nifController.text.trim(),
+            legalNis: nisController.text.trim(),
+            legalRc: rcController.text.trim(),
+            legalArticleImposition: articleImpositionController.text.trim(),
             notes: notesController.text.trim(),
             isArchived: false,
             createdAt: now,
@@ -163,7 +184,8 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom / raison sociale'),
+                  decoration:
+                      const InputDecoration(labelText: 'Nom / raison sociale'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -187,10 +209,54 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: taxIdController,
-                  decoration: const InputDecoration(labelText: 'ICE / identifiant fiscal'),
+                SegmentedButton<EntityType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: EntityType.particulier,
+                      label: Text('Particulier'),
+                      icon: Icon(Icons.person_outline),
+                    ),
+                    ButtonSegment(
+                      value: EntityType.entreprise,
+                      label: Text('Entreprise'),
+                      icon: Icon(Icons.apartment_outlined),
+                    ),
+                  ],
+                  selected: {entityType},
+                  onSelectionChanged: (selection) {
+                    setState(() => entityType = selection.first);
+                  },
                 ),
+                if (entityType == EntityType.entreprise) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nifController,
+                    decoration: const InputDecoration(
+                      labelText: 'NIF (Numéro d\'Identification Fiscale)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nisController,
+                    decoration: const InputDecoration(
+                      labelText: 'NIS (Numéro d\'Identification Statistique)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: rcController,
+                    decoration: const InputDecoration(
+                      labelText: 'RC (Registre de Commerce)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: articleImpositionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Article d\'imposition',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextField(
                   controller: notesController,
@@ -202,7 +268,9 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     OutlinedButton(
-                      onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.of(context).pop(false),
                       child: const Text('Annuler'),
                     ),
                     const SizedBox(width: 12),
@@ -215,7 +283,8 @@ class _ClientFormDialogState extends ConsumerState<ClientFormDialog> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.check),
-                      label: Text(_saving ? 'Enregistrement...' : 'Enregistrer'),
+                      label:
+                          Text(_saving ? 'Enregistrement...' : 'Enregistrer'),
                     ),
                   ],
                 ),

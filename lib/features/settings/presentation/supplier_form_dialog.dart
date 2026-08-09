@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/enums/entity_type.dart';
 import '../../../core/models/supplier.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import 'providers/suppliers_providers.dart';
@@ -20,8 +21,12 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
   late final TextEditingController phoneController;
   late final TextEditingController emailController;
   late final TextEditingController addressController;
-  late final TextEditingController taxIdController;
+  late final TextEditingController nifController;
+  late final TextEditingController nisController;
+  late final TextEditingController rcController;
+  late final TextEditingController articleImpositionController;
   late final TextEditingController notesController;
+  late EntityType entityType;
 
   bool _saving = false;
 
@@ -32,11 +37,17 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
     super.initState();
     final supplier = widget.existing;
     nameController = TextEditingController(text: supplier?.name ?? '');
-    contactController = TextEditingController(text: supplier?.contactName ?? '');
+    contactController =
+        TextEditingController(text: supplier?.contactName ?? '');
     phoneController = TextEditingController(text: supplier?.phone ?? '');
     emailController = TextEditingController(text: supplier?.email ?? '');
     addressController = TextEditingController(text: supplier?.address ?? '');
-    taxIdController = TextEditingController(text: supplier?.taxId ?? '');
+    entityType = supplier?.entityType ?? EntityType.entreprise;
+    nifController = TextEditingController(text: supplier?.legalNif ?? '');
+    nisController = TextEditingController(text: supplier?.legalNis ?? '');
+    rcController = TextEditingController(text: supplier?.legalRc ?? '');
+    articleImpositionController =
+        TextEditingController(text: supplier?.legalArticleImposition ?? '');
     notesController = TextEditingController(text: supplier?.notes ?? '');
   }
 
@@ -47,7 +58,10 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
     phoneController.dispose();
     emailController.dispose();
     addressController.dispose();
-    taxIdController.dispose();
+    nifController.dispose();
+    nisController.dispose();
+    rcController.dispose();
+    articleImpositionController.dispose();
     notesController.dispose();
     super.dispose();
   }
@@ -79,7 +93,11 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
             phone: phoneController.text.trim(),
             email: emailController.text.trim(),
             address: addressController.text.trim(),
-            taxId: taxIdController.text.trim(),
+            entityType: entityType,
+            legalNif: nifController.text.trim(),
+            legalNis: nisController.text.trim(),
+            legalRc: rcController.text.trim(),
+            legalArticleImposition: articleImpositionController.text.trim(),
             notes: notesController.text.trim(),
             updatedAt: now,
           ),
@@ -99,7 +117,11 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
             phone: phoneController.text.trim(),
             email: emailController.text.trim(),
             address: addressController.text.trim(),
-            taxId: taxIdController.text.trim(),
+            entityType: entityType,
+            legalNif: nifController.text.trim(),
+            legalNis: nisController.text.trim(),
+            legalRc: rcController.text.trim(),
+            legalArticleImposition: articleImpositionController.text.trim(),
             notes: notesController.text.trim(),
             isArchived: false,
             createdAt: now,
@@ -147,7 +169,9 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
                   children: [
                     Expanded(
                       child: Text(
-                        isEditing ? 'Modifier fournisseur' : 'Nouveau fournisseur',
+                        isEditing
+                            ? 'Modifier fournisseur'
+                            : 'Nouveau fournisseur',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -163,7 +187,8 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom / raison sociale'),
+                  decoration:
+                      const InputDecoration(labelText: 'Nom / raison sociale'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -187,10 +212,54 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: taxIdController,
-                  decoration: const InputDecoration(labelText: 'ICE / identifiant fiscal'),
+                SegmentedButton<EntityType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: EntityType.particulier,
+                      label: Text('Particulier'),
+                      icon: Icon(Icons.person_outline),
+                    ),
+                    ButtonSegment(
+                      value: EntityType.entreprise,
+                      label: Text('Entreprise'),
+                      icon: Icon(Icons.apartment_outlined),
+                    ),
+                  ],
+                  selected: {entityType},
+                  onSelectionChanged: (selection) {
+                    setState(() => entityType = selection.first);
+                  },
                 ),
+                if (entityType == EntityType.entreprise) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nifController,
+                    decoration: const InputDecoration(
+                      labelText: 'NIF (Numéro d\'Identification Fiscale)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nisController,
+                    decoration: const InputDecoration(
+                      labelText: 'NIS (Numéro d\'Identification Statistique)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: rcController,
+                    decoration: const InputDecoration(
+                      labelText: 'RC (Registre de Commerce)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: articleImpositionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Article d\'imposition',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextField(
                   controller: notesController,
@@ -202,7 +271,9 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     OutlinedButton(
-                      onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.of(context).pop(false),
                       child: const Text('Annuler'),
                     ),
                     const SizedBox(width: 12),
@@ -215,7 +286,8 @@ class _SupplierFormDialogState extends ConsumerState<SupplierFormDialog> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.check),
-                      label: Text(_saving ? 'Enregistrement...' : 'Enregistrer'),
+                      label:
+                          Text(_saving ? 'Enregistrement...' : 'Enregistrer'),
                     ),
                   ],
                 ),

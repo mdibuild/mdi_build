@@ -146,7 +146,8 @@ class PdfLetterhead {
   }
 
   /// Pied de page sombre, 3 colonnes (téléphone / email / adresse), avec les
-  /// mentions légales marocaines si renseignées (ICE, IF, RC, Patente).
+  /// mentions légales algériennes si renseignées (NIF, NIS, RC, Article
+  /// d'imposition).
   static pw.Widget footer({
     required Company? company,
     required pw.Font boldFont,
@@ -225,14 +226,14 @@ class PdfLetterhead {
 
   static String _legalLine(Company? company) {
     final parts = <String>[];
-    final ice = company?.legalIce.trim() ?? '';
-    final ifId = company?.legalIf.trim() ?? '';
+    final nif = company?.legalNif.trim() ?? '';
+    final nis = company?.legalNis.trim() ?? '';
     final rc = company?.legalRc.trim() ?? '';
-    final patente = company?.legalPatente.trim() ?? '';
-    if (ice.isNotEmpty) parts.add('ICE $ice');
-    if (ifId.isNotEmpty) parts.add('IF $ifId');
+    final articleImposition = company?.legalArticleImposition.trim() ?? '';
+    if (nif.isNotEmpty) parts.add('NIF $nif');
+    if (nis.isNotEmpty) parts.add('NIS $nis');
     if (rc.isNotEmpty) parts.add('RC $rc');
-    if (patente.isNotEmpty) parts.add('Patente $patente');
+    if (articleImposition.isNotEmpty) parts.add('AI $articleImposition');
     return parts.join(' · ');
   }
 }

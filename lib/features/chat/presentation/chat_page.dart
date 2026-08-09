@@ -67,7 +67,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             companyId: profile.companyId,
             projectId: project.id,
             senderId: profile.id,
-            senderName: 'Vous',
+            senderName: '${profile.fullName} · ${profile.role.label}',
             text: text,
           );
 
@@ -225,7 +225,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             companyId: profile.companyId,
             projectId: project.id,
             senderId: profile.id,
-            senderName: 'Vous',
+            senderName: '${profile.fullName} · ${profile.role.label}',
             messageType: messageType,
             bytes: bytes,
             fileName: fileName,
@@ -487,10 +487,9 @@ class _ChatMessageTile extends ConsumerWidget {
                   children: [
                     Text(
                       isMine ? 'Vous' : message.senderName,
-                      style:
-                          Theme.of(context).textTheme.labelMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                     if (isMine) ...[
                       const SizedBox(width: 4),
@@ -527,7 +526,7 @@ class _ChatMessageTile extends ConsumerWidget {
   }
 }
 
-class _ImageAttachment extends ConsumerWidget {
+class _ImageAttachment extends ConsumerStatefulWidget {
   const _ImageAttachment({
     required this.message,
   });
@@ -535,14 +534,20 @@ class _ImageAttachment extends ConsumerWidget {
   final ChatMessage message;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final future = ref.read(chatRepositoryProvider).createSignedUrl(
-          bucketId: message.bucketId!,
-          filePath: message.filePath!,
-        );
+  ConsumerState<_ImageAttachment> createState() => _ImageAttachmentState();
+}
 
+class _ImageAttachmentState extends ConsumerState<_ImageAttachment> {
+  late final Future<String> _urlFuture =
+      ref.read(chatRepositoryProvider).createSignedUrl(
+            bucketId: widget.message.bucketId!,
+            filePath: widget.message.filePath!,
+          );
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: future,
+      future: _urlFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const SizedBox(
@@ -616,6 +621,7 @@ class _AudioAttachment extends StatefulWidget {
 class _AudioAttachmentState extends State<_AudioAttachment> {
   final AudioPlayer _player = AudioPlayer();
   bool _playing = false;
+  late final Future<String> _urlFuture = _loadUrl();
 
   @override
   void initState() {
@@ -636,7 +642,7 @@ class _AudioAttachmentState extends State<_AudioAttachment> {
     super.dispose();
   }
 
-  Future<String> _loadUrl(BuildContext context) {
+  Future<String> _loadUrl() {
     final container = ProviderScope.containerOf(context, listen: false);
 
     return container.read(chatRepositoryProvider).createSignedUrl(
@@ -652,7 +658,7 @@ class _AudioAttachmentState extends State<_AudioAttachment> {
         : (widget.message.audioDurationMs! / 1000).toStringAsFixed(0);
 
     return FutureBuilder<String>(
-      future: _loadUrl(context),
+      future: _urlFuture,
       builder: (context, snapshot) {
         return Row(
           mainAxisSize: MainAxisSize.min,

@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/project.dart';
-import '../../core/models/project_quote.dart';
 import '../../features/achats/presentation/achats_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
@@ -56,9 +55,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               path: '/devis',
               builder: (context, state) => const DevisListPage()),
           GoRoute(
-              path: '/devis/edit',
-              builder: (context, state) =>
-                  DevisPage(quote: state.extra as ProjectQuote?)),
+              path: '/devis/new',
+              builder: (context, state) => const DevisPage()),
+          GoRoute(
+              path: '/devis/:quoteId/edit',
+              builder: (context, state) => DevisPage(
+                  quoteId: state.pathParameters['quoteId'])),
           GoRoute(
               path: '/achats', builder: (context, state) => const AchatsPage()),
           GoRoute(

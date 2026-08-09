@@ -27,9 +27,12 @@ import '../services/quote_pdf_service.dart';
 import '../services/quote_report_bridge_service.dart';
 
 class DevisPage extends ConsumerStatefulWidget {
-  const DevisPage({super.key, this.quote});
+  const DevisPage({super.key, this.quoteId});
 
-  final ProjectQuote? quote;
+  /// Null pour un nouveau devis. Sinon, le devis est rechargé depuis la base
+  /// par son id (jamais transporté via `extra` de go_router, qui ne
+  /// distingue pas deux ouvertures successives de la même route).
+  final String? quoteId;
 
   @override
   ConsumerState<DevisPage> createState() => _DevisPageState();
@@ -40,33 +43,77 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   final _signatureKey = GlobalKey();
   late final TextEditingController _titleController;
 
-  late String mode;
-  late String status;
-  late double unitPriceWalls;
-  late double unitPriceCeiling;
+  String mode = 'piece';
+  String status = 'brouillon';
+  double unitPriceWalls = 850;
+  double unitPriceCeiling = 700;
   Uint8List? savedSignatureBytes;
 
   ProjectQuote? _currentQuote;
+  bool _loadingQuote = false;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
+    _titleController = TextEditingController(text: 'Devis');
 
-    final quote = widget.quote;
+    final quoteId = widget.quoteId;
+    if (quoteId != null) {
+      _loadingQuote = true;
+      _loadQuote(quoteId);
+    }
+  }
+
+  Future<void> _loadQuote(String quoteId) async {
+    try {
+      final quote =
+          await ref.read(devisRepositoryProvider).fetchQuoteById(quoteId);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (quote == null) {
+        setState(() {
+          _loadingQuote = false;
+          _loadError = 'Devis introuvable.';
+        });
+        return;
+      }
+
+      setState(() {
+        _loadingQuote = false;
+        _applyLoadedQuote(quote);
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loadingQuote = false;
+        _loadError = 'Erreur chargement devis : $error';
+      });
+    }
+  }
+
+  void _applyLoadedQuote(ProjectQuote quote) {
     _currentQuote = quote;
-    _titleController = TextEditingController(text: quote?.title ?? 'Devis');
-    mode = quote?.mode ?? 'piece';
-    status = quote?.status ?? 'brouillon';
-    unitPriceWalls = quote?.unitPriceWalls ?? 850;
-    unitPriceCeiling = quote?.unitPriceCeiling ?? 700;
+    _titleController.text = quote.title;
+    mode = quote.mode;
+    status = quote.status;
+    unitPriceWalls = quote.unitPriceWalls;
+    unitPriceCeiling = quote.unitPriceCeiling;
 
-    final signatureBase64 = quote?.signatureBase64;
+    final signatureBase64 = quote.signatureBase64;
     if ((signatureBase64 ?? '').isNotEmpty) {
       try {
         savedSignatureBytes = base64Decode(signatureBase64!);
       } catch (_) {
         savedSignatureBytes = null;
       }
+    } else {
+      savedSignatureBytes = null;
     }
   }
 
@@ -653,6 +700,19 @@ class _DevisPageState extends ConsumerState<DevisPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingQuote) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Devis')),
+        body: Center(child: Text(_loadError!)),
+      );
+    }
+
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
     final spacesAsync = ref.watch(spacesProvider);
     final isCompact = MediaQuery.of(context).size.width < 760;

@@ -18,6 +18,20 @@ class DevisRepository {
         .toList();
   }
 
+  Future<ProjectQuote?> fetchQuoteById(String quoteId) async {
+    final row = await _client
+        .from('project_quotes')
+        .select()
+        .eq('id', quoteId)
+        .maybeSingle();
+
+    if (row == null) {
+      return null;
+    }
+
+    return ProjectQuote.fromMap(row);
+  }
+
   Future<ProjectQuote> createQuote(ProjectQuote quote) async {
     final row = await _client
         .from('project_quotes')

@@ -15,7 +15,11 @@ class DevisListPage extends ConsumerWidget {
     BuildContext context, {
     ProjectQuote? quote,
   }) {
-    context.push('/devis/edit', extra: quote);
+    if (quote == null) {
+      context.push('/devis/new');
+    } else {
+      context.push('/devis/${quote.id}/edit');
+    }
   }
 
   Future<void> _changeStatus(

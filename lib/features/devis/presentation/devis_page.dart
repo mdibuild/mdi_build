@@ -45,8 +45,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
 
   String mode = 'piece';
   String status = 'brouillon';
-  double unitPriceWalls = 850;
-  double unitPriceCeiling = 700;
+  double unitPriceWalls = 0;
+  double unitPriceCeiling = 0;
   Uint8List? savedSignatureBytes;
 
   ProjectQuote? _currentQuote;
@@ -58,12 +58,25 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: 'Devis');
 
     final quoteId = widget.quoteId;
     if (quoteId != null) {
+      _titleController = TextEditingController(text: 'Devis');
       _loadingQuote = true;
       _loadQuote(quoteId);
+    } else {
+      // Un devis neuf doit être visiblement différent de tout devis déjà
+      // configuré : un titre unique (pas juste "Devis") et des prix à 0
+      // plutôt que des valeurs par défaut qui pourraient laisser croire
+      // qu'on regarde un devis existant.
+      final now = DateTime.now();
+      final day = now.day.toString().padLeft(2, '0');
+      final month = now.month.toString().padLeft(2, '0');
+      final hour = now.hour.toString().padLeft(2, '0');
+      final minute = now.minute.toString().padLeft(2, '0');
+      _titleController = TextEditingController(
+        text: 'Devis $day/$month ${hour}h$minute',
+      );
     }
   }
 

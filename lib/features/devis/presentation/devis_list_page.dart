@@ -80,22 +80,32 @@ class DevisListPage extends ConsumerWidget {
       ),
     );
 
+    debugPrint('DELETE devis: dialog closed, confirmed=$confirmed');
+
     if (confirmed != true) {
       return;
     }
 
     try {
+      debugPrint('DELETE devis: calling deleteQuote id=${quote.id}');
       await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
+      debugPrint('DELETE devis: deleteQuote returned OK');
+
       ref.invalidate(projectQuotesProvider(quote.projectId));
+      debugPrint('DELETE devis: provider invalidated');
 
       if (!context.mounted) {
+        debugPrint('DELETE devis: context unmounted after delete, stopping');
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Devis supprimé.')),
       );
-    } catch (error) {
+      debugPrint('DELETE devis: snackbar shown, flow complete');
+    } catch (error, stackTrace) {
+      debugPrint('DELETE devis: EXCEPTION $error');
+      debugPrint('$stackTrace');
       if (!context.mounted) {
         return;
       }

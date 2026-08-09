@@ -511,18 +511,27 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     }
 
     try {
+      debugPrint('DELETE devis (editor): calling deleteQuote id=${quote.id}');
       await ref.read(devisRepositoryProvider).deleteQuote(quote.id);
+      debugPrint('DELETE devis (editor): deleteQuote returned OK');
+
       ref.invalidate(projectQuotesProvider(projectId));
+      debugPrint('DELETE devis (editor): provider invalidated');
 
       if (!context.mounted) {
+        debugPrint('DELETE devis (editor): context unmounted, stopping');
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Devis supprimé.')),
       );
+      debugPrint('DELETE devis (editor): popping route');
       context.pop();
-    } catch (error) {
+      debugPrint('DELETE devis (editor): flow complete');
+    } catch (error, stackTrace) {
+      debugPrint('DELETE devis (editor): EXCEPTION $error');
+      debugPrint('$stackTrace');
       if (!context.mounted) {
         return;
       }

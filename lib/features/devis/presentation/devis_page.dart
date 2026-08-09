@@ -869,6 +869,18 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                   itemCount: items.length,
                 ),
                 const SizedBox(height: 16),
+                _EstimateItemsCard(
+                  items: _items,
+                  subtotal: subtotal,
+                  tax: tax,
+                  total: total,
+                  onAddItem: _addItem,
+                  onRemoveItem: _removeItem,
+                  onImportFromMetre: () =>
+                      _importFromMetre(context, project.id),
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: 16),
                 _DevisConfigurationCard(
                   titleController: _titleController,
                   mode: mode,
@@ -961,18 +973,6 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                     context: context,
                     projectId: project.id,
                   ),
-                ),
-                const SizedBox(height: 16),
-                _EstimateItemsCard(
-                  items: _items,
-                  subtotal: subtotal,
-                  tax: tax,
-                  total: total,
-                  onAddItem: _addItem,
-                  onRemoveItem: _removeItem,
-                  onImportFromMetre: () =>
-                      _importFromMetre(context, project.id),
-                  onChanged: () => setState(() {}),
                 ),
                 const SizedBox(height: 24),
               ],

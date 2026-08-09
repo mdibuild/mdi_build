@@ -17,6 +17,8 @@ class ChatMessage extends Equatable {
     this.fileName,
     this.mimeType,
     this.audioDurationMs,
+    this.recipientId,
+    this.recipientName,
   });
 
   final String id;
@@ -32,6 +34,8 @@ class ChatMessage extends Equatable {
   final String? mimeType;
   final int fileSize;
   final int? audioDurationMs;
+  final String? recipientId;
+  final String? recipientName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -59,6 +63,8 @@ class ChatMessage extends Equatable {
       audioDurationMs: map['audio_duration_ms'] == null
           ? null
           : _toInt(map['audio_duration_ms']),
+      recipientId: map['recipient_id']?.toString(),
+      recipientName: map['recipient_name']?.toString(),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -78,6 +84,8 @@ class ChatMessage extends Equatable {
       'mime_type': mimeType,
       'file_size': fileSize,
       'audio_duration_ms': audioDurationMs,
+      'recipient_id': recipientId,
+      'recipient_name': recipientName,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -108,6 +116,8 @@ class ChatMessage extends Equatable {
         mimeType,
         fileSize,
         audioDurationMs,
+        recipientId,
+        recipientName,
         createdAt,
         updatedAt,
       ];

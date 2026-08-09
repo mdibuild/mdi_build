@@ -11,8 +11,10 @@ import 'package:record/record.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/chat_message.dart';
+import '../../../core/models/settings_user_entry.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
+import '../../settings/presentation/providers/settings_providers.dart';
 import 'providers/chat_providers.dart';
 
 String _dateTimeLabel(DateTime value) {
@@ -33,6 +35,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   bool _sending = false;
   bool _recording = false;
+  String? _recipientId;
+  String? _recipientName;
 
   @override
   void dispose() {
@@ -69,6 +73,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             senderId: profile.id,
             senderName: '${profile.fullName} · ${profile.role.label}',
             text: text,
+            recipientId: _recipientId,
+            recipientName: _recipientName,
           );
 
       _messageController.clear();
@@ -84,6 +90,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (mounted) {
         setState(() {
           _sending = false;
+          _recipientId = null;
+          _recipientName = null;
         });
       }
     }
@@ -230,6 +238,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             bytes: bytes,
             fileName: fileName,
             mimeType: mimeType,
+            recipientId: _recipientId,
+            recipientName: _recipientName,
           );
     } catch (error) {
       if (!mounted) {
@@ -243,6 +253,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (mounted) {
         setState(() {
           _sending = false;
+          _recipientId = null;
+          _recipientName = null;
         });
       }
     }
@@ -281,6 +293,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Widget build(BuildContext context) {
     final projectAsync = ref.watch(selectedProjectProvider);
     final messagesAsync = ref.watch(currentProjectMessagesProvider);
+    final profileAsync = ref.watch(currentProfileProvider);
+    final profile = profileAsync.value;
+    final List<SettingsUserEntry> recipients = profile == null
+        ? const []
+        : (ref.watch(companyUsersProvider(profile.companyId)).value ?? const [])
+            .where((entry) => entry.id != profile.id)
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -366,43 +385,90 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       top: BorderSide(color: Theme.of(context).dividerColor),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        tooltip: 'Image',
-                        onPressed: _sending ? null : _pickImage,
-                        icon: const Icon(Icons.image_outlined),
-                      ),
-                      IconButton(
-                        tooltip: 'Fichier',
-                        onPressed: _sending ? null : _pickFile,
-                        icon: const Icon(Icons.attach_file_outlined),
-                      ),
-                      IconButton(
-                        tooltip: _recording ? 'Arrêter audio' : 'Audio',
-                        onPressed: _sending ? null : _toggleRecord,
-                        icon: Icon(
-                          _recording
-                              ? Icons.stop_circle_outlined
-                              : Icons.mic_none_outlined,
-                        ),
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          minLines: 1,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            hintText: _recording
-                                ? 'Enregistrement audio...'
-                                : 'Écrire un message',
+                      if (recipients.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Destinataire : ',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              DropdownButton<String?>(
+                                value: _recipientId,
+                                isDense: true,
+                                underline: const SizedBox.shrink(),
+                                items: [
+                                  const DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Text('Tout le monde'),
+                                  ),
+                                  for (final entry in recipients)
+                                    DropdownMenuItem<String?>(
+                                      value: entry.id,
+                                      child: Text(
+                                        '${entry.displayName} · ${entry.role}',
+                                      ),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _recipientId = value;
+                                    _recipientName = value == null
+                                        ? null
+                                        : recipients
+                                            .firstWhere(
+                                                (entry) => entry.id == value)
+                                            .displayName;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _sending ? null : _sendText,
-                        child: Text(_sending ? '...' : 'Envoyer'),
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Image',
+                            onPressed: _sending ? null : _pickImage,
+                            icon: const Icon(Icons.image_outlined),
+                          ),
+                          IconButton(
+                            tooltip: 'Fichier',
+                            onPressed: _sending ? null : _pickFile,
+                            icon: const Icon(Icons.attach_file_outlined),
+                          ),
+                          IconButton(
+                            tooltip: _recording ? 'Arrêter audio' : 'Audio',
+                            onPressed: _sending ? null : _toggleRecord,
+                            icon: Icon(
+                              _recording
+                                  ? Icons.stop_circle_outlined
+                                  : Icons.mic_none_outlined,
+                            ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _messageController,
+                              minLines: 1,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: _recording
+                                    ? 'Enregistrement audio...'
+                                    : 'Écrire un message',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: _sending ? null : _sendText,
+                            child: Text(_sending ? '...' : 'Envoyer'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -504,6 +570,13 @@ class _ChatMessageTile extends ConsumerWidget {
                     ],
                   ],
                 ),
+                if (message.recipientId != null)
+                  Text(
+                    'à : ${message.recipientName ?? 'Utilisateur'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
                 const SizedBox(height: 6),
                 if (message.isText) Text(message.textContent),
                 if (message.isImage && message.hasAttachment)

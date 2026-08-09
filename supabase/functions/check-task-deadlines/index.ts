@@ -74,6 +74,17 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const { data: pref } = await admin
+        .from('notification_preferences')
+        .select('enabled')
+        .eq('profile_id', task.assigned_to as string)
+        .eq('module', 'planning')
+        .maybeSingle();
+
+      if (pref?.enabled === false) {
+        continue;
+      }
+
       const { data: tokens } = await admin
         .from('device_tokens')
         .select('id, fcm_token')

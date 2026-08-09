@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/models/chat_message.dart';
+import '../../../core/services/notify_event_service.dart';
 import '../../../core/services/supabase_service.dart';
 
 class ChatRepository {
@@ -32,6 +33,8 @@ class ChatRepository {
     required String senderId,
     required String senderName,
     required String text,
+    String? recipientId,
+    String? recipientName,
   }) async {
     final now = DateTime.now();
 
@@ -44,11 +47,22 @@ class ChatRepository {
       messageType: 'text',
       textContent: text.trim(),
       fileSize: 0,
+      recipientId: recipientId,
+      recipientName: recipientName,
       createdAt: now,
       updatedAt: now,
     );
 
     await _client.from('project_chat_messages').insert(message.toInsertMap());
+
+    await NotifyEventService.send(
+      companyId: companyId,
+      projectId: projectId,
+      module: 'chat',
+      title: senderName,
+      body: message.textContent,
+      recipientProfileId: recipientId,
+    );
   }
 
   Future<void> sendBinaryMessage({
@@ -61,6 +75,8 @@ class ChatRepository {
     required String fileName,
     required String mimeType,
     int? audioDurationMs,
+    String? recipientId,
+    String? recipientName,
   }) async {
     final now = DateTime.now();
     final safeFileName = _sanitizeFileName(fileName);
@@ -90,11 +106,33 @@ class ChatRepository {
       mimeType: mimeType,
       fileSize: bytes.length,
       audioDurationMs: audioDurationMs,
+      recipientId: recipientId,
+      recipientName: recipientName,
       createdAt: now,
       updatedAt: now,
     );
 
     await _client.from('project_chat_messages').insert(message.toInsertMap());
+
+    await NotifyEventService.send(
+      companyId: companyId,
+      projectId: projectId,
+      module: 'chat',
+      title: senderName,
+      body: _attachmentNotificationBody(messageType),
+      recipientProfileId: recipientId,
+    );
+  }
+
+  String _attachmentNotificationBody(String messageType) {
+    switch (messageType) {
+      case 'image':
+        return 'Photo envoyée';
+      case 'audio':
+        return 'Message audio envoyé';
+      default:
+        return 'Fichier envoyé';
+    }
   }
 
   Future<void> deleteMessage(ChatMessage message) async {

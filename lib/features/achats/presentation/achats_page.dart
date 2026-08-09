@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/services/notify_event_service.dart';
 import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
@@ -206,6 +207,14 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
 
     ref.invalidate(activePurchasesProvider);
     ref.invalidate(archivedPurchasesProvider);
+
+    await NotifyEventService.send(
+      companyId: purchase.companyId,
+      projectId: purchase.projectId,
+      module: 'achats',
+      title: 'Achat : ${_statusLabel(status)}',
+      body: purchase.title,
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

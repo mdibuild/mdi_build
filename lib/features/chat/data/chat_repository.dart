@@ -149,6 +149,29 @@ class ChatRepository {
     }
   }
 
+  /// Marque un message comme lu (accusé de lecture), seulement s'il ne l'est
+  /// pas déjà, pour éviter des écritures et des événements temps réel inutiles.
+  Future<void> markRead(String messageId) async {
+    await _client
+        .from('project_chat_messages')
+        .update({'read_at': DateTime.now().toIso8601String()})
+        .eq('id', messageId)
+        .isFilter('read_at', null);
+  }
+
+  /// Modifie le texte d'un message déjà envoyé et horodate la modification.
+  Future<void> editText({
+    required String messageId,
+    required String newText,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    await _client.from('project_chat_messages').update({
+      'text_content': newText.trim(),
+      'edited_at': now,
+      'updated_at': now,
+    }).eq('id', messageId);
+  }
+
   Future<String> createSignedUrl({
     required String bucketId,
     required String filePath,

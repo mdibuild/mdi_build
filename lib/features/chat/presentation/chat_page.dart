@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../shared/presentation/project_selector_card.dart';
@@ -23,6 +24,25 @@ String _dateTimeLabel(DateTime value) {
   return '${two(value.day)}/${two(value.month)}/${value.year} ${two(value.hour)}:${two(value.minute)}';
 }
 
+bool _sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// Libellé lisible d'une journée : « Aujourd'hui », « Hier » ou la date.
+String _dateLabel(DateTime value) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(value.year, value.month, value.day);
+  final diff = today.difference(day).inDays;
+  if (diff == 0) {
+    return "Aujourd'hui";
+  }
+  if (diff == 1) {
+    return 'Hier';
+  }
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${two(value.day)}/${two(value.month)}/${value.year}';
+}
+
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key});
 
@@ -32,16 +52,19 @@ class ChatPage extends ConsumerStatefulWidget {
 
 class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final AudioRecorder _recorder = AudioRecorder();
 
   bool _sending = false;
   bool _recording = false;
+  String _search = '';
   String? _recipientId;
   String? _recipientName;
 
   @override
   void dispose() {
     _messageController.dispose();
+    _searchController.dispose();
     _recorder.dispose();
     super.dispose();
   }
@@ -357,12 +380,72 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   labelText: 'Discussion du projet',
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _search = value),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Rechercher dans les messages',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _search.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Effacer',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _search = '');
+                            },
+                          ),
+                  ),
+                ),
+              ),
               Expanded(
                 child: messagesAsync.when(
-                  data: (messages) {
+                  data: (allMessages) {
+                    final query = _search.trim().toLowerCase();
+                    final messages = query.isEmpty
+                        ? allMessages
+                        : allMessages
+                            .where((m) =>
+                                m.textContent.toLowerCase().contains(query) ||
+                                m.senderName.toLowerCase().contains(query) ||
+                                (m.fileName ?? '')
+                                    .toLowerCase()
+                                    .contains(query))
+                            .toList();
+
+                    // Accusés de lecture : marquer lus les messages qui me
+                    // sont adressés et pas encore lus (après le rendu).
+                    final myId = profile?.id;
+                    if (myId != null) {
+                      final unread = allMessages
+                          .where((m) =>
+                              m.recipientId == myId &&
+                              !m.isRead &&
+                              m.id.isNotEmpty)
+                          .toList();
+                      if (unread.isNotEmpty) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          final repo = ref.read(chatRepositoryProvider);
+                          for (final m in unread) {
+                            repo.markRead(m.id);
+                          }
+                        });
+                      }
+                    }
+
                     if (messages.isEmpty) {
-                      return const Center(
-                        child: Text('Aucun message pour ce projet.'),
+                      return Center(
+                        child: Text(
+                          query.isEmpty
+                              ? 'Aucun message pour ce projet.'
+                              : 'Aucun message ne correspond à « $_search ».',
+                          textAlign: TextAlign.center,
+                        ),
                       );
                     }
 
@@ -371,7 +454,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
                         final message = messages[index];
-                        return _ChatMessageTile(message: message);
+                        final previous =
+                            index == 0 ? null : messages[index - 1];
+                        final showDate = previous == null ||
+                            !_sameDay(previous.createdAt, message.createdAt);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (showDate)
+                              _DateSeparator(date: message.createdAt),
+                            _ChatMessageTile(message: message),
+                          ],
+                        );
                       },
                     );
                   },
@@ -537,68 +632,184 @@ class _ChatMessageTile extends ConsumerWidget {
     }
   }
 
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: message.textContent);
+    final newText = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modifier le message'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 5,
+          decoration: const InputDecoration(hintText: 'Nouveau texte'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    if (newText == null ||
+        newText.isEmpty ||
+        newText == message.textContent) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(chatRepositoryProvider)
+          .editText(messageId: message.id, newText: newText);
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur modification : $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentProfileAsync = ref.watch(currentProfileProvider);
-    final currentUserId = currentProfileAsync.value?.id;
+    final colors = context.palette;
+    final currentUserId = ref.watch(currentProfileProvider).value?.id;
     final isMine = currentUserId != null && currentUserId == message.senderId;
+
+    final bubbleColor = isMine ? colors.petrol : colors.surfaceAlt;
+    final textColor = isMine ? Colors.white : colors.text;
+    final metaColor =
+        isMine ? Colors.white.withValues(alpha: 0.75) : colors.textSoft;
+
+    const radius = Radius.circular(16);
+    final bubbleRadius = BorderRadius.only(
+      topLeft: radius,
+      topRight: radius,
+      bottomLeft: isMine ? radius : const Radius.circular(4),
+      bottomRight: isMine ? const Radius.circular(4) : radius,
+    );
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
-        child: Card(
+        constraints: const BoxConstraints(maxWidth: 340),
+        child: Container(
           margin: const EdgeInsets.only(bottom: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment:
-                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: bubbleRadius,
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment:
+                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
                       isMine ? 'Vous' : message.senderName,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
+                            color: isMine ? Colors.white : colors.petrol,
                           ),
                     ),
-                    if (isMine) ...[
-                      const SizedBox(width: 4),
-                      InkWell(
-                        onTap: () => _delete(context, ref),
-                        borderRadius: BorderRadius.circular(999),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(Icons.delete_outline, size: 16),
+                  ),
+                  if (isMine && message.isText && message.id.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () => _edit(context, ref),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          size: 15,
+                          color: textColor,
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
-                if (message.recipientId != null)
-                  Text(
+                  if (isMine && message.id.isNotEmpty) ...[
+                    const SizedBox(width: 2),
+                    InkWell(
+                      onTap: () => _delete(context, ref),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 15,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (message.recipientId != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
                     'à : ${message.recipientName ?? 'Utilisateur'}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
+                          color: metaColor,
                         ),
                   ),
-                const SizedBox(height: 6),
-                if (message.isText) Text(message.textContent),
-                if (message.isImage && message.hasAttachment)
-                  _ImageAttachment(message: message),
-                if (message.isFile && message.hasAttachment)
-                  _FileAttachment(message: message),
-                if (message.isAudio && message.hasAttachment)
-                  _AudioAttachment(message: message),
-                const SizedBox(height: 6),
-                Text(
-                  _dateTimeLabel(message.createdAt),
-                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-              ],
-            ),
+              const SizedBox(height: 6),
+              if (message.isText)
+                Text(message.textContent, style: TextStyle(color: textColor)),
+              if (message.isImage && message.hasAttachment)
+                _ImageAttachment(message: message),
+              if (message.isFile && message.hasAttachment)
+                _FileAttachment(message: message),
+              if (message.isAudio && message.hasAttachment)
+                _AudioAttachment(message: message),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _dateTimeLabel(message.createdAt),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: metaColor),
+                  ),
+                  if (message.isEdited) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '(modifié)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: metaColor,
+                            fontStyle: FontStyle.italic,
+                          ),
+                    ),
+                  ],
+                  if (isMine && message.recipientId != null) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      message.isRead ? Icons.done_all : Icons.done,
+                      size: 15,
+                      color: message.isRead ? colors.info : metaColor,
+                    ),
+                  ],
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -776,6 +987,38 @@ class _AudioAttachmentState extends State<_AudioAttachment> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Petit séparateur centré affichant la journée, inséré entre les messages
+/// de jours différents.
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.palette;
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: colors.surfaceAlt,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: colors.border),
+        ),
+        child: Text(
+          _dateLabel(date),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colors.textSoft,
+              ),
+        ),
+      ),
     );
   }
 }

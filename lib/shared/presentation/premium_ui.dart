@@ -308,28 +308,31 @@ class PremiumMetricTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
 
+  /// Si fourni, la tuile devient cliquable (navigation ou action).
+  /// Laissé nul, la tuile reste purement informative comme avant.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.palette;
 
-    return Container(
-      width: 165,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surfaceAlt,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: colors.border,
-          width: 1.1,
-        ),
+    final decoration = BoxDecoration(
+      color: colors.surfaceAlt,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(
+        color: colors.border,
+        width: 1.1,
       ),
-      child: Row(
+    );
+
+    final content = Row(
         children: [
           Container(
             width: 42,
@@ -365,6 +368,28 @@ class PremiumMetricTile extends StatelessWidget {
             ),
           ),
         ],
+      );
+
+    if (onTap == null) {
+      return Container(
+        width: 165,
+        padding: const EdgeInsets.all(16),
+        decoration: decoration,
+        child: content,
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          width: 165,
+          padding: const EdgeInsets.all(16),
+          decoration: decoration,
+          child: content,
+        ),
       ),
     );
   }
@@ -477,25 +502,26 @@ class PremiumWatermarkBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.palette;
-
     return Stack(
       children: [
-        Positioned(
-          right: -40,
-          bottom: -40,
+        child,
+        // Logo de la marque en filigrane : en surimpression discrète et
+        // non-cliquable, centré, par-dessus le fond opaque des pages pour
+        // rester visible sur tous les écrans de l'application.
+        Positioned.fill(
           child: IgnorePointer(
-            child: Opacity(
-              opacity: 0.07,
-              child: Icon(
-                Icons.architecture,
-                size: 320,
-                color: colors.text,
+            child: Center(
+              child: Opacity(
+                opacity: 0.10,
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 360,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
         ),
-        child,
       ],
     );
   }

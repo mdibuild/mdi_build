@@ -1,5 +1,20 @@
 import 'package:equatable/equatable.dart';
 
+/// Un élément affiché dans la fiche détaillée d'une tuile du dashboard
+/// (mini-liste : un titre et un sous-titre facultatif).
+class DashboardListItem extends Equatable {
+  const DashboardListItem({
+    required this.title,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  List<Object?> get props => [title, subtitle];
+}
+
 class DashboardMetrics extends Equatable {
   const DashboardMetrics({
     required this.projectsCount,
@@ -14,6 +29,12 @@ class DashboardMetrics extends Equatable {
     required this.manualReportsCount,
     required this.recentReportTitles,
     required this.highlights,
+    this.projectsPreview = const <DashboardListItem>[],
+    this.tasksPreview = const <DashboardListItem>[],
+    this.purchasesPreview = const <DashboardListItem>[],
+    this.reportsPreview = const <DashboardListItem>[],
+    this.documentsPreview = const <DashboardListItem>[],
+    this.quotesPreview = const <DashboardListItem>[],
   });
 
   final int projectsCount;
@@ -28,6 +49,14 @@ class DashboardMetrics extends Equatable {
   final int manualReportsCount;
   final List<String> recentReportTitles;
   final List<String> highlights;
+
+  // Aperçus détaillés (quelques éléments) affichés au clic sur une tuile.
+  final List<DashboardListItem> projectsPreview;
+  final List<DashboardListItem> tasksPreview;
+  final List<DashboardListItem> purchasesPreview;
+  final List<DashboardListItem> reportsPreview;
+  final List<DashboardListItem> documentsPreview;
+  final List<DashboardListItem> quotesPreview;
 
   factory DashboardMetrics.empty() {
     return const DashboardMetrics(
@@ -60,5 +89,11 @@ class DashboardMetrics extends Equatable {
         manualReportsCount,
         recentReportTitles,
         highlights,
+        projectsPreview,
+        tasksPreview,
+        purchasesPreview,
+        reportsPreview,
+        documentsPreview,
+        quotesPreview,
       ];
 }

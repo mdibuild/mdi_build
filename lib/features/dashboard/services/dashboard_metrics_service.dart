@@ -113,7 +113,76 @@ class DashboardMetricsService {
       manualReportsCount: manualReports,
       recentReportTitles: recentReportTitles,
       highlights: highlights,
+      projectsPreview: _toItems(projects),
+      tasksPreview: _toItems(tasks),
+      purchasesPreview: _toItems(purchases),
+      reportsPreview: _toItems(reports),
+      documentsPreview: _toItems(documents),
+      quotesPreview: _toItems(quotes),
     );
+  }
+
+  /// Transforme des lignes brutes en éléments d'aperçu (max 8), en devinant
+  /// un libellé lisible quelles que soient les colonnes réelles de la table.
+  List<DashboardListItem> _toItems(List<Map<String, dynamic>> rows) {
+    return rows.take(8).map((row) {
+      final title = _firstText(row, const [
+            'name',
+            'title',
+            'label',
+            'reference',
+            'designation',
+            'libelle',
+            'subject',
+            'objet',
+          ]) ??
+          'Élément';
+
+      final status = _firstText(row, const [
+        'status',
+        'statut',
+        'report_type',
+        'etat',
+      ]);
+      final amount = _firstText(row, const [
+        'total_ttc',
+        'total',
+        'amount',
+        'montant',
+        'total_ht',
+      ]);
+      final date = _firstText(row, const [
+        'updated_at',
+        'created_at',
+        'date',
+      ]);
+
+      final parts = <String>[
+        if (status != null) status,
+        if (amount != null) amount,
+        if (date != null) _shortDate(date),
+      ];
+
+      return DashboardListItem(
+        title: title,
+        subtitle: parts.isEmpty ? null : parts.join(' · '),
+      );
+    }).toList();
+  }
+
+  String? _firstText(Map<String, dynamic> row, List<String> keys) {
+    for (final key in keys) {
+      final value = row[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString().trim();
+      }
+    }
+    return null;
+  }
+
+  /// Garde la partie « AAAA-MM-JJ » d'une date ISO si possible.
+  String _shortDate(String raw) {
+    return raw.length >= 10 ? raw.substring(0, 10) : raw;
   }
 
   Future<List<Map<String, dynamic>>> _fetchRows({

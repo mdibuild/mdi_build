@@ -19,6 +19,8 @@ class ChatMessage extends Equatable {
     this.audioDurationMs,
     this.recipientId,
     this.recipientName,
+    this.readAt,
+    this.editedAt,
   });
 
   final String id;
@@ -38,6 +40,15 @@ class ChatMessage extends Equatable {
   final String? recipientName;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Date de lecture par le destinataire (null = non lu).
+  final DateTime? readAt;
+
+  /// Date de dernière modification du texte (null = jamais modifié).
+  final DateTime? editedAt;
+
+  bool get isRead => readAt != null;
+  bool get isEdited => editedAt != null;
 
   bool get isText => messageType == 'text';
   bool get isImage => messageType == 'image';
@@ -67,6 +78,12 @@ class ChatMessage extends Equatable {
       recipientName: map['recipient_name']?.toString(),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      readAt: map['read_at'] == null
+          ? null
+          : DateTime.tryParse(map['read_at'].toString()),
+      editedAt: map['edited_at'] == null
+          ? null
+          : DateTime.tryParse(map['edited_at'].toString()),
     );
   }
 
@@ -120,5 +137,7 @@ class ChatMessage extends Equatable {
         recipientName,
         createdAt,
         updatedAt,
+        readAt,
+        editedAt,
       ];
 }

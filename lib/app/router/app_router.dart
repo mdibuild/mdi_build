@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/models/project.dart';
 import '../../features/achats/presentation/achats_page.dart';
@@ -25,8 +29,28 @@ import '../../features/settings/presentation/tax_rates_page.dart';
 import '../../shared/presentation/main_shell_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final auth = Supabase.instance.client.auth;
+
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/dashboard',
+    // Réévalue la redirection à chaque changement d'état d'authentification
+    // (connexion / déconnexion / rafraîchissement de session).
+    refreshListenable: _AuthRefreshNotifier(auth.onAuthStateChange),
+    redirect: (context, state) {
+      final loggedIn = auth.currentSession != null;
+      final goingToLogin = state.matchedLocation == '/login';
+
+      // Pas de session et on n'est pas déjà sur le login → aller au login.
+      if (!loggedIn && !goingToLogin) {
+        return '/login';
+      }
+      // Session valide mais on arrive sur le login → aller au dashboard.
+      // (C'est ce qui garde l'utilisateur connecté au redémarrage de l'appli.)
+      if (loggedIn && goingToLogin) {
+        return '/dashboard';
+      }
+      return null;
+    },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       ShellRoute(
@@ -96,3 +120,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Transforme le flux d'état d'authentification Supabase en [Listenable]
+/// pour que GoRouter réévalue sa redirection à chaque connexion/déconnexion.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Stream<AuthState> stream) {
+    notifyListeners();
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<AuthState> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}

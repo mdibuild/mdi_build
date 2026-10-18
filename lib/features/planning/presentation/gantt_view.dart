@@ -18,10 +18,16 @@ class GanttView extends StatefulWidget {
     super.key,
     required this.tasks,
     this.dependencies = const [],
+    this.isLate,
   });
 
   final List<ProjectTask> tasks;
   final List<ProjectTaskDependency> dependencies;
+
+  /// Règle de retard facultative (utilisée par les rapports pour que le
+  /// Gantt, la synthèse et la liste appliquent exactement la même règle).
+  /// Sans valeur, la règle historique du module Planning s'applique.
+  final bool Function(ProjectTask task)? isLate;
 
   @override
   State<GanttView> createState() => _GanttViewState();
@@ -29,6 +35,19 @@ class GanttView extends StatefulWidget {
 
 class _GanttViewState extends State<GanttView> {
   GanttScale scale = GanttScale.week;
+
+  // Contrôleurs propres au Gantt : ses barres de défilement fonctionnent
+  // ainsi quel que soit l'écran qui l'accueille (y compris une page qui
+  // défile elle-même, comme les rapports).
+  final ScrollController _verticalController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,13 +162,17 @@ class _GanttViewState extends State<GanttView> {
           SizedBox(
             height: ganttHeight,
             child: Scrollbar(
+              controller: _verticalController,
               thumbVisibility: true,
               child: SingleChildScrollView(
+                controller: _verticalController,
                 scrollDirection: Axis.vertical,
                 child: Scrollbar(
+                  controller: _horizontalController,
                   thumbVisibility: true,
                   notificationPredicate: (_) => true,
                   child: SingleChildScrollView(
+                    controller: _horizontalController,
                     scrollDirection: Axis.horizontal,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,6 +200,7 @@ class _GanttViewState extends State<GanttView> {
                               timelineWidth: timelineWidth,
                               unitWidth: unitWidth,
                               rowHeight: rowHeight,
+                              isLate: widget.isLate,
                             ),
                           ],
                         ),
@@ -357,6 +381,7 @@ class _TimelineArea extends StatelessWidget {
     required this.timelineWidth,
     required this.unitWidth,
     required this.rowHeight,
+    this.isLate,
   });
 
   final List<ProjectTask> tasks;
@@ -366,6 +391,7 @@ class _TimelineArea extends StatelessWidget {
   final double timelineWidth;
   final double unitWidth;
   final double rowHeight;
+  final bool Function(ProjectTask task)? isLate;
 
   @override
   Widget build(BuildContext context) {
@@ -430,9 +456,11 @@ class _TimelineArea extends StatelessWidget {
             final progressWidth =
                 plannedWidth * (task.progress / 100).clamp(0.0, 1.0);
 
-            final delayed = task.status != 'terminee' &&
-                task.plannedEndDate != null &&
-                DateTime.now().isAfter(task.plannedEndDate!);
+            final delayed = isLate != null
+                ? isLate!(task)
+                : task.status != 'terminee' &&
+                    task.plannedEndDate != null &&
+                    DateTime.now().isAfter(task.plannedEndDate!);
 
             final progressColor = delayed
                 ? colors.danger

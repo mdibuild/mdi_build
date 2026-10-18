@@ -544,18 +544,18 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Annuler le devis'),
         content: const Text(
           'Le devis passera au statut "Annulé". Tu pourras le reprendre plus tard.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Retour'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Annuler le devis'),
           ),
         ],

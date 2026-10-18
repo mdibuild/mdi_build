@@ -177,19 +177,19 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer le projet'),
         content: Text(
           'Supprimer "${_projectLabel(row)}" ? Cette action est définitive.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Supprimer'),
           ),
         ],
@@ -200,7 +200,18 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
       return;
     }
 
-    await ref.read(projectsRepositoryProvider).deleteProject(row['id'] as String);
+    try {
+      await ref
+          .read(projectsRepositoryProvider)
+          .deleteProject(row['id'] as String);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Suppression impossible : $error')),
+        );
+      }
+      return;
+    }
     ref.invalidate(companyProjectsProvider);
     ref.invalidate(projectsProvider);
 

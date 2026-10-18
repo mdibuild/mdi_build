@@ -61,17 +61,17 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
   Future<void> _delete(Supplier supplier) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer fournisseur'),
         content: Text('Supprimer "${supplier.name}" ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Supprimer'),
           ),
         ],

@@ -11,6 +11,7 @@ import '../../settings/presentation/providers/company_providers.dart';
 import '../services/report_dashboard_generation_service.dart';
 import '../services/report_export_service.dart';
 import 'providers/reports_providers.dart';
+import 'analysis/report_analysis_tab.dart';
 
 String _moduleLabel(String value) {
   switch (value) {
@@ -450,17 +451,17 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   Future<void> _deleteReport(ProjectReport report) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer rapport'),
         content: Text('Supprimer "${report.title}" ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuler'),
           ),
           FilledButton(
             style: PremiumButtonStyles.destructive(context),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Supprimer'),
           ),
         ],
@@ -740,12 +741,13 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final manualReports = totalReports - autoReports;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Rapports'),
           bottom: const TabBar(
             tabs: [
+              Tab(text: 'Analyse'),
               Tab(text: 'En cours'),
               Tab(text: 'Archivés'),
             ],
@@ -759,6 +761,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
             return TabBarView(
               children: [
+                const ReportAnalysisTab(),
                 activeReportsAsync.when(
                   data: (reports) => _ReportsTabContent(
                     header: _buildHeaderBlock(

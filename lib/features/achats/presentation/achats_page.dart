@@ -229,17 +229,17 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer achat'),
         content: Text('Supprimer "${purchase.title}" ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Supprimer'),
           ),
         ],

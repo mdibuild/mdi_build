@@ -162,17 +162,17 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
   Future<void> _deleteTask(BuildContext context, _PlanningTask task) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer la tâche'),
         content: Text('Supprimer "${task.title}" ? Cette action est définitive.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Supprimer'),
           ),
         ],

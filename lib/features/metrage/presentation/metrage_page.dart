@@ -114,16 +114,16 @@ class MetragePage extends ConsumerWidget {
       BuildContext context, WidgetRef ref, SpaceItem space) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer espace'),
         content: Text('Supprimer "${space.name}" ?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Supprimer')),
         ],
       ),
@@ -226,16 +226,16 @@ class MetragePage extends ConsumerWidget {
       BuildContext context, WidgetRef ref, OpeningItem opening) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer ouverture'),
         content: Text('Supprimer "${opening.name}" ?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
             style: PremiumButtonStyles.destructive(context),
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Supprimer')),
         ],
       ),

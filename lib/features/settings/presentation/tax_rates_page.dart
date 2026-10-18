@@ -48,6 +48,7 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),

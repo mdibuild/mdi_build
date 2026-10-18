@@ -188,6 +188,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),

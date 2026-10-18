@@ -16,6 +16,24 @@ class ChatRepository {
   final SupabaseClient _client;
   final String _storageBucket;
 
+  /// Messages du chat général de l'entreprise (sans projet). Le flux temps
+  /// réel est filtré par entreprise ; on ne garde que les messages sans
+  /// projet, pour ne jamais mélanger avec les conversations de projets.
+  Stream<List<ChatMessage>> streamGeneralMessages(String companyId) {
+    return _client
+        .from('project_chat_messages')
+        .stream(primaryKey: ['id'])
+        .eq('company_id', companyId)
+        .map(
+          (rows) => rows
+              .where((row) => row['project_id'] == null)
+              .map((row) => ChatMessage.fromMap(row))
+              .toList()
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
+        );
+  }
+
+  /// Messages d'un projet donné uniquement.
   Stream<List<ChatMessage>> streamProjectMessages(String projectId) {
     return _client
         .from('project_chat_messages')
@@ -27,9 +45,10 @@ class ChatRepository {
         );
   }
 
+  /// [projectId] null = message du chat général.
   Future<void> sendText({
     required String companyId,
-    required String projectId,
+    required String? projectId,
     required String senderId,
     required String senderName,
     required String text,
@@ -65,9 +84,10 @@ class ChatRepository {
     );
   }
 
+  /// [projectId] null = pièce jointe du chat général.
   Future<void> sendBinaryMessage({
     required String companyId,
-    required String projectId,
+    required String? projectId,
     required String senderId,
     required String senderName,
     required String messageType,
@@ -80,8 +100,10 @@ class ChatRepository {
   }) async {
     final now = DateTime.now();
     final safeFileName = _sanitizeFileName(fileName);
+    final folder =
+        projectId == null ? 'chat/general/$companyId' : 'chat/$projectId';
     final filePath =
-        'chat/$projectId/${now.microsecondsSinceEpoch}_$safeFileName';
+        '$folder/${now.microsecondsSinceEpoch}_$safeFileName';
 
     await _client.storage.from(_storageBucket).uploadBinary(
           filePath,

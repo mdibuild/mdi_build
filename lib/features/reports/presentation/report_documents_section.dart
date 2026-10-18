@@ -6,6 +6,7 @@ import '../../../core/models/project_document.dart';
 import '../../documents/data/documents_repository.dart';
 import '../../documents/presentation/document_view_page.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
+import '../../../shared/presentation/premium_ui.dart';
 
 final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
   return DocumentsRepository();
@@ -197,6 +198,7 @@ class _ReportDocumentsSectionState
             child: const Text('Annuler'),
           ),
           FilledButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -432,6 +434,9 @@ class _ReportDocumentTile extends StatelessWidget {
                   label: const Text('Archiver'),
                 ),
                 TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Supprimer'),

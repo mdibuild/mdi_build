@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/device_token_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/username_auth.dart';
+import '../../../shared/presentation/premium_ui.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,58 +56,98 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 128,
-                      height: 128,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Gestion de chantier',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+      body: SafeArea(
+        // Défilable : en paysage ou clavier ouvert, tout reste accessible.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final shortScreen = constraints.maxHeight < 560;
+            final logoSize = shortScreen ? 72.0 : 128.0;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - 32).clamp(0, 10000),
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(shortScreen ? 18 : 24),
+                        child: AutofillGroup(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Center(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Image.asset(
+                                    'assets/images/logo.png',
+                                    width: logoSize,
+                                    height: logoSize,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Gestion de chantier',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: shortScreen ? 16 : 22),
+                              TextField(
+                                controller: usernameController,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.username],
+                                decoration: const InputDecoration(
+                                  labelText: "Nom d'utilisateur",
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: passwordController,
+                                obscureText: true,
+                                textInputAction: TextInputAction.done,
+                                autofillHints: const [AutofillHints.password],
+                                onSubmitted: (_) {
+                                  if (!loading) {
+                                    login();
+                                  }
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Mot de passe',
+                                  prefixIcon: Icon(Icons.lock_outline),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              FilledButton.icon(
+                                onPressed: loading ? null : login,
+                                icon: loading
+                                    ? const PremiumButtonProgress()
+                                    : const Icon(Icons.login),
+                                label: Text(
+                                  loading ? 'Connexion…' : 'Se connecter',
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                  ),
-                  const SizedBox(height: 22),
-                  TextField(
-                    controller: usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nom d\'utilisateur',
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: passwordController,
-                    decoration:
-                        const InputDecoration(labelText: 'Mot de passe'),
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: loading ? null : login,
-                      child: Text(loading ? 'Connexion...' : 'Se connecter'),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

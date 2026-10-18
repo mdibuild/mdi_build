@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/project_document.dart';
 import 'providers/documents_providers.dart';
+import '../../../shared/presentation/premium_ui.dart';
 
 class DocumentViewPage extends ConsumerStatefulWidget {
   const DocumentViewPage({
@@ -123,7 +124,7 @@ class _DocumentViewPageState extends ConsumerState<DocumentViewPage> {
 
           final signedUrl = snapshot.data!;
 
-          return Column(
+          return AdaptiveHeaderColumn(
             children: [
               Container(
                 width: double.infinity,

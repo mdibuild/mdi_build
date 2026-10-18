@@ -122,6 +122,7 @@ class MetragePage extends ConsumerWidget {
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer')),
         ],
@@ -233,6 +234,7 @@ class MetragePage extends ConsumerWidget {
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer')),
         ],
@@ -256,7 +258,7 @@ class MetragePage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Métré')),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
+        child: AdaptiveHeaderColumn(
           children: [
             selectedProjectAsync.when(
               data: (project) => AppScaffoldTitle(

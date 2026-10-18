@@ -70,6 +70,7 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -167,7 +168,7 @@ class _ClientsPageState extends ConsumerState<ClientsPage> {
           icon: const Icon(Icons.add),
           label: const Text('Nouveau client'),
         ),
-        body: Column(
+        body: AdaptiveHeaderColumn(
           children: [
             Padding(
               padding: const EdgeInsets.all(16),

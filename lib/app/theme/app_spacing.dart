@@ -8,8 +8,9 @@ class AppSpacing {
 }
 
 class AppRadius {
-  static const double iconAvatar = 14;
-  static const double tile = 22;
-  static const double card = 28;
+  static const double iconAvatar = 12;
+  static const double control = 12;
+  static const double tile = 16;
+  static const double card = 18;
   static const double pill = 999;
 }

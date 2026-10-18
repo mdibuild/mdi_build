@@ -29,14 +29,18 @@ import '../../features/settings/presentation/tax_rates_page.dart';
 import '../../shared/presentation/main_shell_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = Supabase.instance.client.auth;
+  final auth = _authOrNull();
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: auth == null ? '/login' : '/dashboard',
     // Réévalue la redirection à chaque changement d'état d'authentification
     // (connexion / déconnexion / rafraîchissement de session).
-    refreshListenable: _AuthRefreshNotifier(auth.onAuthStateChange),
+    refreshListenable:
+        auth == null ? null : _AuthRefreshNotifier(auth.onAuthStateChange),
     redirect: (context, state) {
+      if (auth == null) {
+        return null;
+      }
       final loggedIn = auth.currentSession != null;
       final goingToLogin = state.matchedLocation == '/login';
 
@@ -135,5 +139,15 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+}
+
+/// Client d'authentification Supabase, ou null si Supabase n'est pas
+/// initialisé (tests de widgets) : dans ce cas, pas de garde de connexion.
+GoTrueClient? _authOrNull() {
+  try {
+    return Supabase.instance.client.auth;
+  } catch (_) {
+    return null;
   }
 }

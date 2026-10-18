@@ -78,6 +78,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -190,7 +191,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
             ),
             body: Padding(
               padding: EdgeInsets.all(isCompact ? 12 : 20),
-              child: Column(
+              child: AdaptiveHeaderColumn(
                 children: [
                   selectedProjectAsync.when(
                     data: (project) => _DocumentsHeader(
@@ -721,6 +722,9 @@ class _DocumentTileState extends State<_DocumentTile> {
                         ),
                       ),
                       TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
                         onPressed: widget.onDelete,
                         icon: const Icon(Icons.delete_outline),
                         label: const Text('Supprimer'),

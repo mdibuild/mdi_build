@@ -459,6 +459,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             child: const Text('Annuler'),
           ),
           FilledButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -1002,6 +1003,13 @@ class _PremiumReportCard extends StatelessWidget {
                 label: Text(report.isArchived ? 'Désarchiver' : 'Archiver'),
               ),
               OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.error,
+                    width: 1.4,
+                  ),
+                ),
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('Supprimer'),

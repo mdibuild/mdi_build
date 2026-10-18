@@ -182,17 +182,19 @@ class QuantitatifPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Quantitatif')),
       body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
+        child: AdaptiveHeaderColumn(
           children: [
             selectedProjectAsync.when(
-              data: (project) => Row(
+              data: (project) => Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: Text(
-                      project == null
-                          ? 'Aucun projet courant.'
-                          : 'Projet courant : ${project.name}',
-                    ),
+                  Text(
+                    project == null
+                        ? 'Aucun projet courant.'
+                        : 'Projet courant : ${project.name}',
                   ),
                   OutlinedButton.icon(
                     onPressed: () => context.go('/metrage'),

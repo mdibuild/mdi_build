@@ -7,6 +7,7 @@ import '../../../core/models/project_document.dart';
 import '../../documents/presentation/document_form_dialog.dart';
 import '../../documents/presentation/document_view_page.dart';
 import '../../documents/presentation/providers/documents_providers.dart';
+import '../../../shared/presentation/premium_ui.dart';
 
 class TaskDocumentsSection extends ConsumerWidget {
   const TaskDocumentsSection({
@@ -115,6 +116,7 @@ class TaskDocumentsSection extends ConsumerWidget {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -283,6 +285,9 @@ class _TaskDocumentTile extends StatelessWidget {
                   label: Text(document.isArchived ? 'Désarchiver' : 'Archiver'),
                 ),
                 TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Supprimer'),

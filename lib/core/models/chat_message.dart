@@ -25,7 +25,8 @@ class ChatMessage extends Equatable {
 
   final String id;
   final String companyId;
-  final String projectId;
+  /// Projet de la conversation ; null = message du chat général.
+  final String? projectId;
   final String? senderId;
   final String senderName;
   final String messageType;
@@ -47,6 +48,7 @@ class ChatMessage extends Equatable {
   /// Date de dernière modification du texte (null = jamais modifié).
   final DateTime? editedAt;
 
+  bool get isGeneral => projectId == null;
   bool get isRead => readAt != null;
   bool get isEdited => editedAt != null;
 
@@ -61,7 +63,7 @@ class ChatMessage extends Equatable {
     return ChatMessage(
       id: map['id'] as String,
       companyId: map['company_id'] as String,
-      projectId: map['project_id'] as String,
+      projectId: map['project_id']?.toString(),
       senderId: map['sender_id']?.toString(),
       senderName: (map['sender_name'] as String?) ?? 'Utilisateur',
       messageType: (map['message_type'] as String?) ?? 'text',

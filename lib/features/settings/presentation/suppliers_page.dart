@@ -70,6 +70,7 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -167,7 +168,7 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
           icon: const Icon(Icons.add),
           label: const Text('Nouveau fournisseur'),
         ),
-        body: Column(
+        body: AdaptiveHeaderColumn(
           children: [
             Padding(
               padding: const EdgeInsets.all(16),

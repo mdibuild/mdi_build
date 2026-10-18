@@ -238,6 +238,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Supprimer'),
           ),
@@ -304,7 +305,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
         ),
         body: Padding(
           padding: const EdgeInsets.all(20),
-          child: Column(
+          child: AdaptiveHeaderColumn(
             children: [
               AppScaffoldTitle(
                 title: 'Achats',
@@ -334,8 +335,11 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
-                        width: 220,
+                        width: MediaQuery.sizeOf(context).width < 600
+                            ? 150
+                            : 220,
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: statusFilter,
                           decoration:
                               const InputDecoration(labelText: 'Statut'),
@@ -642,6 +646,9 @@ class _PurchaseTile extends ConsumerWidget {
                       label: const Text('Archiver'),
                     ),
                   TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
                     onPressed: onDelete,
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Supprimer'),

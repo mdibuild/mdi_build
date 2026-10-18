@@ -6,6 +6,12 @@ import '../../core/services/supabase_service.dart';
 import '../../core/utils/app_refresh.dart';
 import 'premium_ui.dart';
 
+/// Clé stable du contenu de la coque : quand la largeur change (rotation
+/// portrait/paysage), la coque passe du tiroir à la barre latérale, mais
+/// l'écran affiché est déplacé tel quel au lieu d'être recréé. Le projet,
+/// la conversation, les saisies en cours et le défilement sont conservés.
+final GlobalKey _shellContentKey = GlobalKey(debugLabel: 'shellContent');
+
 class MainShellPage extends StatelessWidget {
   const MainShellPage({super.key, required this.child});
 
@@ -42,6 +48,7 @@ class MainShellPage extends StatelessWidget {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
+            style: PremiumButtonStyles.destructive(context),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Se déconnecter'),
           ),
@@ -73,6 +80,10 @@ class MainShellPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < _compactBreakpoint;
+        final content = KeyedSubtree(
+          key: _shellContentKey,
+          child: PremiumWatermarkBackground(child: child),
+        );
 
         if (isCompact) {
           return Scaffold(
@@ -118,7 +129,7 @@ class MainShellPage extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-                  Expanded(child: PremiumWatermarkBackground(child: child)),
+                  Expanded(child: content),
                 ],
               ),
             ),
@@ -129,17 +140,28 @@ class MainShellPage extends StatelessWidget {
           body: Row(
             children: [
               Container(
-                width: 236,
+                width: constraints.maxWidth < 1000 ? 212 : 236,
                 color: colors.surfaceAlt,
-                child: _NavRailContent(
-                  colors: colors,
-                  selectedIndex: selectedIndex,
-                  onSelect: context.go,
-                  onLogout: () => _confirmLogout(context),
+                // Protège la barre des encoches / barres système en paysage.
+                child: SafeArea(
+                  right: false,
+                  child: _NavRailContent(
+                    colors: colors,
+                    selectedIndex: selectedIndex,
+                    onSelect: context.go,
+                    onLogout: () => _confirmLogout(context),
+                  ),
                 ),
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: PremiumWatermarkBackground(child: child)),
+              Expanded(
+                child: SafeArea(
+                  left: false,
+                  top: false,
+                  bottom: false,
+                  child: content,
+                ),
+              ),
             ],
           ),
         );

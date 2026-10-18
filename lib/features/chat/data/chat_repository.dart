@@ -33,6 +33,16 @@ class ChatRepository {
         );
   }
 
+  /// Tous les messages visibles de l'entreprise (toutes conversations),
+  /// pour compter les non-lus de chaque conversation.
+  Stream<List<ChatMessage>> streamCompanyMessages(String companyId) {
+    return _client
+        .from('project_chat_messages')
+        .stream(primaryKey: ['id'])
+        .eq('company_id', companyId)
+        .map((rows) => rows.map((row) => ChatMessage.fromMap(row)).toList());
+  }
+
   /// Messages d'un projet donné uniquement.
   Stream<List<ChatMessage>> streamProjectMessages(String projectId) {
     return _client
@@ -78,6 +88,8 @@ class ChatRepository {
       companyId: companyId,
       projectId: projectId,
       module: 'chat',
+      // Permet d'ouvrir directement la bonne conversation au toucher.
+      data: _chatNotificationData(projectId),
       title: senderName,
       body: message.textContent,
       recipientProfileId: recipientId,
@@ -140,6 +152,8 @@ class ChatRepository {
       companyId: companyId,
       projectId: projectId,
       module: 'chat',
+      // Permet d'ouvrir directement la bonne conversation au toucher.
+      data: _chatNotificationData(projectId),
       title: senderName,
       body: _attachmentNotificationBody(messageType),
       recipientProfileId: recipientId,
@@ -193,6 +207,11 @@ class ChatRepository {
       'updated_at': now,
     }).eq('id', messageId);
   }
+
+  static Map<String, dynamic> _chatNotificationData(String? projectId) => {
+        'conversation': projectId == null ? 'general' : 'project',
+        if (projectId != null) 'projectId': projectId,
+      };
 
   Future<String> createSignedUrl({
     required String bucketId,

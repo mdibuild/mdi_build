@@ -655,6 +655,15 @@ class PremiumInfoLine extends StatelessWidget {
   }
 }
 
+/// Matrice de conversion en niveaux de gris (luminance), pour un filigrane
+/// neutre quelle que soit la palette.
+const List<double> _grayscaleMatrix = [
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 1, 0, //
+];
+
 class PremiumWatermarkBackground extends StatelessWidget {
   const PremiumWatermarkBackground({super.key, required this.child});
 
@@ -665,18 +674,21 @@ class PremiumWatermarkBackground extends StatelessWidget {
     return Stack(
       children: [
         child,
-        // Logo de la marque en filigrane : en surimpression discrète et
-        // non-cliquable, centré, par-dessus le fond opaque des pages pour
-        // rester visible sur tous les écrans de l'application.
+        // Logo de la marque en filigrane : en nuances de gris et de blanc,
+        // très estompé (presque invisible), non-cliquable, centré par-dessus
+        // le fond des pages.
         Positioned.fill(
           child: IgnorePointer(
             child: Center(
               child: Opacity(
-                opacity: 0.10,
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 360,
-                  fit: BoxFit.contain,
+                opacity: 0.035,
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.matrix(_grayscaleMatrix),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 360,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
@@ -738,6 +750,43 @@ class AdaptiveHeaderColumn extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Pastille rouge indiquant un nombre d'éléments non lus (« 99+ » au-delà).
+class UnreadBubble extends StatelessWidget {
+  const UnreadBubble({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) {
+      return const SizedBox.shrink();
+    }
+    final text = count > 99 ? '99+' : '$count';
+    return Semantics(
+      label: '$count non lu${count > 1 ? 's' : ''}',
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE53935),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white, width: 1.5),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+          ),
+        ),
+      ),
     );
   }
 }

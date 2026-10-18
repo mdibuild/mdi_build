@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/app_refresh.dart';
+import '../../features/chat/presentation/providers/chat_providers.dart';
 import 'premium_ui.dart';
 
 /// Clé stable du contenu de la coque : quand la largeur change (rotation
@@ -112,10 +114,23 @@ class MainShellPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: Icon(Icons.menu, color: colors.petrol),
-                            tooltip: 'Menu',
-                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final unread = ref.watch(chatUnreadTotalProvider);
+                              return IconButton(
+                                icon: Badge(
+                                  isLabelVisible: unread > 0,
+                                  backgroundColor: const Color(0xFFE53935),
+                                  label: Text(unread > 99 ? '99+' : '$unread'),
+                                  child: Icon(Icons.menu, color: colors.petrol),
+                                ),
+                                tooltip: unread > 0
+                                    ? 'Menu ($unread message(s) non lu(s))'
+                                    : 'Menu',
+                                onPressed: () =>
+                                    Scaffold.of(context).openDrawer(),
+                              );
+                            },
                           ),
                           Text(
                             items[selectedIndex].$3,
@@ -193,11 +208,17 @@ class _NavRailContent extends StatelessWidget {
             child: Column(
               children: [
                 for (var i = 0; i < MainShellPage.items.length; i++)
-                  _RailItem(
-                    icon: MainShellPage.items[i].$2,
-                    label: MainShellPage.items[i].$3,
-                    selected: i == selectedIndex,
-                    onTap: () => onSelect(MainShellPage.items[i].$1),
+                  Consumer(
+                    builder: (context, ref, _) => _RailItem(
+                      icon: MainShellPage.items[i].$2,
+                      label: MainShellPage.items[i].$3,
+                      selected: i == selectedIndex,
+                      // Pastille rouge : messages non lus du chat.
+                      badge: MainShellPage.items[i].$1 == '/chat'
+                          ? ref.watch(chatUnreadTotalProvider)
+                          : 0,
+                      onTap: () => onSelect(MainShellPage.items[i].$1),
+                    ),
                   ),
               ],
             ),
@@ -254,11 +275,13 @@ class _RailItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.badge = 0,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+  final int badge;
   final VoidCallback onTap;
 
   @override
@@ -317,6 +340,10 @@ class _RailItem extends StatelessWidget {
                 ),
               ),
             ),
+            if (badge > 0) ...[
+              const SizedBox(width: 6),
+              UnreadBubble(count: badge),
+            ],
           ],
         ),
       ),

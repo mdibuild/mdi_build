@@ -64,6 +64,7 @@ class ReportAnalysisExport {
         documentTitle: 'RAPPORT',
         boldFont: boldFont,
         regularFont: regularFont,
+        outlined: true,
       ),
       pad(
         pw.Text(report.title,
@@ -90,13 +91,15 @@ class ReportAnalysisExport {
           pad(_breakdownTable(b, boldFont), top: 4),
         ],
       ..._detail(report, boldFont, small, pad),
-      pad(
-        PdfLetterhead.footer(
+      // Le cadre du pied de page porte sa propre marge (alignée sur l'en-tête).
+      pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 16),
+        child: PdfLetterhead.footer(
           company: company,
           boldFont: boldFont,
           regularFont: regularFont,
+          outlined: true,
         ),
-        top: 16,
       ),
     ];
 

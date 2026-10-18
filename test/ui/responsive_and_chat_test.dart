@@ -77,6 +77,10 @@ class _FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Stream<List<ChatMessage>> streamCompanyMessages(String companyId) =>
+      _watch((m) => m.companyId == companyId);
+
+  @override
   Stream<List<ChatMessage>> streamGeneralMessages(String companyId) =>
       _watch((m) => m.companyId == companyId && m.projectId == null);
 
@@ -308,9 +312,14 @@ void main() {
     _setScreen(tester, _portrait);
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: _theme(AppPaletteId.blueprintClair),
-        routerConfig: router,
+      ProviderScope(
+        overrides: [
+          currentProfileProvider.overrideWith((ref) async => null),
+        ],
+        child: MaterialApp.router(
+          theme: _theme(AppPaletteId.blueprintClair),
+          routerConfig: router,
+        ),
       ),
     );
     await tester.pumpAndSettle();

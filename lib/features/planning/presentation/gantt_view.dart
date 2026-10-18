@@ -8,9 +8,16 @@ import '../../../core/models/project_task.dart';
 import '../../../core/models/project_task_dependency.dart';
 
 enum GanttScale {
-  day,
-  week,
-  month,
+  day('Jour'),
+  week('Semaine'),
+  month('Mois'),
+  bimester('Bimestre'),
+  quarter('Trimestre'),
+  semester('Semestre'),
+  year('Année');
+
+  const GanttScale(this.label);
+  final String label;
 }
 
 class GanttView extends StatefulWidget {
@@ -130,19 +137,13 @@ class _GanttViewState extends State<GanttView> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<GanttScale>(
-                    segments: const [
-                      ButtonSegment<GanttScale>(
-                        value: GanttScale.day,
-                        label: Text('Jour'),
-                      ),
-                      ButtonSegment<GanttScale>(
-                        value: GanttScale.week,
-                        label: Text('Semaine'),
-                      ),
-                      ButtonSegment<GanttScale>(
-                        value: GanttScale.month,
-                        label: Text('Mois'),
-                      ),
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final s in GanttScale.values)
+                        ButtonSegment<GanttScale>(
+                          value: s,
+                          label: Text(s.label),
+                        ),
                     ],
                     selected: {scale},
                     onSelectionChanged: (selection) {
@@ -434,24 +435,25 @@ class _TimelineArea extends StatelessWidget {
           ),
           ...List.generate(tasks.length, (rowIndex) {
             final task = tasks[rowIndex];
-            final startIndex = _columnIndexForDate(
+            final startX = _xForDayStart(
               task.plannedStartDate!,
               columns,
+              unitWidth,
             );
-            final endIndex = _columnIndexForDate(
+            final endX = _xForDayEnd(
               task.plannedEndDate!,
               columns,
+              unitWidth,
             );
 
-            if (startIndex == null || endIndex == null) {
+            if (startX == null || endX == null) {
               return const SizedBox.shrink();
             }
 
-            final plannedLeft = startIndex * unitWidth;
-            final plannedWidth = math.max(
-              (endIndex - startIndex + 1) * unitWidth,
-              unitWidth * 0.75,
-            );
+            // Position au jour près ; largeur minimale pour rester visible
+            // aux grandes échelles (trimestre, année…).
+            final plannedLeft = startX;
+            final plannedWidth = math.max(endX - startX, 26.0);
 
             final progressWidth =
                 plannedWidth * (task.progress / 100).clamp(0.0, 1.0);
@@ -492,7 +494,10 @@ class _TimelineArea extends StatelessWidget {
                         left: 0,
                         top: 5,
                         child: Container(
-                          width: math.max(18, progressWidth - 8),
+                          width: math.min(
+                            plannedWidth - 8,
+                            math.max(18, progressWidth - 8),
+                          ),
                           height: rowHeight - 36,
                           decoration: BoxDecoration(
                             color: progressColor,
@@ -582,13 +587,13 @@ List<Widget> _buildDependencyWidgets({
     }
 
     final predecessorStart =
-        _columnIndexForDate(predecessor.plannedStartDate!, columns);
+        _xForDayStart(predecessor.plannedStartDate!, columns, unitWidth);
     final predecessorEnd =
-        _columnIndexForDate(predecessor.plannedEndDate!, columns);
+        _xForDayEnd(predecessor.plannedEndDate!, columns, unitWidth);
     final successorStart =
-        _columnIndexForDate(successor.plannedStartDate!, columns);
+        _xForDayStart(successor.plannedStartDate!, columns, unitWidth);
     final successorEnd =
-        _columnIndexForDate(successor.plannedEndDate!, columns);
+        _xForDayEnd(successor.plannedEndDate!, columns, unitWidth);
 
     if (predecessorStart == null ||
         predecessorEnd == null ||
@@ -602,21 +607,21 @@ List<Widget> _buildDependencyWidgets({
 
     switch (dependency.dependencyType) {
       case 'start_to_finish':
-        startX = predecessorStart * unitWidth + 8;
-        endX = (successorEnd + 1) * unitWidth - 8;
+        startX = predecessorStart + 6;
+        endX = successorEnd - 6;
         break;
       case 'start_to_start':
-        startX = predecessorStart * unitWidth + 8;
-        endX = successorStart * unitWidth + 8;
+        startX = predecessorStart + 6;
+        endX = successorStart + 6;
         break;
       case 'finish_to_finish':
-        startX = (predecessorEnd + 1) * unitWidth - 8;
-        endX = (successorEnd + 1) * unitWidth - 8;
+        startX = predecessorEnd - 6;
+        endX = successorEnd - 6;
         break;
       case 'finish_to_start':
       default:
-        startX = (predecessorEnd + 1) * unitWidth - 8;
-        endX = successorStart * unitWidth + 8;
+        startX = predecessorEnd - 6;
+        endX = successorStart + 6;
         break;
     }
 
@@ -717,6 +722,14 @@ double _unitWidth(GanttScale scale) {
       return 110;
     case GanttScale.month:
       return 150;
+    case GanttScale.bimester:
+      return 170;
+    case GanttScale.quarter:
+      return 180;
+    case GanttScale.semester:
+      return 200;
+    case GanttScale.year:
+      return 220;
   }
 }
 
@@ -732,7 +745,93 @@ List<_GanttColumn> _buildColumns(
       return _buildWeekColumns(minDate, maxDate);
     case GanttScale.month:
       return _buildMonthColumns(minDate, maxDate);
+    case GanttScale.bimester:
+      return _buildMultiMonthColumns(minDate, maxDate, 2, (start) {
+        final end = DateTime(start.year, start.month + 1);
+        return '${_frMonth(start.month)}–${_frMonth(end.month)}\n${start.year}';
+      });
+    case GanttScale.quarter:
+      return _buildMultiMonthColumns(minDate, maxDate, 3, (start) {
+        final q = (start.month - 1) ~/ 3 + 1;
+        return 'T$q ${start.year}\n${_frMonth(start.month)}–${_frMonth(start.month + 2)}';
+      });
+    case GanttScale.semester:
+      return _buildMultiMonthColumns(minDate, maxDate, 6, (start) {
+        final first = start.month == 1;
+        return '${first ? '1er' : '2e'} semestre\n${start.year}';
+      });
+    case GanttScale.year:
+      return _buildMultiMonthColumns(minDate, maxDate, 12, (start) => '${start.year}');
   }
+}
+
+const _frMonths = [
+  'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin',
+  'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.',
+];
+
+String _frMonth(int month) => _frMonths[(month - 1) % 12];
+
+/// Colonnes de plusieurs mois alignées sur le calendrier (bimestres :
+/// janv.–févr., mars–avr.… ; trimestres : T1…T4 ; semestres ; années).
+List<_GanttColumn> _buildMultiMonthColumns(
+  DateTime minDate,
+  DateTime maxDate,
+  int months,
+  String Function(DateTime start) label,
+) {
+  final columns = <_GanttColumn>[];
+  final firstMonth = ((minDate.month - 1) ~/ months) * months + 1;
+  var current = DateTime(minDate.year, firstMonth);
+
+  while (!current.isAfter(maxDate)) {
+    final next = DateTime(current.year, current.month + months);
+    columns.add(
+      _GanttColumn(
+        start: current,
+        end: next.subtract(const Duration(days: 1)),
+        label: label(current),
+      ),
+    );
+    current = next;
+  }
+
+  return columns;
+}
+
+/// Abscisse du DÉBUT du jour [date], au jour près à l'intérieur de sa
+/// colonne (les barres restent exactes quelle que soit l'échelle).
+double? _xForDayStart(
+  DateTime date,
+  List<_GanttColumn> columns,
+  double unitWidth,
+) {
+  final index = _columnIndexForDate(date, columns);
+  if (index == null) {
+    return null;
+  }
+  final column = columns[index];
+  final start = _normalizeDate(column.start);
+  final days = _normalizeDate(column.end).difference(start).inDays + 1;
+  final offset = _normalizeDate(date).difference(start).inDays;
+  return index * unitWidth + offset / days * unitWidth;
+}
+
+/// Abscisse de la FIN du jour [date] (jour inclus).
+double? _xForDayEnd(
+  DateTime date,
+  List<_GanttColumn> columns,
+  double unitWidth,
+) {
+  final index = _columnIndexForDate(date, columns);
+  if (index == null) {
+    return null;
+  }
+  final column = columns[index];
+  final start = _normalizeDate(column.start);
+  final days = _normalizeDate(column.end).difference(start).inDays + 1;
+  final offset = _normalizeDate(date).difference(start).inDays + 1;
+  return index * unitWidth + offset / days * unitWidth;
 }
 
 List<_GanttColumn> _buildDayColumns(DateTime minDate, DateTime maxDate) {

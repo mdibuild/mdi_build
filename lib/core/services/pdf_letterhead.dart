@@ -48,8 +48,21 @@ class PdfLetterhead {
     required pw.Font boldFont,
     required pw.Font regularFont,
     List<pw.Widget> trailing = const [],
+    bool outlined = false,
   }) {
     final address = company?.address.trim() ?? '';
+
+    if (outlined) {
+      return _outlinedHeader(
+        company: company,
+        logoBytes: logoBytes,
+        documentTitle: documentTitle,
+        boldFont: boldFont,
+        regularFont: regularFont,
+        address: address,
+        trailing: trailing,
+      );
+    }
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -127,6 +140,84 @@ class PdfLetterhead {
     );
   }
 
+  /// Épaisseur du cadre des documents imprimables (variante « contour »).
+  static const double frameWidth = 2.5;
+
+  /// En-tête économe en encre : fond blanc, simple cadre bleu pétrole en
+  /// trait épais, textes en bleu pétrole (aucun aplat de couleur).
+  static pw.Widget _outlinedHeader({
+    required Company? company,
+    required Uint8List? logoBytes,
+    required String documentTitle,
+    required pw.Font boldFont,
+    required pw.Font regularFont,
+    required String address,
+    required List<pw.Widget> trailing,
+  }) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: ink, width: frameWidth),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          if (logoBytes != null) ...[
+            pw.SizedBox(
+              width: 46,
+              height: 46,
+              child: pw.Image(
+                pw.MemoryImage(logoBytes),
+                fit: pw.BoxFit.contain,
+              ),
+            ),
+            pw.SizedBox(width: 12),
+          ],
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  companyName(company),
+                  style: pw.TextStyle(font: boldFont, fontSize: 15, color: ink),
+                ),
+                if (address.isNotEmpty)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 3),
+                    child: pw.Text(
+                      address,
+                      style: pw.TextStyle(
+                        font: regularFont,
+                        fontSize: 9,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text(
+                documentTitle,
+                style: pw.TextStyle(
+                  font: boldFont,
+                  fontSize: 22,
+                  color: ink,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              ...trailing,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Bandeau doré utilisé pour titrer une section (façon "DESCRIPTION OF WORK").
   static pw.Widget sectionBar(String label, {required pw.Font boldFont}) {
     return pw.Container(
@@ -152,6 +243,7 @@ class PdfLetterhead {
     required Company? company,
     required pw.Font boldFont,
     required pw.Font regularFont,
+    bool outlined = false,
   }) {
     final phone = company?.phone.trim() ?? '';
     final email = company?.email.trim() ?? '';
@@ -168,7 +260,7 @@ class PdfLetterhead {
               style: pw.TextStyle(
                 font: boldFont,
                 fontSize: 8,
-                color: gold,
+                color: outlined ? ink : gold,
                 letterSpacing: 0.6,
               ),
             ),
@@ -178,9 +270,46 @@ class PdfLetterhead {
               style: pw.TextStyle(
                 font: regularFont,
                 fontSize: 9,
-                color: PdfColors.white,
+                color: outlined ? PdfColors.grey800 : PdfColors.white,
               ),
             ),
+          ],
+        ),
+      );
+    }
+
+    if (outlined) {
+      // Pied de page économe en encre : simple cadre bleu pétrole épais.
+      return pw.Container(
+        margin: const pw.EdgeInsets.symmetric(horizontal: 20),
+        padding: const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: ink, width: frameWidth),
+          borderRadius: pw.BorderRadius.circular(6),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                column('TÉLÉPHONE', phone),
+                pw.SizedBox(width: 16),
+                column('EMAIL', email),
+                pw.SizedBox(width: 16),
+                column('ADRESSE', address),
+              ],
+            ),
+            if (legal.isNotEmpty) ...[
+              pw.SizedBox(height: 8),
+              pw.Text(
+                legal,
+                style: pw.TextStyle(
+                  font: regularFont,
+                  fontSize: 7.5,
+                  color: PdfColors.grey700,
+                ),
+              ),
+            ],
           ],
         ),
       );

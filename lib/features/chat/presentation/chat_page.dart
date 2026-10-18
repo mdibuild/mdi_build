@@ -13,11 +13,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/settings_user_entry.dart';
+import '../../../core/services/firebase_push_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../settings/presentation/providers/settings_providers.dart';
+import '../domain/chat_unread.dart';
 import 'providers/chat_providers.dart';
 
 String _timeLabel(DateTime value) {
@@ -143,6 +145,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    if (!kIsWeb) {
+      FirebasePushService.clearModule('chat');
+    }
   }
 
   @override
@@ -502,6 +507,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     });
   }
 
+  /// Conversation affichée = lue jusqu'à son dernier message (pastille).
+  void _scheduleMarkSeen(List<ChatMessage> messages, String key) {
+    if (messages.isEmpty) {
+      return;
+    }
+    var latest = messages.first.createdAt;
+    for (final m in messages) {
+      if (m.createdAt.isAfter(latest)) {
+        latest = m.createdAt;
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(chatReadStateProvider.notifier).markSeen(key, latest);
+      }
+    });
+  }
+
   Future<void> _openConversationPicker() async {
     final conversation = ref.read(chatConversationProvider);
     final selectedId = ref.read(selectedProjectProvider).value?.id;
@@ -513,6 +536,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         return Consumer(
           builder: (context, ref, _) {
             final projectsAsync = ref.watch(projectsProvider);
+            final unread = ref.watch(chatUnreadByConversationProvider);
             final theme = Theme.of(context);
 
             return SafeArea(
@@ -540,6 +564,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             icon: Icons.groups_rounded,
                             title: 'Chat général',
                             subtitle: "Toute l'équipe · hors projet",
+                            unread: unread['general'] ?? 0,
                             selected:
                                 conversation == ChatConversation.general,
                             onTap: () {
@@ -576,6 +601,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                         icon: Icons.apartment_rounded,
                                         title: project.name,
                                         subtitle: 'Conversation du projet',
+                                        unread: unread[project.id] ?? 0,
                                         selected: conversation ==
                                                 ChatConversation.project &&
                                             project.id == selectedId,
@@ -745,6 +771,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     // Assez de hauteur pour afficher les onglets Général / Projet ? (sinon,
     // en paysage sur téléphone, on bascule via le titre de la conversation).
     final roomy = MediaQuery.sizeOf(context).height >= 520;
+    final unread = ref.watch(chatUnreadByConversationProvider);
+    final conversationKey =
+        chatConversationKey(isGeneral ? null : project?.id);
+    final projectUnread = unread.entries
+        .where((e) => e.key != 'general')
+        .fold<int>(0, (sum, e) => sum + e.value);
 
     return Scaffold(
       backgroundColor: wa.wallpaper,
@@ -753,6 +785,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         isGeneral: isGeneral,
         projectName: project?.name,
         roomy: roomy,
+        generalUnread: unread['general'] ?? 0,
+        projectUnread: projectUnread,
       ),
       body: Column(
         children: [
@@ -768,6 +802,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     myId: profile?.id,
                     isGeneral: isGeneral,
                     projectName: project?.name,
+                    conversationKey: conversationKey,
                   ),
           ),
           if (!noProject) _buildComposer(wa, recipients),
@@ -781,6 +816,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     required bool isGeneral,
     required String? projectName,
     required bool roomy,
+    required int generalUnread,
+    required int projectUnread,
   }) {
     final theme = Theme.of(context);
     final onBar = theme.appBarTheme.foregroundColor ?? Colors.white;
@@ -907,6 +944,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       child: _ConversationPill(
                         icon: Icons.groups_rounded,
                         label: 'Général',
+                        badge: isGeneral ? 0 : generalUnread,
                         selected: isGeneral,
                         onBar: onBar,
                         barColor: barColor,
@@ -920,6 +958,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         label: projectName == null
                             ? 'Projet'
                             : 'Projet · $projectName',
+                        badge: isGeneral ? projectUnread : 0,
                         selected: !isGeneral,
                         onBar: onBar,
                         barColor: barColor,
@@ -949,10 +988,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     required String? myId,
     required bool isGeneral,
     required String? projectName,
+    required String conversationKey,
   }) {
     return messagesAsync.when(
       data: (all) {
         _scheduleMarkRead(all, myId);
+        _scheduleMarkSeen(all, conversationKey);
 
         final query = _search.trim().toLowerCase();
         final messages = query.isEmpty
@@ -1215,10 +1256,12 @@ class _ConversationPill extends StatelessWidget {
     required this.onBar,
     required this.barColor,
     required this.onTap,
+    this.badge = 0,
   });
 
   final IconData icon;
   final String label;
+  final int badge;
   final bool selected;
   final Color onBar;
   final Color barColor;
@@ -1256,6 +1299,10 @@ class _ConversationPill extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (badge > 0) ...[
+                  const SizedBox(width: 6),
+                  UnreadBubble(count: badge),
+                ],
               ],
             ),
           ),
@@ -1272,11 +1319,13 @@ class _ConversationTile extends StatelessWidget {
     required this.subtitle,
     required this.selected,
     required this.onTap,
+    this.unread = 0,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final int unread;
   final bool selected;
   final VoidCallback onTap;
 
@@ -1292,7 +1341,11 @@ class _ConversationTile extends StatelessWidget {
       ),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(subtitle),
-      trailing: selected ? Icon(Icons.check_circle, color: scheme.primary) : null,
+      trailing: unread > 0
+          ? UnreadBubble(count: unread)
+          : selected
+              ? Icon(Icons.check_circle, color: scheme.primary)
+              : null,
       onTap: onTap,
     );
   }

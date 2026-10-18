@@ -66,6 +66,7 @@ class ReportExportService {
             documentTitle: 'RAPPORT',
             boldFont: boldFont,
             regularFont: regularFont,
+            outlined: true,
           ),
           pw.Padding(
             padding: const pw.EdgeInsets.fromLTRB(24, 18, 24, 20),
@@ -88,6 +89,7 @@ class ReportExportService {
             company: company,
             boldFont: boldFont,
             regularFont: regularFont,
+            outlined: true,
           ),
         ],
       ),

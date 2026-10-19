@@ -8,13 +8,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
+import '../../../core/models/client.dart';
 import '../../../core/models/estimate_item.dart';
 import '../../../core/models/project_quote.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/models/quote_line_item.dart';
+import '../../../core/services/party_details.dart';
 import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/party_pickers.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
 import '../../achats/presentation/widgets/purchase_form.dart';
@@ -22,6 +25,7 @@ import '../../metrage/presentation/providers/spaces_providers.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../reports/presentation/providers/reports_providers.dart';
+import '../../settings/presentation/providers/clients_providers.dart';
 import '../../settings/presentation/providers/company_providers.dart';
 import 'providers/devis_providers.dart';
 import '../services/quote_pdf_service.dart';
@@ -52,6 +56,12 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   List<_QuoteItemDraft> _items = [];
 
   ProjectQuote? _currentQuote;
+
+  /// Client du devis (fiche de la base). Tant qu'il n'a pas été choisi
+  /// explicitement, celui du projet est proposé par défaut.
+  String? _clientId;
+  bool _clientChosen = false;
+  String? _projectClientId;
   bool _loadingQuote = false;
   String? _loadError;
   bool _confirmingDelete = false;
@@ -123,6 +133,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   void _applyLoadedQuote(ProjectQuote quote, List<QuoteLineItem> items) {
     _currentQuote = quote;
     _titleController.text = quote.title;
+    _clientId = quote.clientId;
+    _clientChosen = quote.clientId != null;
     mode = quote.mode;
     status = quote.status;
     unitPriceWalls = quote.unitPriceWalls;
@@ -148,6 +160,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   Future<ProjectQuote?> _persistQuote({
     required BuildContext context,
     required String projectId,
+    String? projectClientId,
     String? forcedStatus,
     Uint8List? signatureOverride,
     bool clearSignature = false,
@@ -193,6 +206,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       updatedBy: authUser.id,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
+      clientId: _clientChosen ? _clientId : (_clientId ?? projectClientId),
     );
 
     final repository = ref.read(devisRepositoryProvider);
@@ -403,6 +417,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                     title: value.title,
                     lot: value.lot,
                     notes: value.notes,
+                    supplierId: value.supplierId,
                     status: 'brouillon',
                     requestedBy: authUser.id,
                     approvedBy: null,
@@ -483,6 +498,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
       forcedStatus: 'signe',
       signatureOverride: bytes,
     );
@@ -507,6 +523,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
       forcedStatus: nextStatus,
       clearSignature: true,
     );
@@ -527,6 +544,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
     );
 
     if (saved == null || !context.mounted) {
@@ -569,6 +587,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
       forcedStatus: 'annule',
     );
 
@@ -588,6 +607,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
       forcedStatus: 'archive',
     );
 
@@ -647,6 +667,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     required String projectName,
     required List<EstimateItem> items,
     String? clientName,
+    List<String> clientDetails = const [],
     String? location,
   }) async {
     try {
@@ -662,6 +683,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         company: company,
         logoBytes: logoBytes,
         clientName: clientName,
+        clientDetails: clientDetails,
         location: location,
       );
     } catch (error) {
@@ -681,6 +703,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     required String projectName,
     required List<EstimateItem> items,
     String? clientName,
+    List<String> clientDetails = const [],
     String? location,
   }) async {
     final nextStatus = status == 'signe' ? 'signe' : 'envoye';
@@ -688,6 +711,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     final saved = await _persistQuote(
       context: context,
       projectId: projectId,
+      projectClientId: _projectClientId,
       forcedStatus: nextStatus,
     );
 
@@ -708,6 +732,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
         company: company,
         logoBytes: logoBytes,
         clientName: clientName,
+        clientDetails: clientDetails,
         location: location,
       );
 
@@ -844,6 +869,21 @@ class _DevisPageState extends ConsumerState<DevisPage> {
               );
             }
 
+            _projectClientId = project.clientId;
+            final effectiveClientId =
+                _clientChosen ? _clientId : (_clientId ?? project.clientId);
+            final clients =
+                ref.watch(activeClientsProvider).value ?? const <Client>[];
+            Client? client;
+            for (final c in clients) {
+              if (c.id == effectiveClientId) {
+                client = c;
+              }
+            }
+            final clientName = client?.name ?? project.clientName;
+            final clientDetails =
+                client == null ? const <String>[] : clientDetailLines(client);
+
             final items = [
               for (final draft in _items) draft.toEstimateItem(),
             ];
@@ -863,6 +903,17 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                   status: status,
                   total: total,
                   itemCount: items.length,
+                ),
+                const SizedBox(height: 16),
+                PremiumSurfaceCard(
+                  child: ClientPickerField(
+                    label: 'Client du devis',
+                    value: effectiveClientId,
+                    onChanged: (id, _) => setState(() {
+                      _clientId = id;
+                      _clientChosen = true;
+                    }),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _EstimateItemsCard(
@@ -931,7 +982,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                     context: context,
                     projectName: project.name,
                     items: items,
-                    clientName: project.clientName,
+                    clientName: clientName,
+                    clientDetails: clientDetails,
                     location: project.location,
                   ),
                   onSend: () => _sendToClient(
@@ -939,7 +991,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                     projectId: project.id,
                     projectName: project.name,
                     items: items,
-                    clientName: project.clientName,
+                    clientName: clientName,
+                    clientDetails: clientDetails,
                     location: project.location,
                   ),
                   onReport: () => _generateQuoteReport(

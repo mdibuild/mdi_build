@@ -10,8 +10,10 @@ import '../../../../shared/presentation/project_selector_card.dart';
 import '../../../planning/presentation/gantt_view.dart';
 import '../../../projects/presentation/providers/current_profile_provider.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
+import '../../../settings/presentation/providers/clients_providers.dart';
 import '../../../settings/presentation/providers/company_providers.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
+import '../../../settings/presentation/providers/suppliers_providers.dart';
 import '../../analysis/report_analysis.dart';
 import '../../analysis/report_analysis_export.dart';
 import 'report_analysis_providers.dart';
@@ -141,6 +143,14 @@ class _ReportAnalysisTabState extends ConsumerState<ReportAnalysisTab> {
 
     switch (_module) {
       case ReportModule.achats:
+        // Fiches actives et archivées : un achat ancien garde son fournisseur.
+        final supplierNames = <String, String>{
+          for (final s in [
+            ...?ref.watch(archivedSuppliersProvider).value,
+            ...?ref.watch(activeSuppliersProvider).value,
+          ])
+            s.id: s.name,
+        };
         return ref.watch(reportPurchasesDataProvider(project.id)).whenData(
               (d) => base(
                 purchases: buildPurchasesReport(
@@ -150,11 +160,19 @@ class _ReportAnalysisTabState extends ConsumerState<ReportAnalysisTab> {
                   statuses: _purchaseStatuses,
                   query: _query,
                   sort: _purchaseSort,
+                  supplierNames: supplierNames,
                 ),
               ),
             );
       case ReportModule.devis:
         final client = project.clientName.trim().isEmpty ? null : project.clientName.trim();
+        final clientNames = <String, String>{
+          for (final c in [
+            ...?ref.watch(archivedClientsProvider).value,
+            ...?ref.watch(activeClientsProvider).value,
+          ])
+            c.id: c.name,
+        };
         return ref.watch(reportQuotesDataProvider(project.id)).whenData(
               (d) => base(
                 quotes: buildQuotesReport(
@@ -162,6 +180,8 @@ class _ReportAnalysisTabState extends ConsumerState<ReportAnalysisTab> {
                   itemsByQuote: d.itemsByQuote,
                   period: _period,
                   clientName: client,
+                  clientNames: clientNames,
+                  projectClientId: project.clientId,
                   statuses: _quoteStatuses,
                   query: _query,
                 ),
@@ -1214,7 +1234,7 @@ class _PurchaseTile extends StatelessWidget {
           _kv(context, 'Lot', p.lot.trim().isEmpty ? 'Non renseigné' : p.lot),
           _kv(context, 'Date de commande', purchaseOrderedLabel(p)),
           _kv(context, 'Date de livraison', purchaseDeliveredLabel(p)),
-          _kv(context, 'Fournisseur', 'Non disponible (non enregistré par l’application)'),
+          _kv(context, 'Fournisseur', row.supplierName ?? 'Non renseigné'),
           if (p.notes.trim().isNotEmpty) _kv(context, 'Remarque', p.notes),
           const Divider(height: 18),
           if (row.items.isEmpty)

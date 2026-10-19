@@ -1,3 +1,7 @@
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class ProjectTask {
   const ProjectTask({
     required this.id,
@@ -22,6 +26,7 @@ class ProjectTask {
     required this.isArchived,
     required this.createdAt,
     required this.updatedAt,
+    this.supplierId,
   });
 
   final String id;
@@ -49,6 +54,9 @@ class ProjectTask {
 
   bool get isMilestone => taskType == 'milestone';
 
+  /// Sous-traitant / fournisseur chargé de la tâche.
+  final String? supplierId;
+
   factory ProjectTask.fromMap(Map<String, dynamic> map) {
     return ProjectTask(
       id: map['id'] as String,
@@ -73,6 +81,7 @@ class ProjectTask {
       isArchived: map['is_archived'] as bool? ?? false,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      supplierId: map['supplier_id']?.toString(),
     );
   }
 
@@ -97,6 +106,7 @@ class ProjectTask {
       'actual_end_date': _dateToString(actualEndDate),
       'sort_order': sortOrder,
       'is_archived': isArchived,
+      'supplier_id': supplierId,
     };
   }
 
@@ -118,10 +128,12 @@ class ProjectTask {
       'actual_end_date': _dateToString(actualEndDate),
       'sort_order': sortOrder,
       'is_archived': isArchived,
+      'supplier_id': supplierId,
     };
   }
 
   ProjectTask copyWith({
+    Object? supplierId = _keepLink,
     String? id,
     String? companyId,
     String? projectId,
@@ -168,6 +180,9 @@ class ProjectTask {
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      supplierId: identical(supplierId, _keepLink)
+          ? this.supplierId
+          : supplierId as String?,
     );
   }
 

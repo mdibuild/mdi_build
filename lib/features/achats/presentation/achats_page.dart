@@ -12,6 +12,7 @@ import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
 import '../../settings/presentation/providers/company_providers.dart';
+import '../../settings/presentation/providers/suppliers_providers.dart';
 import '../services/purchase_pdf_service.dart';
 import 'providers/purchases_providers.dart';
 import 'widgets/purchase_form.dart';
@@ -77,6 +78,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                   title: value.title,
                   lot: value.lot,
                   notes: value.notes,
+                  supplierId: value.supplierId,
                   status: 'brouillon',
                   requestedBy: authUser.id,
                   approvedBy: null,
@@ -147,6 +149,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                   title: value.title,
                   lot: value.lot,
                   notes: value.notes,
+                  supplierId: value.supplierId,
                 );
 
                 await ref.read(purchasesRepositoryProvider).updatePurchase(
@@ -175,8 +178,13 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
           .fetchPurchaseItems(purchase.id);
       final company = await ref.read(currentCompanyProvider.future);
       final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
+      final suppliers = await ref.read(activeSuppliersProvider.future);
+      final supplier = suppliers
+          .where((s) => s.id == purchase.supplierId)
+          .firstOrNull;
 
       await PurchasePdfService().printPurchase(
+        supplier: supplier,
         purchase: purchase,
         projectName: projectName,
         items: items,
@@ -526,6 +534,10 @@ class _PurchaseTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final supplierName = (ref.watch(activeSuppliersProvider).value ?? const [])
+        .where((s) => s.id == purchase.supplierId)
+        .map((s) => s.name)
+        .firstOrNull;
     return FutureBuilder<List<PurchaseItem>>(
       future:
           ref.read(purchasesRepositoryProvider).fetchPurchaseItems(purchase.id),
@@ -569,6 +581,11 @@ class _PurchaseTile extends ConsumerWidget {
                       _InfoBadge(icon: Icons.work_outline, label: purchase.lot),
                       _InfoBadge(
                           icon: Icons.apartment_outlined, label: projectName),
+                      if (supplierName != null)
+                        _InfoBadge(
+                          icon: Icons.local_shipping_outlined,
+                          label: supplierName,
+                        ),
                       _InfoBadge(
                           icon: Icons.calendar_today_outlined, label: dateText),
                       _StatusChip(status: purchase.status),

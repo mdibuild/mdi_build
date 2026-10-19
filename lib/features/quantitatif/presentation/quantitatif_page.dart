@@ -134,6 +134,7 @@ class QuantitatifPage extends ConsumerWidget {
                   title: value.title,
                   lot: value.lot,
                   notes: value.notes,
+                  supplierId: value.supplierId,
                   status: 'brouillon',
                   requestedBy: authUser.id,
                   approvedBy: null,

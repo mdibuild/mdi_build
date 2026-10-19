@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/models/purchase.dart';
 import '../../../../core/models/purchase_item.dart';
+import '../../../../shared/presentation/party_pickers.dart';
 import '../purchase_documents_section.dart';
 
 class PurchaseFormValue {
@@ -11,6 +12,7 @@ class PurchaseFormValue {
     required this.lot,
     required this.notes,
     required this.items,
+    this.supplierId,
   });
 
   final String title;
@@ -18,6 +20,9 @@ class PurchaseFormValue {
   final String lot;
   final String notes;
   final List<PurchaseItem> items;
+
+  /// Fournisseur choisi dans la base (null = aucun).
+  final String? supplierId;
 }
 
 class PurchaseForm extends StatefulWidget {
@@ -44,6 +49,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
   late final TextEditingController notesController;
 
   String? selectedProjectId;
+  String? selectedSupplierId;
   bool saving = false;
 
   late List<_PurchaseItemDraft> items;
@@ -68,6 +74,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
     lotController = TextEditingController(text: purchase?.lot ?? '');
     notesController = TextEditingController(text: purchase?.notes ?? '');
     selectedProjectId = purchase?.projectId;
+    selectedSupplierId = purchase?.supplierId;
 
     if (widget.initialItems.isEmpty) {
       items = [_PurchaseItemDraft.empty()];
@@ -187,6 +194,7 @@ class _PurchaseFormState extends State<PurchaseForm> {
           lot: lot,
           notes: notesController.text.trim(),
           items: mappedItems,
+          supplierId: selectedSupplierId,
         ),
       );
 
@@ -243,6 +251,12 @@ class _PurchaseFormState extends State<PurchaseForm> {
             labelText: 'Projet',
             prefixIcon: Icon(Icons.apartment_outlined),
           ),
+        ),
+        const SizedBox(height: 12),
+        SupplierPickerField(
+          label: 'Fournisseur',
+          value: selectedSupplierId,
+          onChanged: (id, _) => setState(() => selectedSupplierId = id),
         ),
         const SizedBox(height: 12),
         TextField(

@@ -187,6 +187,7 @@ class ReportAnalysisExport {
             pad(
               pw.Text(
                 'Lot : ${row.purchase.lot.trim().isEmpty ? 'non renseigné' : row.purchase.lot} · '
+                'Fournisseur : ${row.supplierName ?? 'non renseigné'} · '
                 'Statut : ${purchaseStatusLabel(row.purchase.status)} · '
                 'Commande : ${purchaseOrderedLabel(row.purchase)} · '
                 'Livraison : ${purchaseDeliveredLabel(row.purchase)}',
@@ -544,7 +545,7 @@ class ReportAnalysisExport {
     switch (report.module) {
       case ReportModule.achats:
         detail.appendRow([
-          t('Date'), t('Réf. interne'), t('Achat'), t('Lot'), t('Statut'),
+          t('Date'), t('Réf. interne'), t('Achat'), t('Lot'), t('Fournisseur'), t('Statut'),
           t('Date commande'), t('Date livraison'), t('Article'), t('Désignation'),
           t('Quantité'), t('Unité'), t('Prix unitaire (DA)'), t('Montant ligne (DA)'),
           t('Total achat (DA)'), t('Remarque'),
@@ -556,6 +557,7 @@ class ReportAnalysisExport {
             t(row.internalRef),
             t(p.title),
             t(p.lot),
+            t(row.supplierName ?? 'Non renseigné'),
             t(purchaseStatusLabel(p.status)),
             t(purchaseOrderedLabel(p)),
             t(purchaseDeliveredLabel(p)),

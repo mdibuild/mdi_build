@@ -1,5 +1,9 @@
 import '../enums/record_status.dart';
 
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class Project {
   const Project({
     required this.id,
@@ -11,6 +15,7 @@ class Project {
     required this.budgetInitial,
     required this.progress,
     required this.status,
+    this.clientId,
   });
 
   final String id;
@@ -23,6 +28,9 @@ class Project {
   final double progress;
   final RecordStatus status;
 
+  /// Client du projet (fiche client).
+  final String? clientId;
+
   factory Project.fromMap(Map<String, dynamic> map) {
     return Project(
       id: map['id'] as String,
@@ -34,6 +42,7 @@ class Project {
       budgetInitial: (map['budget_initial'] as num?)?.toDouble() ?? 0,
       progress: (map['progress'] as num?)?.toDouble() ?? 0,
       status: RecordStatus.fromDb(map['status'] as String? ?? 'brouillon'),
+      clientId: map['client_id']?.toString(),
     );
   }
 
@@ -47,6 +56,7 @@ class Project {
       'budget_initial': budgetInitial,
       'progress': progress,
       'status': status.dbValue,
+      'client_id': clientId,
     };
   }
 
@@ -59,10 +69,12 @@ class Project {
       'budget_initial': budgetInitial,
       'progress': progress,
       'status': status.dbValue,
+      'client_id': clientId,
     };
   }
 
   Project copyWith({
+    Object? clientId = _keepLink,
     String? id,
     String? companyId,
     String? name,
@@ -83,6 +95,8 @@ class Project {
       budgetInitial: budgetInitial ?? this.budgetInitial,
       progress: progress ?? this.progress,
       status: status ?? this.status,
+      clientId:
+          identical(clientId, _keepLink) ? this.clientId : clientId as String?,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/project_task.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/party_pickers.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
@@ -34,6 +35,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
   late String status;
   late String priority;
   late bool isArchived;
+  String? supplierId;
 
   bool saving = false;
 
@@ -78,6 +80,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
     status = task?.status ?? 'brouillon';
     priority = task?.priority ?? 'normale';
     isArchived = task?.isArchived ?? false;
+    supplierId = task?.supplierId;
 
     _syncDurationFromDates();
   }
@@ -213,6 +216,7 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
         isArchived: isArchived,
         createdAt: widget.task?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
+        supplierId: supplierId,
       );
 
       final repository = ref.read(planningRepositoryProvider);
@@ -395,6 +399,12 @@ class _TaskFormPageState extends ConsumerState<TaskFormPage> {
                           setState(() => priority = value);
                         }
                       },
+                    ),
+                    const SizedBox(height: 12),
+                    SupplierPickerField(
+                      label: 'Sous-traitant / fournisseur',
+                      value: supplierId,
+                      onChanged: (id, _) => setState(() => supplierId = id),
                     ),
                     const SizedBox(height: 12),
                     TextField(

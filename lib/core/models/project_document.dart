@@ -1,5 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class ProjectDocument extends Equatable {
   const ProjectDocument({
     required this.id,
@@ -20,6 +24,8 @@ class ProjectDocument extends Equatable {
     this.taskId,
     this.purchaseId,
     this.reportId,
+    this.clientId,
+    this.supplierId,
   });
 
   final String id;
@@ -44,6 +50,12 @@ class ProjectDocument extends Equatable {
   bool get isPdf => mimeType == 'application/pdf';
   bool get isImage => mimeType.startsWith('image/');
 
+  /// Client concerné par le document.
+  final String? clientId;
+
+  /// Fournisseur concerné par le document.
+  final String? supplierId;
+
   factory ProjectDocument.fromMap(Map<String, dynamic> map) {
     return ProjectDocument(
       id: map['id'] as String,
@@ -64,6 +76,8 @@ class ProjectDocument extends Equatable {
       taskId: map['task_id'] as String?,
       purchaseId: map['purchase_id'] as String?,
       reportId: map['report_id'] as String?,
+      clientId: map['client_id']?.toString(),
+      supplierId: map['supplier_id']?.toString(),
     );
   }
 
@@ -86,6 +100,8 @@ class ProjectDocument extends Equatable {
       'report_id': reportId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'client_id': clientId,
+      'supplier_id': supplierId,
     };
   }
 
@@ -105,10 +121,14 @@ class ProjectDocument extends Equatable {
       'purchase_id': purchaseId,
       'report_id': reportId,
       'updated_at': updatedAt.toIso8601String(),
+      'client_id': clientId,
+      'supplier_id': supplierId,
     };
   }
 
   ProjectDocument copyWith({
+    Object? supplierId = _keepLink,
+    Object? clientId = _keepLink,
     String? id,
     String? companyId,
     String? projectId,
@@ -151,6 +171,11 @@ class ProjectDocument extends Equatable {
       taskId: clearTaskId ? null : taskId ?? this.taskId,
       purchaseId: clearPurchaseId ? null : purchaseId ?? this.purchaseId,
       reportId: clearReportId ? null : reportId ?? this.reportId,
+      clientId:
+          identical(clientId, _keepLink) ? this.clientId : clientId as String?,
+      supplierId: identical(supplierId, _keepLink)
+          ? this.supplierId
+          : supplierId as String?,
     );
   }
 
@@ -166,6 +191,8 @@ class ProjectDocument extends Equatable {
 
   @override
   List<Object?> get props => [
+        supplierId,
+        clientId,
         id,
         companyId,
         projectId,

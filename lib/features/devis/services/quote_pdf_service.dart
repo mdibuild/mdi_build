@@ -20,6 +20,7 @@ class QuotePdfService {
     Uint8List? logoBytes,
     String? clientName,
     String? location,
+    List<String> clientDetails = const [],
   }) async {
     final regularFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
@@ -56,6 +57,7 @@ class QuotePdfService {
                 _buildMetaRow(
                   clientName: clientName,
                   location: location,
+                  clientDetails: clientDetails,
                   projectName: projectName,
                   mode: mode,
                   status: status,
@@ -112,6 +114,7 @@ class QuotePdfService {
     Uint8List? logoBytes,
     String? clientName,
     String? location,
+    List<String> clientDetails = const [],
   }) async {
     final bytes = await buildQuotePdf(
       projectName: projectName,
@@ -123,6 +126,7 @@ class QuotePdfService {
       logoBytes: logoBytes,
       clientName: clientName,
       location: location,
+      clientDetails: clientDetails,
     );
 
     await Printing.layoutPdf(
@@ -141,6 +145,7 @@ class QuotePdfService {
     Uint8List? logoBytes,
     String? clientName,
     String? location,
+    List<String> clientDetails = const [],
   }) async {
     final bytes = await buildQuotePdf(
       projectName: projectName,
@@ -152,6 +157,7 @@ class QuotePdfService {
       logoBytes: logoBytes,
       clientName: clientName,
       location: location,
+      clientDetails: clientDetails,
     );
 
     await Printing.sharePdf(
@@ -163,6 +169,7 @@ class QuotePdfService {
   pw.Widget _buildMetaRow({
     String? clientName,
     String? location,
+    List<String> clientDetails = const [],
     required String projectName,
     required String mode,
     required String status,
@@ -194,6 +201,14 @@ class QuotePdfService {
             children: [
               label('CLIENT'),
               value(trimmedClient.isEmpty ? '-' : trimmedClient),
+              if (clientDetails.isNotEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Text(
+                    clientDetails.join('\n'),
+                    style: const pw.TextStyle(fontSize: 9, lineSpacing: 1.5),
+                  ),
+                ),
               if (trimmedLocation.isNotEmpty) ...[
                 label('ADRESSE DU CHANTIER'),
                 value(trimmedLocation),

@@ -327,13 +327,19 @@ List<BreakdownEntry> _sortedBreakdown(Map<String, BreakdownEntry> map) {
 DateTime purchaseDay(Purchase purchase) => dateOnly(purchase.createdAt.toLocal());
 
 class PurchaseRow {
-  PurchaseRow({required this.purchase, required List<PurchaseItem> items})
-      : items = List.unmodifiable(
+  PurchaseRow({
+    required this.purchase,
+    required List<PurchaseItem> items,
+    this.supplierName,
+  }) : items = List.unmodifiable(
           [...items]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder)),
         );
 
   final Purchase purchase;
   final List<PurchaseItem> items;
+
+  /// Nom du fournisseur (fiche de la base) ; null si aucun n'est choisi.
+  final String? supplierName;
 
   DateTime get day => purchaseDay(purchase);
 
@@ -395,6 +401,7 @@ class PurchasesReport {
     required this.lineCount,
     required this.byStatus,
     required this.byLot,
+    required this.bySupplier,
   });
 
   final List<PurchaseRow> rows;
@@ -411,6 +418,10 @@ class PurchasesReport {
   final int lineCount;
   final List<BreakdownEntry> byStatus;
   final List<BreakdownEntry> byLot;
+  final List<BreakdownEntry> bySupplier;
+
+  /// Achats sans fournisseur choisi.
+  int get withoutSupplier => rows.where((r) => r.supplierName == null).length;
 
   int get count => rows.length;
 }
@@ -422,6 +433,7 @@ PurchasesReport buildPurchasesReport({
   Set<String>? statuses,
   String query = '',
   PurchaseSort sort = PurchaseSort.dateDesc,
+  Map<String, String> supplierNames = const {},
 }) {
   final seen = <String>{};
   final rows = <PurchaseRow>[];
@@ -436,8 +448,10 @@ PurchasesReport buildPurchasesReport({
       continue;
     }
     final items = itemsByPurchase[purchase.id] ?? const <PurchaseItem>[];
+    final supplierName = supplierNames[purchase.supplierId];
     if (!_matches(query, [
       purchase.title,
+      supplierName,
       purchase.lot,
       purchase.notes,
       purchaseStatusLabel(purchase.status),
@@ -445,7 +459,11 @@ PurchasesReport buildPurchasesReport({
     ])) {
       continue;
     }
-    rows.add(PurchaseRow(purchase: purchase, items: items));
+    rows.add(PurchaseRow(
+      purchase: purchase,
+      items: items,
+      supplierName: supplierName,
+    ));
   }
 
   switch (sort) {
@@ -464,6 +482,7 @@ PurchasesReport buildPurchasesReport({
 
   final byStatus = <String, BreakdownEntry>{};
   final byLot = <String, BreakdownEntry>{};
+  final bySupplier = <String, BreakdownEntry>{};
   var knownTotal = 0.0;
   for (final row in rows) {
     final amount = row.amount;
@@ -484,6 +503,7 @@ PurchasesReport buildPurchasesReport({
     add(byLot, row.purchase.lot.trim().isEmpty
         ? 'Lot non renseigné'
         : row.purchase.lot.trim());
+    add(bySupplier, row.supplierName ?? 'Fournisseur non renseigné');
   }
 
   return PurchasesReport._(
@@ -495,6 +515,7 @@ PurchasesReport buildPurchasesReport({
     lineCount: rows.fold(0, (s, r) => s + r.items.length),
     byStatus: _sortedBreakdown(byStatus),
     byLot: _sortedBreakdown(byLot),
+    bySupplier: _sortedBreakdown(bySupplier),
   );
 }
 
@@ -517,7 +538,8 @@ class QuoteRow {
   final ProjectQuote quote;
   final List<QuoteLineItem> items;
 
-  /// Client du projet (le devis ne porte pas de client propre).
+  /// Client du devis (sa fiche client, sinon celle du projet, sinon le
+  /// nom saisi sur le projet).
   final String? clientName;
 
   DateTime get day => quoteDay(quote);
@@ -554,6 +576,8 @@ QuotesReport buildQuotesReport({
   required String? clientName,
   Set<String>? statuses,
   String query = '',
+  Map<String, String> clientNames = const {},
+  String? projectClientId,
 }) {
   final seen = <String>{};
   final rows = <QuoteRow>[];
@@ -568,15 +592,17 @@ QuotesReport buildQuotesReport({
       continue;
     }
     final items = itemsByQuote[quote.id] ?? const <QuoteLineItem>[];
+    final rowClient =
+        clientNames[quote.clientId ?? projectClientId] ?? clientName;
     if (!_matches(query, [
       quote.title,
       quoteStatusLabel(quote.status),
-      clientName,
+      rowClient,
       ...items.map((i) => i.label),
     ])) {
       continue;
     }
-    rows.add(QuoteRow(quote: quote, items: items, clientName: clientName));
+    rows.add(QuoteRow(quote: quote, items: items, clientName: rowClient));
   }
   rows.sort((a, b) => b.quote.createdAt.compareTo(a.quote.createdAt));
 
@@ -1049,8 +1075,12 @@ class AnalysisReport {
               'par défaut : un prix réellement nul ne peut pas être distingué '
               'd’un prix non saisi.');
         }
-        list.add('Fournisseur, référence d’achat et statut de paiement ne sont '
-            'pas enregistrés par l’application (non disponibles). La « réf. '
+        if (r.withoutSupplier > 0) {
+          list.add('${r.withoutSupplier} achat(s) sans fournisseur choisi '
+              '(regroupés sous « Fournisseur non renseigné »).');
+        }
+        list.add('Référence d’achat et statut de paiement ne sont pas '
+            'enregistrés par l’application (non disponibles). La « réf. '
             'interne » est l’identifiant technique abrégé de l’achat.');
       case ReportModule.devis:
         final r = quotes!;
@@ -1062,8 +1092,8 @@ class AnalysisReport {
             '${(quoteTaxRate * 100).round()} % ; TTC = HT + TVA, comme dans '
             'le module Devis.');
         list.add('L’application ne gère pas de versions de devis : chaque '
-            'devis est compté une seule fois. Le client affiché est celui du '
-            'projet.');
+            'devis est compté une seule fois. Le client affiché est celui choisi '
+            'sur le devis, sinon celui du projet.');
       case ReportModule.planning:
         list.add('En retard : date de fin prévue dépassée (le jour d’échéance '
             'n’est pas un retard), tâche ni terminée ni annulée, avancement '
@@ -1089,6 +1119,11 @@ class AnalysisReport {
           ReportBreakdown(
             'Montant connu par lot',
             purchases!.byLot,
+            amountLabel: 'Montant connu',
+          ),
+          ReportBreakdown(
+            'Montant connu par fournisseur',
+            purchases!.bySupplier,
             amountLabel: 'Montant connu',
           ),
           ReportBreakdown(

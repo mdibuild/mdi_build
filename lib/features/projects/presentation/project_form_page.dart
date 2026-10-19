@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/enums/record_status.dart';
 import '../../../core/models/project.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/party_pickers.dart';
 import 'providers/current_profile_provider.dart';
 import 'providers/projects_providers.dart';
 
@@ -27,6 +28,7 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
   late final TextEditingController budgetController;
 
   bool saving = false;
+  String? clientId;
 
   bool get isEditing => widget.project != null;
 
@@ -34,6 +36,7 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
   void initState() {
     super.initState();
     final project = widget.project;
+    clientId = project?.clientId;
     nameController = TextEditingController(text: project?.name ?? '');
     clientController = TextEditingController(text: project?.clientName ?? '');
     locationController = TextEditingController(text: project?.location ?? '');
@@ -81,6 +84,7 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
         budgetInitial: double.tryParse(budgetController.text.trim()) ?? 0,
         progress: widget.project?.progress ?? 0,
         status: widget.project?.status ?? RecordStatus.brouillon,
+        clientId: clientId,
       );
 
       debugPrint('PROJECT COMPANY ID = ${project.companyId}');
@@ -147,9 +151,22 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
               decoration: const InputDecoration(labelText: 'Nom du projet'),
             ),
             const SizedBox(height: 12),
+            ClientPickerField(
+              value: clientId,
+              onChanged: (id, client) => setState(() {
+                clientId = id;
+                if (client != null) {
+                  clientController.text = client.name;
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: clientController,
-              decoration: const InputDecoration(labelText: 'Client'),
+              decoration: const InputDecoration(
+                labelText: 'Nom du client (affiché)',
+                helperText: 'Rempli automatiquement depuis la fiche choisie',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(

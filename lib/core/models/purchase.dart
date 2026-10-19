@@ -1,3 +1,7 @@
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class Purchase {
   const Purchase({
     required this.id,
@@ -20,6 +24,7 @@ class Purchase {
     required this.archivedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.supplierId,
   });
 
   final String id;
@@ -45,6 +50,9 @@ class Purchase {
 
   bool get isArchived => status == 'archive';
 
+  /// Fournisseur de l'achat.
+  final String? supplierId;
+
   factory Purchase.fromMap(Map<String, dynamic> map) {
     return Purchase(
       id: map['id'] as String,
@@ -67,6 +75,7 @@ class Purchase {
       archivedAt: _dateTimeOrNull(map['archived_at']),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      supplierId: map['supplier_id']?.toString(),
     );
   }
 
@@ -89,6 +98,7 @@ class Purchase {
       'delivered_at': deliveredAt?.toIso8601String(),
       'cancelled_at': cancelledAt?.toIso8601String(),
       'archived_at': archivedAt?.toIso8601String(),
+      'supplier_id': supplierId,
     };
   }
 
@@ -110,10 +120,12 @@ class Purchase {
       'delivered_at': deliveredAt?.toIso8601String(),
       'cancelled_at': cancelledAt?.toIso8601String(),
       'archived_at': archivedAt?.toIso8601String(),
+      'supplier_id': supplierId,
     };
   }
 
   Purchase copyWith({
+    Object? supplierId = _keepLink,
     String? id,
     String? companyId,
     String? projectId,
@@ -156,6 +168,9 @@ class Purchase {
       archivedAt: archivedAt ?? this.archivedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      supplierId: identical(supplierId, _keepLink)
+          ? this.supplierId
+          : supplierId as String?,
     );
   }
 

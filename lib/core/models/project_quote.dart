@@ -1,5 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class ProjectQuote extends Equatable {
   const ProjectQuote({
     required this.id,
@@ -17,6 +21,7 @@ class ProjectQuote extends Equatable {
     required this.updatedBy,
     required this.createdAt,
     required this.updatedAt,
+    this.clientId,
   });
 
   final String id;
@@ -34,6 +39,9 @@ class ProjectQuote extends Equatable {
   final String? updatedBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Client destinataire du devis.
+  final String? clientId;
 
   factory ProjectQuote.fromMap(Map<String, dynamic> map) {
     return ProjectQuote(
@@ -56,6 +64,7 @@ class ProjectQuote extends Equatable {
       updatedBy: map['updated_by'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      clientId: map['client_id']?.toString(),
     );
   }
 
@@ -75,6 +84,7 @@ class ProjectQuote extends Equatable {
       'updated_by': updatedBy,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'client_id': clientId,
     };
   }
 
@@ -90,10 +100,12 @@ class ProjectQuote extends Equatable {
       'signed_at': signedAt?.toIso8601String(),
       'updated_by': updatedBy,
       'updated_at': updatedAt.toIso8601String(),
+      'client_id': clientId,
     };
   }
 
   ProjectQuote copyWith({
+    Object? clientId = _keepLink,
     String? id,
     String? companyId,
     String? projectId,
@@ -130,6 +142,8 @@ class ProjectQuote extends Equatable {
       updatedBy: updatedBy ?? this.updatedBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      clientId:
+          identical(clientId, _keepLink) ? this.clientId : clientId as String?,
     );
   }
 
@@ -148,6 +162,7 @@ class ProjectQuote extends Equatable {
 
   @override
   List<Object?> get props => [
+        clientId,
         id,
         companyId,
         projectId,

@@ -242,7 +242,7 @@ void main() {
       expect(rows.length, report.purchases!.lineCount + report.purchases!.withoutAmount);
       double sum = 0;
       for (final r in rows) {
-        final v = r[12]?.value;
+        final v = r[13]?.value; // « Montant ligne » (après la colonne Fournisseur)
         if (v is DoubleCellValue) sum += v.value;
         if (v is IntCellValue) sum += v.value;
       }

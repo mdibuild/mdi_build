@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/project_document.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/party_pickers.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/documents_providers.dart';
@@ -29,6 +30,8 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
   late final TextEditingController descriptionController;
 
   String category = 'autre';
+  String? clientId;
+  String? supplierId;
   bool saving = false;
 
   PlatformFile? selectedFile;
@@ -164,6 +167,8 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
         isArchived: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        clientId: clientId,
+        supplierId: supplierId,
       );
 
       await repository.createDocument(document);
@@ -327,6 +332,18 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                     labelText: 'Description',
                     prefixIcon: Icon(Icons.description_outlined),
                   ),
+                ),
+                const SizedBox(height: 12),
+                ClientPickerField(
+                  label: 'Client concerné',
+                  value: clientId,
+                  onChanged: (id, _) => setState(() => clientId = id),
+                ),
+                const SizedBox(height: 12),
+                SupplierPickerField(
+                  label: 'Fournisseur concerné',
+                  value: supplierId,
+                  onChanged: (id, _) => setState(() => supplierId = id),
                 ),
                 const SizedBox(height: 12),
                 Card(

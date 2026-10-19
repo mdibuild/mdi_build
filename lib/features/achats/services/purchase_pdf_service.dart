@@ -8,6 +8,8 @@ import 'package:printing/printing.dart';
 import '../../../core/models/company.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
+import '../../../core/models/supplier.dart';
+import '../../../core/services/party_details.dart';
 import '../../../core/services/pdf_letterhead.dart';
 
 class PurchasePdfService {
@@ -17,6 +19,7 @@ class PurchasePdfService {
     required List<PurchaseItem> items,
     Company? company,
     Uint8List? logoBytes,
+    Supplier? supplier,
   }) async {
     final regularFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
@@ -61,6 +64,7 @@ class PurchasePdfService {
                 _buildInfoCard(
                   purchase: purchase,
                   projectName: projectName,
+                  supplier: supplier,
                 ),
                 pw.SizedBox(height: 16),
                 _buildItemsTable(items),
@@ -90,6 +94,7 @@ class PurchasePdfService {
   pw.Widget _buildInfoCard({
     required Purchase purchase,
     required String projectName,
+    Supplier? supplier,
   }) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(14),
@@ -102,6 +107,10 @@ class PurchasePdfService {
           _line('Titre', purchase.title),
           _line('Projet', projectName),
           _line('Lot', purchase.lot),
+          _line('Fournisseur', supplier?.name ?? '-'),
+          if (supplier != null)
+            for (final detail in supplierDetailLines(supplier))
+              _line('', detail),
           _line('Statut', _statusLabel(purchase.status)),
           _line(
             'Observations',
@@ -217,7 +226,7 @@ class PurchasePdfService {
           pw.SizedBox(
             width: 100,
             child: pw.Text(
-              '$label :',
+              label.isEmpty ? '' : '$label :',
               style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
             ),
           ),

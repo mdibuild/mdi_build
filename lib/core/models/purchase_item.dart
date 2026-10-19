@@ -1,3 +1,7 @@
+/// Valeur « inchangé » de copyWith pour les liens client/fournisseur
+/// (permet aussi de les vider en passant null).
+const Object _keepLink = Object();
+
 class PurchaseItem {
   const PurchaseItem({
     required this.id,
@@ -11,6 +15,7 @@ class PurchaseItem {
     required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
+    this.supplierId,
   });
 
   final String id;
@@ -27,6 +32,9 @@ class PurchaseItem {
 
   double get total => quantity * unitPrice;
 
+  /// Fournisseur propre à cette ligne (sinon celui de l'achat).
+  final String? supplierId;
+
   factory PurchaseItem.fromMap(Map<String, dynamic> map) {
     return PurchaseItem(
       id: map['id'] as String,
@@ -40,6 +48,7 @@ class PurchaseItem {
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      supplierId: map['supplier_id']?.toString(),
     );
   }
 
@@ -53,6 +62,7 @@ class PurchaseItem {
       'unit_price': unitPrice,
       'notes': notes,
       'sort_order': sortOrder,
+      'supplier_id': supplierId,
     };
   }
 
@@ -65,10 +75,12 @@ class PurchaseItem {
       'unit_price': unitPrice,
       'notes': notes,
       'sort_order': sortOrder,
+      'supplier_id': supplierId,
     };
   }
 
   PurchaseItem copyWith({
+    Object? supplierId = _keepLink,
     String? id,
     String? purchaseId,
     String? article,
@@ -93,6 +105,9 @@ class PurchaseItem {
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      supplierId: identical(supplierId, _keepLink)
+          ? this.supplierId
+          : supplierId as String?,
     );
   }
 }

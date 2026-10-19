@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,12 +26,19 @@ Future<void> main() async {
     url: _supabaseUrl,
     publishableKey: _supabaseAnonKey,
   );
-  // Les notifications push (Firebase Messaging + notifications locales) ne
-  // sont pas prises en charge sur le web : on les active uniquement hors
-  // navigateur, pour éviter un plantage au démarrage dans Chrome/Edge.
-  if (!kIsWeb) {
-    await FirebasePushService.initialize();
-    unawaited(DeviceTokenService.registerCurrentToken());
+  // Notifications push (Firebase Messaging + notifications locales) :
+  // configurées uniquement pour Android et iPhone (ni web, ni ordinateur).
+  // Un échec ne doit jamais empêcher l'application de démarrer.
+  final pushSupported = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+  if (pushSupported) {
+    try {
+      await FirebasePushService.initialize();
+      unawaited(DeviceTokenService.registerCurrentToken());
+    } catch (error) {
+      debugPrint('Notifications indisponibles : $error');
+    }
   }
 
   final prefs = await SharedPreferences.getInstance();

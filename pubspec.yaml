@@ -1,7 +1,7 @@
 name: mdi_build
 description: Advanced construction management starter
 publish_to: "none"
-version: 1.6.0+7
+version: 1.8.0+9
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -38,6 +38,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+  image: ^4.3.0
 
 dependency_overrides:
   xml: ^7.0.1
@@ -46,3 +48,26 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+# Icône de l'application : logo MDI Build dans un cadre doré.
+# Régénérer : dart run tool/make_app_icon.dart && dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: "ic_launcher"
+  # Android 8+ : fond doré + logo au centre (le cadre doré reste visible
+  # quelle que soit la forme d'icône du téléphone).
+  adaptive_icon_background: "#D4A72C"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  min_sdk_android: 21
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#D4A72C"
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#0B2436"
+    theme_color: "#0B2436"
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 256

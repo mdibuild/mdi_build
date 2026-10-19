@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../core/models/project_report.dart';
+import '../../../core/services/pdf_letterhead.dart';
 
 class ReportPdfService {
   Future<Uint8List> buildReportPdf({
@@ -90,7 +91,10 @@ class ReportPdfService {
       width: double.infinity,
       padding: const pw.EdgeInsets.all(16),
       decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey900,
+        border: pw.Border.all(
+          color: PdfLetterhead.ink,
+          width: PdfLetterhead.frameWidth,
+        ),
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Column(
@@ -101,7 +105,7 @@ class ReportPdfService {
             style: pw.TextStyle(
               font: boldFont,
               fontSize: 20,
-              color: PdfColors.white,
+              color: PdfLetterhead.ink,
             ),
           ),
           pw.SizedBox(height: 10),
@@ -110,14 +114,14 @@ class ReportPdfService {
             style: pw.TextStyle(
               font: boldFont,
               fontSize: 15,
-              color: PdfColors.white,
+              color: PdfLetterhead.ink,
             ),
           ),
           pw.SizedBox(height: 6),
           pw.Text(
             'Projet : $projectName',
             style: const pw.TextStyle(
-              color: PdfColors.white,
+              color: PdfLetterhead.ink,
               fontSize: 11,
             ),
           ),
@@ -125,7 +129,7 @@ class ReportPdfService {
           pw.Text(
             'Date du rapport : ${_formatDate(report.reportDate)}',
             style: const pw.TextStyle(
-              color: PdfColors.white,
+              color: PdfLetterhead.ink,
               fontSize: 11,
             ),
           ),

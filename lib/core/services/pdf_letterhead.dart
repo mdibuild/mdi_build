@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -17,21 +18,32 @@ class PdfLetterhead {
   static const gold = PdfColor.fromInt(0xFFE7B800);
   static const goldSoft = PdfColor.fromInt(0xFFF7E9B8);
 
+  /// Logo des documents : celui téléversé dans les paramètres de
+  /// l'entreprise en priorité, sinon le logo MDI Build de l'application.
   static Future<Uint8List?> fetchLogoBytes(Company? company) async {
     final path = company?.logoPath;
-    if (path == null || path.trim().isEmpty) {
+    if (path != null && path.trim().isNotEmpty) {
+      try {
+        final url = CompanyRepository().publicLogoUrl(path);
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          return response.bodyBytes;
+        }
+      } catch (_) {
+        // Un logo indisponible ne doit jamais empêcher la génération du document.
+      }
+    }
+    return appLogoBytes();
+  }
+
+  /// Logo de l'application (assets/images/logo.png).
+  static Future<Uint8List?> appLogoBytes() async {
+    try {
+      final data = await rootBundle.load('assets/images/logo.png');
+      return data.buffer.asUint8List();
+    } catch (_) {
       return null;
     }
-    try {
-      final url = CompanyRepository().publicLogoUrl(path);
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      }
-    } catch (_) {
-      // Un logo indisponible ne doit jamais empêcher la génération du document.
-    }
-    return null;
   }
 
   static String companyName(Company? company) {
@@ -48,7 +60,7 @@ class PdfLetterhead {
     required pw.Font boldFont,
     required pw.Font regularFont,
     List<pw.Widget> trailing = const [],
-    bool outlined = false,
+    bool outlined = true,
   }) {
     final address = company?.address.trim() ?? '';
 
@@ -220,10 +232,14 @@ class PdfLetterhead {
 
   /// Bandeau doré utilisé pour titrer une section (façon "DESCRIPTION OF WORK").
   static pw.Widget sectionBar(String label, {required pw.Font boldFont}) {
+    // Titre de section encadré (trait bleu pétrole épais, sans aplat).
     return pw.Container(
       width: double.infinity,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      color: gold,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: ink, width: frameWidth),
+        borderRadius: pw.BorderRadius.circular(4),
+      ),
       child: pw.Text(
         label,
         style: pw.TextStyle(
@@ -243,7 +259,7 @@ class PdfLetterhead {
     required Company? company,
     required pw.Font boldFont,
     required pw.Font regularFont,
-    bool outlined = false,
+    bool outlined = true,
   }) {
     final phone = company?.phone.trim() ?? '';
     final email = company?.email.trim() ?? '';

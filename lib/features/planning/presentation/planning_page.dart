@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +8,7 @@ import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/planning_providers.dart';
+import 'gantt_view.dart';
 import 'task_dependencies_panel.dart';
 import 'task_form_page.dart';
 
@@ -422,7 +421,34 @@ class _PlanningTabContent extends StatelessWidget {
               onToggleArchive: onToggleArchive,
             )
           else if (mode == _PlanningViewMode.gantt)
-            _PlanningGantt(tasks: tasks)
+            // Même diagramme que les rapports : 7 échelles (jour → année),
+            // barres au jour près et flèches de dépendances.
+            Consumer(
+              builder: (context, ref, _) {
+                final active = ref.watch(activeTasksProvider).value ?? const [];
+                final archived =
+                    ref.watch(archivedTasksProvider).value ?? const [];
+                final deps =
+                    ref.watch(taskDependenciesProvider).value ?? const [];
+                final byId = {
+                  for (final t in [...active, ...archived]) t.id: t,
+                };
+                // Mêmes tâches (et même ordre) que la liste affichée.
+                final shown = [
+                  for (final t in tasks)
+                    if (byId[t.id] != null) byId[t.id]!,
+                ];
+                if (shown.isEmpty && tasks.isNotEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                return GanttView(tasks: shown, dependencies: deps);
+              },
+            )
           else
             Consumer(
               builder: (context, ref, _) {
@@ -783,317 +809,6 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-class _PlanningGantt extends StatelessWidget {
-  const _PlanningGantt({
-    required this.tasks,
-  });
-
-  final List<_PlanningTask> tasks;
-
-  @override
-  Widget build(BuildContext context) {
-    final datedTasks = tasks
-        .where((task) => task.startDate != null && task.endDate != null)
-        .toList()
-      ..sort((a, b) => a.startDate!.compareTo(b.startDate!));
-
-    if (datedTasks.isEmpty) {
-      return const _PremiumBox(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text('Aucune t\u00e2che dat\u00e9e pour le Gantt.'),
-          ),
-        ),
-      );
-    }
-
-    DateTime minDate = _dateOnly(datedTasks.first.startDate!);
-    DateTime maxDate = _dateOnly(datedTasks.first.endDate!);
-
-    for (final task in datedTasks) {
-      final start = _dateOnly(task.startDate!);
-      final end = _dateOnly(task.endDate!);
-
-      if (start.isBefore(minDate)) {
-        minDate = start;
-      }
-      if (end.isAfter(maxDate)) {
-        maxDate = end;
-      }
-    }
-
-    minDate = minDate.subtract(const Duration(days: 2));
-    maxDate = maxDate.add(const Duration(days: 2));
-
-    final totalDays = math.max(1, maxDate.difference(minDate).inDays + 1);
-    const dayWidth = 34.0;
-    const labelWidth = 132.0;
-    const rowHeight = 58.0;
-    const headerHeight = 44.0;
-
-    final timelineWidth = totalDays * dayWidth;
-    final height = math.min(
-      380.0,
-      math.max(260.0, datedTasks.length * rowHeight + headerHeight + 20),
-    );
-
-    return _PremiumBox(
-      padding: const EdgeInsets.all(0),
-      child: SizedBox(
-        height: height,
-        child: Scrollbar(
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: Scrollbar(
-              thumbVisibility: true,
-              notificationPredicate: (_) => true,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const _GanttHeaderCell(
-                          width: labelWidth,
-                          height: headerHeight,
-                          text: 'T\u00e2ches',
-                        ),
-                        SizedBox(
-                          width: timelineWidth,
-                          height: headerHeight,
-                          child: Row(
-                            children: [
-                              for (int i = 0; i < totalDays; i++)
-                                _GanttHeaderCell(
-                                  width: dayWidth,
-                                  height: headerHeight,
-                                  text: _shortDate(
-                                      minDate.add(Duration(days: i))),
-                                  small: true,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: labelWidth,
-                          child: Column(
-                            children: [
-                              for (final task in datedTasks)
-                                Container(
-                                  height: rowHeight,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border(
-                                      right: BorderSide(
-                                          color: Colors.grey.shade300),
-                                      bottom: BorderSide(
-                                          color: Colors.grey.shade200),
-                                    ),
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      task.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: timelineWidth,
-                          height: datedTasks.length * rowHeight,
-                          child: Stack(
-                            children: [
-                              Row(
-                                children: [
-                                  for (int i = 0; i < totalDays; i++)
-                                    Container(
-                                      width: dayWidth,
-                                      height: datedTasks.length * rowHeight,
-                                      decoration: BoxDecoration(
-                                        color: i.isEven
-                                            ? Colors.white
-                                            : context.palette.surfaceAlt
-                                                .withValues(alpha: 0.6),
-                                        border: Border(
-                                          right: BorderSide(
-                                            color: Colors.grey.shade200,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              for (int i = 0; i < datedTasks.length; i++)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  top: i * rowHeight,
-                                  child: Container(
-                                    height: rowHeight,
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              for (int i = 0; i < datedTasks.length; i++)
-                                _GanttBar(
-                                  task: datedTasks[i],
-                                  minDate: minDate,
-                                  dayWidth: dayWidth,
-                                  rowHeight: rowHeight,
-                                  rowIndex: i,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GanttHeaderCell extends StatelessWidget {
-  const _GanttHeaderCell({
-    required this.width,
-    required this.height,
-    required this.text,
-    this.small = false,
-  });
-
-  final double width;
-  final double height;
-  final String text;
-  final bool small;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: context.palette.surfaceAlt,
-        border: Border(
-          right: BorderSide(color: Colors.grey.shade300),
-          bottom: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
-      child: Text(
-        text,
-        maxLines: 2,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: small ? 9 : 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _GanttBar extends StatelessWidget {
-  const _GanttBar({
-    required this.task,
-    required this.minDate,
-    required this.dayWidth,
-    required this.rowHeight,
-    required this.rowIndex,
-  });
-
-  final _PlanningTask task;
-  final DateTime minDate;
-  final double dayWidth;
-  final double rowHeight;
-  final int rowIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.palette;
-    final start = _dateOnly(task.startDate!);
-    final end = _dateOnly(task.endDate!);
-    final left = start.difference(minDate).inDays * dayWidth;
-    final days = math.max(1, end.difference(start).inDays + 1);
-    final width = math.max(26.0, days * dayWidth - 6);
-    final progressWidth = width * (task.progress / 100).clamp(0.0, 1.0);
-
-    final color = task.progress >= 100
-        ? colors.success
-        : _isLate(task)
-            ? colors.danger
-            : colors.info;
-
-    return Positioned(
-      left: left + 3,
-      top: rowIndex * rowHeight + 15,
-      child: SizedBox(
-        width: width,
-        height: 28,
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: colors.yellow,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            if (progressWidth > 0)
-              Container(
-                width: math.max(18, progressWidth),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            Positioned.fill(
-              child: Center(
-                child: Text(
-                  '${task.progress.toStringAsFixed(0)}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PremiumBox extends StatelessWidget {
   const _PremiumBox({
     required this.child,
@@ -1203,10 +918,6 @@ DateTime? _dateValue(dynamic value) {
   return DateTime.tryParse(value.toString());
 }
 
-DateTime _dateOnly(DateTime value) {
-  return DateTime(value.year, value.month, value.day);
-}
-
 String _statusLabel(String status) {
   switch (status) {
     case 'brouillon':
@@ -1241,15 +952,6 @@ Color _statusColor(AppPaletteColors colors, String status) {
     default:
       return colors.textSoft;
   }
-}
-
-bool _isLate(_PlanningTask task) {
-  final end = task.endDate;
-  if (end == null || task.progress >= 100) {
-    return false;
-  }
-
-  return DateTime.now().isAfter(end);
 }
 
 String _dateRangeLabel(_PlanningTask task) {

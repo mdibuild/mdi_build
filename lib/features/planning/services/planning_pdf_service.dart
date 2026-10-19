@@ -4,6 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../core/models/project_task.dart';
+import '../../../core/services/pdf_letterhead.dart';
 
 class PlanningPdfService {
   Future<void> printPlanning({
@@ -40,7 +41,10 @@ class PlanningPdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
       decoration: pw.BoxDecoration(
-        color: PdfColors.blueGrey900,
+        border: pw.Border.all(
+          color: PdfLetterhead.ink,
+          width: PdfLetterhead.frameWidth,
+        ),
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Row(
@@ -52,7 +56,7 @@ class PlanningPdfService {
                 pw.Text(
                   'PLANNING PROJET',
                   style: const pw.TextStyle(
-                    color: PdfColors.white,
+                    color: PdfLetterhead.ink,
                     fontSize: 22,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -61,7 +65,7 @@ class PlanningPdfService {
                 pw.Text(
                   projectName,
                   style: const pw.TextStyle(
-                    color: PdfColors.white,
+                    color: PdfLetterhead.ink,
                     fontSize: 12,
                   ),
                 ),
@@ -71,7 +75,7 @@ class PlanningPdfService {
           pw.Text(
             'Édité le : $generatedAt',
             style: const pw.TextStyle(
-              color: PdfColors.white,
+              color: PdfLetterhead.ink,
               fontSize: 11,
             ),
           ),

@@ -139,15 +139,11 @@ class PremiumHeroHeader extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'MDI',
-                            style: TextStyle(
-                              color: colors.yellow,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              letterSpacing: 0.5,
-                            ),
+                          clipBehavior: Clip.antiAlias,
+                          // Logo MDI Build.
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.cover,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -204,15 +200,11 @@ class PremiumHeroHeader extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'MDI',
-                        style: TextStyle(
-                          color: colors.yellow,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          letterSpacing: 0.5,
-                        ),
+                      clipBehavior: Clip.antiAlias,
+                      // Logo MDI Build.
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.cover,
                       ),
                     ),
                     const SizedBox(width: 16),

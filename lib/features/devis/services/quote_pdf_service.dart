@@ -231,7 +231,7 @@ class QuotePdfService {
       },
       children: [
         pw.TableRow(
-          decoration: const pw.BoxDecoration(color: PdfLetterhead.gold),
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
           children: [
             _cell('Désignation', bold: true),
             _cell('Qté', bold: true),
@@ -276,7 +276,13 @@ class QuotePdfService {
         pw.Container(
           width: double.infinity,
           padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: PdfLetterhead.gold,
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(
+              color: PdfLetterhead.ink,
+              width: PdfLetterhead.frameWidth,
+            ),
+            borderRadius: pw.BorderRadius.circular(6),
+          ),
           child: pw.Row(
             children: [
               pw.Expanded(

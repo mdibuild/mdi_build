@@ -19,6 +19,7 @@ import '../../settings/presentation/providers/suppliers_providers.dart';
 import '../services/purchase_pdf_service.dart';
 import 'providers/purchases_providers.dart';
 import 'widgets/purchase_form.dart';
+import '../../../shared/presentation/party_pickers.dart';
 
 class AchatsPage extends ConsumerStatefulWidget {
   const AchatsPage({super.key});
@@ -745,6 +746,13 @@ class _PurchaseTile extends ConsumerWidget {
                 projectName: projectName,
                 createdAtLabel: dateText,
               ),
+              if (purchase.supplierId != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: PartyContactChips.supplier(purchase.supplierId),
+                ),
+              ],
               const SizedBox(height: 12),
               if (!snapshot.hasData)
                 const Padding(

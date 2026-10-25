@@ -96,6 +96,17 @@ class _PremiumSurfaceCardState extends State<PremiumSurfaceCard> {
   }
 }
 
+/// Couleur du texte posé sur le bandeau d'en-tête : blanc sur un fond
+/// sombre, quasi noir sur un fond clair (ex. bandeau doré de la palette
+/// Ardoise Nuit), pour garder un contraste lisible.
+Color heroForeground(BuildContext context) {
+  final colors = context.palette;
+  final middle = Color.lerp(colors.petrol, colors.petrolAlt, 0.5)!;
+  return ThemeData.estimateBrightnessForColor(middle) == Brightness.light
+      ? const Color(0xFF14181F)
+      : Colors.white;
+}
+
 class PremiumHeroHeader extends StatelessWidget {
   const PremiumHeroHeader({
     super.key,
@@ -111,6 +122,7 @@ class PremiumHeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.palette;
+    final foreground = heroForeground(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -163,7 +175,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                     .textTheme
                                     .headlineMedium
                                     ?.copyWith(
-                                      color: Colors.white,
+                                      color: foreground,
                                       fontWeight: FontWeight.w900,
                                       fontSize: 22,
                                     ),
@@ -177,8 +189,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                     .textTheme
                                     .bodyMedium
                                     ?.copyWith(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.88),
+                                      color: foreground.withValues(alpha: 0.88),
                                     ),
                               ),
                             ],
@@ -225,7 +236,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                 .textTheme
                                 .headlineMedium
                                 ?.copyWith(
-                                  color: Colors.white,
+                                  color: foreground,
                                   fontWeight: FontWeight.w900,
                                 ),
                           ),
@@ -238,7 +249,7 @@ class PremiumHeroHeader extends StatelessWidget {
                                 .textTheme
                                 .bodyMedium
                                 ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.88),
+                                  color: foreground.withValues(alpha: 0.88),
                                 ),
                           ),
                         ],

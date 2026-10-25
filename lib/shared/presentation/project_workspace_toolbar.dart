@@ -29,9 +29,12 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
   static const _destinations = [
     ('/dashboard', 'Tableau de bord', Icons.dashboard_outlined),
     ('/planning', 'Planning', Icons.calendar_month_outlined),
+    ('/checklist', 'Check-list', Icons.checklist_rtl_outlined),
     ('/metrage', 'Métré', Icons.straighten_outlined),
     ('/quantitatif', 'Quantitatif', Icons.calculate_outlined),
     ('/devis', 'Devis', Icons.request_quote_outlined),
+    ('/factures', 'Factures', Icons.receipt_long_outlined),
+    ('/technique', 'Technique', Icons.engineering_outlined),
     ('/achats', 'Achats', Icons.shopping_cart_outlined),
     ('/documents', 'Documents', Icons.folder_outlined),
     ('/reports', 'Rapports', Icons.description_outlined),

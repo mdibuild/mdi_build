@@ -13,6 +13,7 @@ import '../../../shared/presentation/premium_ui.dart';
 import 'providers/current_profile_provider.dart';
 import 'providers/projects_providers.dart';
 import 'providers/selected_project_provider.dart';
+import '../../../shared/presentation/party_pickers.dart';
 
 final companyProjectsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -468,6 +469,12 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                     label: 'Client',
                                     value: _clientLabel(row),
                                   ),
+                                  if (row['client_id'] != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: PartyContactChips.client(
+                                          row['client_id'].toString()),
+                                    ),
                                   const SizedBox(height: 10),
                                   PremiumInfoLine(
                                     label: 'Lieu',

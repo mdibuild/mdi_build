@@ -230,6 +230,20 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     return saved;
   }
 
+  /// Enregistre le devis puis ouvre une facture préremplie (lignes,
+  /// client, objet).
+  Future<void> _invoiceQuote(BuildContext context, String projectId) async {
+    final saved = await _persistQuote(
+      context: context,
+      projectId: projectId,
+      projectClientId: _projectClientId,
+    );
+    if (saved == null || !context.mounted) {
+      return;
+    }
+    context.push('/factures/new?quoteId=${saved.id}');
+  }
+
   List<QuoteLineItem> _buildItemsForSave() {
     final now = DateTime.now();
 
@@ -1000,6 +1014,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                     projectId: project.id,
                     projectName: project.name,
                   ),
+                  onInvoice: () => _invoiceQuote(context, project.id),
                   onPurchase: () => _openGeneratePurchaseDialog(
                     context,
                     items: items,
@@ -1349,6 +1364,7 @@ class _QuoteActionsCard extends StatelessWidget {
     required this.onSend,
     required this.onReport,
     required this.onPurchase,
+    required this.onInvoice,
     required this.onCancel,
     required this.onArchive,
     required this.onDeleteRequest,
@@ -1366,6 +1382,7 @@ class _QuoteActionsCard extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onReport;
   final VoidCallback onPurchase;
+  final VoidCallback onInvoice;
   final VoidCallback onCancel;
   final VoidCallback onArchive;
   final VoidCallback onDeleteRequest;
@@ -1422,6 +1439,11 @@ class _QuoteActionsCard extends StatelessWidget {
                 onPressed: itemsEmpty ? null : onPurchase,
                 icon: const Icon(Icons.shopping_cart_outlined),
                 label: const Text('G\u00e9n\u00e9rer achat'),
+              ),
+              FilledButton.icon(
+                onPressed: itemsEmpty ? null : onInvoice,
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Facturer ce devis'),
               ),
             ],
           ),

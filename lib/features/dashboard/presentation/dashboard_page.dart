@@ -9,6 +9,7 @@ import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/dashboard_providers.dart';
+import 'widgets/finance_checklist_card.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -37,7 +38,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     return ProjectModuleScaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Tableau de bord'),
       ),
       body: metricsAsync.when(
         data: (metrics) => projectAsync.when(
@@ -242,6 +243,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ],
                       ),
                     ),
+                  if (showIndicators)
+                    FinanceChecklistCard(project: project),
                   const SizedBox(height: 16),
                   if (statusCount > 0 || showProgress)
                     PremiumSurfaceCard(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_palette_colors.dart';
+import '../../core/services/live_refresh.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/providers/module_refresh_provider.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
@@ -19,22 +20,63 @@ class MainShellPage extends StatelessWidget {
 
   final Widget child;
 
-  static const items = [
-    ('/dashboard', Icons.dashboard_outlined, 'Dashboard'),
-    ('/projects', Icons.apartment_outlined, 'Projets'),
-    ('/planning', Icons.calendar_month_outlined, 'Planning'),
-    ('/metrage', Icons.straighten_outlined, 'Métré'),
-    ('/quantitatif', Icons.calculate_outlined, 'Quantitatif'),
-    ('/devis', Icons.request_quote_outlined, 'Devis'),
-    ('/achats', Icons.shopping_cart_outlined, 'Achats'),
-    ('/documents', Icons.folder_outlined, 'Documents'),
-    ('/chat', Icons.chat_bubble_outline, 'Chat'),
-    ('/reports', Icons.picture_as_pdf_outlined, 'Rapports'),
-    ('/settings', Icons.settings_outlined, 'Paramètres'),
+  /// Menu regroupé par thèmes (titre de section, entrées).
+  static const sections = <(String, List<(String, IconData, String)>)>[
+    (
+      'Pilotage',
+      [
+        ('/dashboard', Icons.space_dashboard_outlined, 'Tableau de bord'),
+        ('/projects', Icons.apartment_outlined, 'Projets'),
+        ('/checklist', Icons.checklist_rtl_outlined, 'Check-list'),
+      ]
+    ),
+    (
+      'Études & chiffrage',
+      [
+        ('/metrage', Icons.straighten_outlined, 'Métré & Quantitatif'),
+        ('/devis', Icons.request_quote_outlined, 'Devis & Factures'),
+        ('/technique', Icons.engineering_outlined, 'Technique'),
+      ]
+    ),
+    (
+      'Chantier',
+      [
+        ('/planning', Icons.calendar_month_outlined, 'Planning'),
+        ('/achats', Icons.shopping_cart_outlined, 'Achats'),
+        ('/documents', Icons.folder_outlined, 'Documents'),
+      ]
+    ),
+    (
+      'Échanges',
+      [
+        ('/chat', Icons.chat_bubble_outline, 'Chat'),
+        ('/reports', Icons.picture_as_pdf_outlined, 'Rapports'),
+      ]
+    ),
+    (
+      '',
+      [
+        ('/settings', Icons.settings_outlined, 'Paramètres'),
+      ]
+    ),
   ];
 
+  static final items = [for (final s in sections) ...s.$2];
+
+  /// Anciennes adresses regroupées dans un module fusionné.
+  static const _aliases = {
+    '/quantitatif': '/metrage',
+    '/factures': '/devis',
+  };
+
   int _currentIndex(String location) {
-    final index = items.indexWhere((item) => location.startsWith(item.$1));
+    var path = location;
+    for (final alias in _aliases.entries) {
+      if (path.startsWith(alias.key)) {
+        path = alias.value;
+      }
+    }
+    final index = items.indexWhere((item) => path.startsWith(item.$1));
     return index >= 0 ? index : 0;
   }
 
@@ -84,7 +126,9 @@ class MainShellPage extends StatelessWidget {
         final isCompact = constraints.maxWidth < _compactBreakpoint;
         final content = KeyedSubtree(
           key: _shellContentKey,
-          child: PremiumWatermarkBackground(child: child),
+          child: LiveRefreshScope(
+            child: PremiumWatermarkBackground(child: child),
+          ),
         );
 
         if (isCompact) {
@@ -204,22 +248,47 @@ class _NavRailContent extends ConsumerWidget {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < MainShellPage.items.length; i++)
-                  Consumer(
-                    builder: (context, ref, _) => _RailItem(
-                      icon: MainShellPage.items[i].$2,
-                      label: MainShellPage.items[i].$3,
-                      selected: i == selectedIndex,
-                      // Pastille rouge : messages non lus du chat.
-                      badge: MainShellPage.items[i].$1 == '/chat'
-                          ? ref.watch(chatUnreadTotalProvider)
-                          : 0,
-                      onTap: () => onSelect(MainShellPage.items[i].$1),
+                _BrandHeader(colors: colors),
+                for (final section in MainShellPage.sections) ...[
+                  if (section.$1.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 14, 16, 4),
+                      child: Text(
+                        section.$1.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          letterSpacing: 1.1,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textSoft,
+                        ),
+                      ),
+                    )
+                  else
+                    Divider(
+                      height: 20,
+                      indent: 16,
+                      endIndent: 16,
+                      color: colors.border,
                     ),
-                  ),
+                  for (final item in section.$2)
+                    Consumer(
+                      builder: (context, ref, _) => _RailItem(
+                        icon: item.$2,
+                        label: item.$3,
+                        selected:
+                            MainShellPage.items.indexOf(item) == selectedIndex,
+                        // Pastille rouge : messages non lus du chat.
+                        badge: item.$1 == '/chat'
+                            ? ref.watch(chatUnreadTotalProvider)
+                            : 0,
+                        onTap: () => onSelect(item.$1),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -271,6 +340,54 @@ class _NavRailContent extends ConsumerWidget {
   }
 }
 
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader({required this.colors});
+
+  final AppPaletteColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Row(children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Icon(Icons.apartment, color: colors.petrol, size: 32),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'MDI Build',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: colors.petrol,
+                ),
+              ),
+              Text(
+                'Gestion de chantier',
+                style: TextStyle(fontSize: 11, color: colors.textSoft),
+              ),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Entrée de menu sobre : icône + libellé. L'entrée active est repérée par
+/// un fond teinté, un trait doré à gauche et un libellé en gras.
 class _RailItem extends StatelessWidget {
   const _RailItem({
     required this.icon,
@@ -290,63 +407,59 @@ class _RailItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.palette;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? colors.petrolSoft : colors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: selected
-              ? Border.all(color: colors.petrol, width: 1.4)
-              : Border.all(color: colors.border, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: selected ? 0.14 : 0.06),
-              blurRadius: selected ? 14 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: colors.petrol,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.petrol.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1.5),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Material(
+          color: selected ? colors.petrolSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 42,
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 4,
+                    height: selected ? 24 : 0,
+                    decoration: BoxDecoration(
+                      color: colors.yellow,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    icon,
+                    size: 20,
+                    color: selected ? colors.petrol : colors.textSoft,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected ? colors.petrol : colors.text,
+                      ),
+                    ),
+                  ),
+                  if (badge > 0) ...[
+                    const SizedBox(width: 6),
+                    UnreadBubble(count: badge),
+                  ],
+                  const SizedBox(width: 10),
                 ],
               ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: colors.yellow, size: 20),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  color: selected ? colors.petrol : colors.text,
-                ),
-              ),
-            ),
-            if (badge > 0) ...[
-              const SizedBox(width: 6),
-              UnreadBubble(count: badge),
-            ],
-          ],
+          ),
         ),
       ),
     );

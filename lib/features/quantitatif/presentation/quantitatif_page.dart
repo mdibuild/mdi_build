@@ -241,7 +241,11 @@ class _QuantitatifPageState extends ConsumerState<QuantitatifPage> {
                         : 'Projet courant : ${project.name}',
                   ),
                   OutlinedButton.icon(
-                    onPressed: () => context.go('/metrage'),
+                    onPressed: () {
+                      // Dans « Métré & Quantitatif », on change d'onglet.
+                      final tabs = DefaultTabController.maybeOf(context);
+                      tabs == null ? context.go('/metrage') : tabs.animateTo(0);
+                    },
                     icon: const Icon(Icons.straighten_outlined),
                     label: const Text('Ajouter / modifier un espace'),
                   ),

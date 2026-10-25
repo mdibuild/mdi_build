@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/client.dart';
 import '../../core/models/supplier.dart';
@@ -155,5 +156,87 @@ class _PartyDropdown<T> extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+/// Raccourcis de contact d'un client ou d'un fournisseur de la base :
+/// appeler, écrire un e-mail. N'affiche rien si la fiche est introuvable
+/// ou sans coordonnées.
+class PartyContactChips extends ConsumerWidget {
+  const PartyContactChips.client(this.id, {super.key}) : isClient = true;
+  const PartyContactChips.supplier(this.id, {super.key}) : isClient = false;
+
+  final String? id;
+  final bool isClient;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = this.id;
+    if (id == null) {
+      return const SizedBox.shrink();
+    }
+    String? name;
+    String phone = '';
+    String email = '';
+    if (isClient) {
+      final all = [
+        ...?ref.watch(activeClientsProvider).value,
+        ...?ref.watch(archivedClientsProvider).value,
+      ];
+      for (final c in all) {
+        if (c.id == id) {
+          name = c.name;
+          phone = c.phone.trim();
+          email = c.email.trim();
+        }
+      }
+    } else {
+      final all = [
+        ...?ref.watch(activeSuppliersProvider).value,
+        ...?ref.watch(archivedSuppliersProvider).value,
+      ];
+      for (final s in all) {
+        if (s.id == id) {
+          name = s.name;
+          phone = s.phone.trim();
+          email = s.email.trim();
+        }
+      }
+    }
+    if (name == null || (phone.isEmpty && email.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    Future<void> open(Uri uri) async {
+      try {
+        if (!await launchUrl(uri)) {
+          throw StateError('aucune application');
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Impossible d’ouvrir ${uri.path}')),
+          );
+        }
+      }
+    }
+
+    return Wrap(spacing: 8, runSpacing: 6, children: [
+      if (phone.isNotEmpty)
+        ActionChip(
+          avatar: const Icon(Icons.call_outlined, size: 18),
+          label: Text(phone),
+          tooltip: 'Appeler $name',
+          onPressed: () =>
+              open(Uri(scheme: 'tel', path: phone.replaceAll(' ', ''))),
+        ),
+      if (email.isNotEmpty)
+        ActionChip(
+          avatar: const Icon(Icons.mail_outline, size: 18),
+          label: Text(email),
+          tooltip: 'Écrire à $name',
+          onPressed: () => open(Uri(scheme: 'mailto', path: email)),
+        ),
+    ]);
   }
 }

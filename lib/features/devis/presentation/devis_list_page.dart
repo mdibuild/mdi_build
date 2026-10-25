@@ -8,11 +8,15 @@ import '../../../core/models/project_quote.dart';
 import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/project_selector_card.dart';
+import '../../factures/presentation/invoices_tab.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/devis_providers.dart';
 
 class DevisListPage extends ConsumerStatefulWidget {
-  const DevisListPage({super.key});
+  const DevisListPage({super.key, this.initialTab = 0});
+
+  /// 0 = Devis, 1 = Factures.
+  final int initialTab;
 
   @override
   ConsumerState<DevisListPage> createState() => _DevisListPageState();
@@ -111,126 +115,145 @@ class _DevisListPageState extends ConsumerState<DevisListPage> {
   Widget build(BuildContext context) {
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
 
-    return ProjectModuleScaffold(
-      appBar: AppBar(title: const Text('Devis')),
-      body: selectedProjectAsync.when(
-        data: (project) {
-          if (project == null) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Choisis un projet pour voir ses devis.'),
-              ),
-            );
-          }
-
-          final quotesAsync = ref.watch(projectQuotesProvider(project.id));
-
-          return quotesAsync.when(
-            data: (quotes) {
-              final filtered = _filterQuotes(quotes);
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  PremiumHeroHeader(
-                    title: 'Devis',
-                    subtitle: 'Projet courant : ${project.name}',
-                    trailing: FilledButton.icon(
-                      onPressed: () => _openQuote(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Nouveau devis'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ProjectSelectorCard(
-                    currentProjectId: project.id,
-                    labelText: 'Projet affecté',
-                  ),
-                  const SizedBox(height: 16),
-                  ModuleFilterBar(
-                    searchQuery: _searchQuery,
-                    onSearchChanged: (value) =>
-                        setState(() => _searchQuery = value),
-                    searchHint: 'Titre, statut, mode du devis…',
-                    resultLabel:
-                        '${filtered.length} devis sur ${quotes.length}',
-                    onReset: () => setState(() {
-                      _searchQuery = '';
-                      _status = 'all';
-                      _mode = 'all';
-                    }),
-                    filters: [
-                      ModuleFilterDropdown<String>(
-                        value: _status,
-                        label: 'Statut',
-                        items: [
-                          const DropdownMenuItem(
-                              value: 'all', child: Text('Tous les statuts')),
-                          for (final status in [
-                            'brouillon',
-                            'envoye',
-                            'signe',
-                            'annule',
-                            'archive'
-                          ])
-                            DropdownMenuItem(
-                                value: status,
-                                child: Text(_statusLabel(status))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _status = value ?? 'all'),
-                      ),
-                      ModuleFilterDropdown<String>(
-                        value: _mode,
-                        label: 'Mode',
-                        items: [
-                          const DropdownMenuItem(
-                              value: 'all', child: Text('Tous les modes')),
-                          for (final mode in ['piece', 'corps_etat', 'mixte'])
-                            DropdownMenuItem(
-                                value: mode, child: Text(_modeLabel(mode))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _mode = value ?? 'all'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (filtered.isEmpty)
-                    PremiumSurfaceCard(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(quotes.isEmpty
-                              ? 'Aucun devis pour ce projet.'
-                              : 'Aucun devis ne correspond aux filtres.'),
-                        ),
-                      ),
-                    )
-                  else
-                    ...filtered.map(
-                      (quote) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _QuoteCard(
-                          key: ValueKey(quote.id),
-                          quote: quote,
-                          onOpen: () => _openQuote(context, quote: quote),
-                          onChangeStatus: (status) =>
-                              _changeStatus(context, ref, quote, status),
-                          onDelete: () => _deleteQuote(context, ref, quote),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 24),
-                ],
+    return DefaultTabController(
+      length: 2,
+      initialIndex: widget.initialTab.clamp(0, 1),
+      child: ProjectModuleScaffold(
+        appBar: AppBar(
+          title: const Text('Devis & Factures'),
+          bottom: const TabBar(tabs: [
+            Tab(icon: Icon(Icons.request_quote_outlined), text: 'Devis'),
+            Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Factures'),
+          ]),
+        ),
+        body: selectedProjectAsync.when(
+          data: (project) {
+            if (project == null) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('Choisis un projet pour voir ses devis.'),
+                ),
               );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(child: Text('Erreur devis : $error')),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erreur projet : $error')),
+            }
+
+            final quotesAsync = ref.watch(projectQuotesProvider(project.id));
+
+            return TabBarView(children: [
+              quotesAsync.when(
+                data: (quotes) {
+                  final filtered = _filterQuotes(quotes);
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      PremiumHeroHeader(
+                        title: 'Devis',
+                        subtitle: 'Projet courant : ${project.name}',
+                        trailing: FilledButton.icon(
+                          onPressed: () => _openQuote(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Nouveau devis'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ProjectSelectorCard(
+                        currentProjectId: project.id,
+                        labelText: 'Projet affecté',
+                      ),
+                      const SizedBox(height: 16),
+                      ModuleFilterBar(
+                        searchQuery: _searchQuery,
+                        onSearchChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        searchHint: 'Titre, statut, mode du devis…',
+                        resultLabel:
+                            '${filtered.length} devis sur ${quotes.length}',
+                        onReset: () => setState(() {
+                          _searchQuery = '';
+                          _status = 'all';
+                          _mode = 'all';
+                        }),
+                        filters: [
+                          ModuleFilterDropdown<String>(
+                            value: _status,
+                            label: 'Statut',
+                            items: [
+                              const DropdownMenuItem(
+                                  value: 'all',
+                                  child: Text('Tous les statuts')),
+                              for (final status in [
+                                'brouillon',
+                                'envoye',
+                                'signe',
+                                'annule',
+                                'archive'
+                              ])
+                                DropdownMenuItem(
+                                    value: status,
+                                    child: Text(_statusLabel(status))),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _status = value ?? 'all'),
+                          ),
+                          ModuleFilterDropdown<String>(
+                            value: _mode,
+                            label: 'Mode',
+                            items: [
+                              const DropdownMenuItem(
+                                  value: 'all', child: Text('Tous les modes')),
+                              for (final mode in [
+                                'piece',
+                                'corps_etat',
+                                'mixte'
+                              ])
+                                DropdownMenuItem(
+                                    value: mode, child: Text(_modeLabel(mode))),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _mode = value ?? 'all'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (filtered.isEmpty)
+                        PremiumSurfaceCard(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Text(quotes.isEmpty
+                                  ? 'Aucun devis pour ce projet.'
+                                  : 'Aucun devis ne correspond aux filtres.'),
+                            ),
+                          ),
+                        )
+                      else
+                        ...filtered.map(
+                          (quote) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _QuoteCard(
+                              key: ValueKey(quote.id),
+                              quote: quote,
+                              onOpen: () => _openQuote(context, quote: quote),
+                              onChangeStatus: (status) =>
+                                  _changeStatus(context, ref, quote, status),
+                              onDelete: () => _deleteQuote(context, ref, quote),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) =>
+                    Center(child: Text('Erreur devis : $error')),
+              ),
+              InvoicesTab(project: project),
+            ]);
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erreur projet : $error')),
+        ),
       ),
     );
   }
@@ -361,6 +384,12 @@ class _QuoteCardState extends State<_QuoteCard> {
                   onPressed: widget.onOpen,
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('Ouvrir'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push('/factures/new?quoteId=${quote.id}'),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Facturer'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _confirmingDelete = true),

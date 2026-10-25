@@ -9,15 +9,16 @@ import '../../core/models/project.dart';
 import '../../features/achats/presentation/achats_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/checklist/presentation/checklist_page.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/devis/presentation/devis_list_page.dart';
 import '../../features/devis/presentation/devis_page.dart';
 import '../../features/documents/presentation/documents_page.dart';
-import '../../features/metrage/presentation/metrage_page.dart';
+import '../../features/factures/presentation/invoice_page.dart';
+import '../../features/metrage/presentation/metre_quantitatif_page.dart';
 import '../../features/planning/presentation/planning_page.dart';
 import '../../features/projects/presentation/project_form_page.dart';
 import '../../features/projects/presentation/projects_page.dart';
-import '../../features/quantitatif/presentation/quantitatif_page.dart';
 import '../../features/reports/presentation/reports_page.dart';
 import '../../features/settings/presentation/appearance_settings_page.dart';
 import '../../features/settings/presentation/clients_page.dart';
@@ -26,6 +27,7 @@ import '../../features/settings/presentation/notifications_settings_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/settings/presentation/suppliers_page.dart';
 import '../../features/settings/presentation/tax_rates_page.dart';
+import '../../features/technique/presentation/technique_page.dart';
 import '../../shared/presentation/main_shell_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -75,10 +77,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, state) => const PlanningPage()),
           GoRoute(
               path: '/metrage',
-              builder: (context, state) => const MetragePage()),
+              builder: (context, state) => const MetreQuantitatifPage()),
           GoRoute(
               path: '/quantitatif',
-              builder: (context, state) => const QuantitatifPage()),
+              builder: (context, state) =>
+                  const MetreQuantitatifPage(initialTab: 1)),
           GoRoute(
               path: '/devis',
               builder: (context, state) => const DevisListPage()),
@@ -89,6 +92,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               path: '/devis/:quoteId/edit',
               builder: (context, state) => DevisPage(
                   quoteId: state.pathParameters['quoteId'])),
+          GoRoute(
+              path: '/factures',
+              builder: (context, state) =>
+                  const DevisListPage(initialTab: 1)),
+          GoRoute(
+              path: '/factures/new',
+              builder: (context, state) => InvoicePage(
+                    key: ValueKey(state.uri.toString()),
+                    fromQuoteId: state.uri.queryParameters['quoteId'],
+                  )),
+          GoRoute(
+              path: '/factures/:invoiceId/edit',
+              builder: (context, state) => InvoicePage(
+                    key: ValueKey(state.pathParameters['invoiceId']),
+                    invoiceId: state.pathParameters['invoiceId'],
+                  )),
+          GoRoute(
+              path: '/technique',
+              builder: (context, state) => const TechniquePage()),
+          GoRoute(
+              path: '/checklist',
+              builder: (context, state) => const ChecklistPage()),
           GoRoute(
               path: '/achats', builder: (context, state) => const AchatsPage()),
           GoRoute(

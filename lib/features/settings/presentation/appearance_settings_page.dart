@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,7 +17,7 @@ class AppearanceSettingsPage extends ConsumerWidget {
     final selection = ref.watch(paletteSelectionProvider);
     final notifier = ref.read(paletteSelectionProvider.notifier);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Apparence')),
       body: ListView(
         padding: const EdgeInsets.all(16),

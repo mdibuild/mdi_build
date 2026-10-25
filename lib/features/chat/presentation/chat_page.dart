@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../core/services/firebase_push_service.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
@@ -136,8 +138,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _sending = false;
   bool _recording = false;
   bool _searching = false;
+  bool _filtering = false;
   bool _showJumpToBottom = false;
   String _search = '';
+  String _contentFilter = 'all';
+  String _authorFilter = 'all';
   String? _recipientId;
   String? _recipientName;
 
@@ -161,8 +166,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _onScroll() {
-    final show =
-        _scrollController.hasClients && _scrollController.offset > 320;
+    final show = _scrollController.hasClients && _scrollController.offset > 320;
     if (show != _showJumpToBottom) {
       setState(() => _showJumpToBottom = show);
     }
@@ -239,6 +243,88 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       _searching = false;
       _search = '';
     });
+  }
+
+  bool get _hasMessageFilters =>
+      _search.trim().isNotEmpty ||
+      _contentFilter != 'all' ||
+      _authorFilter != 'all';
+
+  void _resetMessageFilters() {
+    _searchController.clear();
+    setState(() {
+      _search = '';
+      _contentFilter = 'all';
+      _authorFilter = 'all';
+    });
+  }
+
+  void _toggleMessageFilters() {
+    FocusScope.of(context).unfocus();
+    setState(() => _filtering = !_filtering);
+  }
+
+  List<ChatMessage> _filterMessages(List<ChatMessage> all, String? myId) {
+    final query = _search.trim().toLowerCase();
+    return all.where((message) {
+      final contentMatch =
+          _contentFilter == 'all' || message.messageType == _contentFilter;
+      final authorMatch =
+          _authorFilter == 'all' || (myId != null && message.senderId == myId);
+      final textMatch = query.isEmpty ||
+          message.textContent.toLowerCase().contains(query) ||
+          message.senderName.toLowerCase().contains(query) ||
+          (message.fileName ?? '').toLowerCase().contains(query);
+      return contentMatch && authorMatch && textMatch;
+    }).toList();
+  }
+
+  Widget _buildMessageFilters() {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 178,
+              child: ModuleFilterDropdown<String>(
+                label: 'Type de contenu',
+                value: _contentFilter,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'all', child: Text('Tous les contenus')),
+                  DropdownMenuItem(value: 'text', child: Text('Textes')),
+                  DropdownMenuItem(value: 'image', child: Text('Photos')),
+                  DropdownMenuItem(value: 'file', child: Text('Documents')),
+                  DropdownMenuItem(value: 'audio', child: Text('Audio')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _contentFilter = value);
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 178,
+              child: ModuleFilterDropdown<String>(
+                label: 'Auteur',
+                value: _authorFilter,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'all', child: Text('Tous les auteurs')),
+                  DropdownMenuItem(value: 'mine', child: Text('Mes messages')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _authorFilter = value);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _sendText() async {
@@ -565,8 +651,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                             title: 'Chat général',
                             subtitle: "Toute l'équipe · hors projet",
                             unread: unread['general'] ?? 0,
-                            selected:
-                                conversation == ChatConversation.general,
+                            selected: conversation == ChatConversation.general,
                             onTap: () {
                               Navigator.of(sheetContext).pop();
                               _openGeneral();
@@ -764,32 +849,67 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final profile = ref.watch(currentProfileProvider).value;
     final List<SettingsUserEntry> recipients = profile == null
         ? const []
-        : (ref.watch(companyUsersProvider(profile.companyId)).value ??
-                const [])
+        : (ref.watch(companyUsersProvider(profile.companyId)).value ?? const [])
             .where((entry) => entry.id != profile.id)
             .toList();
     // Assez de hauteur pour afficher les onglets Général / Projet ? (sinon,
     // en paysage sur téléphone, on bascule via le titre de la conversation).
-    final roomy = MediaQuery.sizeOf(context).height >= 520;
+    final availableHeight = MediaQuery.sizeOf(context).height -
+        MediaQuery.viewInsetsOf(context).bottom;
+    final shortViewport = availableHeight < 300;
+    final roomy =
+        MediaQuery.sizeOf(context).height >= 520 && availableHeight >= 400;
     final unread = ref.watch(chatUnreadByConversationProvider);
-    final conversationKey =
-        chatConversationKey(isGeneral ? null : project?.id);
+    final conversationKey = chatConversationKey(isGeneral ? null : project?.id);
     final projectUnread = unread.entries
         .where((e) => e.key != 'general')
         .fold<int>(0, (sum, e) => sum + e.value);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       backgroundColor: wa.wallpaper,
       appBar: _buildAppBar(
         context,
         isGeneral: isGeneral,
         projectName: project?.name,
         roomy: roomy,
+        shortViewport: shortViewport,
         generalUnread: unread['general'] ?? 0,
         projectUnread: projectUnread,
       ),
       body: Column(
         children: [
+          if (!noProject &&
+              _filtering &&
+              MediaQuery.viewInsetsOf(context).bottom == 0)
+            _buildMessageFilters(),
+          if (!noProject && _hasMessageFilters && !shortViewport)
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        messagesAsync.hasValue
+                            ? '${_filterMessages(messagesAsync.value!, profile?.id).length} '
+                                'sur ${messagesAsync.value!.length} messages'
+                            : 'Filtrage de la conversation',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    IconButton(
+                      constraints:
+                          const BoxConstraints(minWidth: 36, minHeight: 32),
+                      padding: const EdgeInsets.all(6),
+                      tooltip: 'Réinitialiser les filtres du chat',
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 20),
+                      onPressed: _resetMessageFilters,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Expanded(
             child: noProject
                 ? _NoProjectPanel(
@@ -816,6 +936,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     required bool isGeneral,
     required String? projectName,
     required bool roomy,
+    required bool shortViewport,
     required int generalUnread,
     required int projectUnread,
   }) {
@@ -825,6 +946,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     if (_searching) {
       return AppBar(
+        toolbarHeight: shortViewport ? 44 : null,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Fermer la recherche',
@@ -847,6 +969,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
         ),
         actions: [
+          if (_hasMessageFilters && shortViewport)
+            IconButton(
+              tooltip: 'Réinitialiser les filtres du chat',
+              icon: const Icon(Icons.filter_alt_off_outlined),
+              onPressed: _resetMessageFilters,
+            ),
+          IconButton(
+            icon:
+                Icon(_filtering ? Icons.filter_alt : Icons.filter_alt_outlined),
+            tooltip: 'Filtres des messages',
+            onPressed: _toggleMessageFilters,
+          ),
           if (_search.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.close),
@@ -861,11 +995,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
 
     final title = isGeneral ? 'Chat général' : (projectName ?? 'Chat projet');
-    final subtitle = isGeneral
-        ? "Toute l'équipe · hors projet"
-        : 'Conversation du projet';
+    final subtitle =
+        isGeneral ? "Toute l'équipe · hors projet" : 'Conversation du projet';
 
     return AppBar(
+      toolbarHeight: shortViewport ? 44 : null,
       titleSpacing: 8,
       title: Semantics(
         button: true,
@@ -922,6 +1056,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ),
       ),
       actions: [
+        if (_hasMessageFilters && shortViewport)
+          IconButton(
+            tooltip: 'Réinitialiser les filtres du chat',
+            icon: const Icon(Icons.filter_alt_off_outlined),
+            onPressed: _resetMessageFilters,
+          ),
+        IconButton(
+          icon: Icon(
+              _filtering || _contentFilter != 'all' || _authorFilter != 'all'
+                  ? Icons.filter_alt
+                  : Icons.filter_alt_outlined),
+          tooltip: 'Filtres des messages',
+          onPressed: _toggleMessageFilters,
+        ),
         IconButton(
           icon: const Icon(Icons.search),
           tooltip: 'Rechercher',
@@ -995,22 +1143,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         _scheduleMarkRead(all, myId);
         _scheduleMarkSeen(all, conversationKey);
 
-        final query = _search.trim().toLowerCase();
-        final messages = query.isEmpty
-            ? all
-            : all
-                .where((m) =>
-                    m.textContent.toLowerCase().contains(query) ||
-                    m.senderName.toLowerCase().contains(query) ||
-                    (m.fileName ?? '').toLowerCase().contains(query))
-                .toList();
+        final messages = _filterMessages(all, myId);
 
         if (messages.isEmpty) {
           return _ChatNotice(
             wa: wa,
-            icon: query.isEmpty ? Icons.forum_outlined : Icons.search_off,
-            text: query.isNotEmpty
-                ? 'Aucun message ne correspond à « $_search ».'
+            icon: _hasMessageFilters ? Icons.search_off : Icons.forum_outlined,
+            text: _hasMessageFilters
+                ? 'Aucun message ne correspond aux filtres de cette conversation.'
                 : isGeneral
                     ? "Chat général de l'équipe.\nLes messages envoyés ici sont "
                         'visibles par toute l’entreprise et ne sont rattachés '
@@ -1047,7 +1187,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (showDate) _DateChip(wa: wa, date: message.createdAt),
+                        if (showDate)
+                          _DateChip(wa: wa, date: message.createdAt),
                         _MessageBubble(
                           key: ValueKey(message.id),
                           message: message,
@@ -1235,7 +1376,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       busy: _sending,
                       onPressed: _sending
                           ? null
-                          : (hasText && !_recording ? _sendText : _toggleRecord),
+                          : (hasText && !_recording
+                              ? _sendText
+                              : _toggleRecord),
                     );
                   },
                 ),
@@ -1668,9 +1811,7 @@ class _MessageBubble extends ConsumerWidget {
       ),
     );
 
-    if (newText == null ||
-        newText.isEmpty ||
-        newText == message.textContent) {
+    if (newText == null || newText.isEmpty || newText == message.textContent) {
       return;
     }
 
@@ -1762,7 +1903,8 @@ class _MessageBubble extends ConsumerWidget {
 
     final nameParts = message.senderName.split(' · ');
     final authorName = nameParts.first;
-    final authorRole = nameParts.length > 1 ? nameParts.sublist(1).join(' · ') : null;
+    final authorRole =
+        nameParts.length > 1 ? nameParts.sublist(1).join(' · ') : null;
 
     final String? privateLabel;
     if (message.recipientId == null) {

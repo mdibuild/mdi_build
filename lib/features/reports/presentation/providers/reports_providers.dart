@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/project_report.dart';
 import '../../../../core/models/project_report_section.dart';
 import '../../../../core/models/project_report_source.dart';
@@ -11,6 +13,7 @@ final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
 });
 
 final activeReportsProvider = FutureProvider<List<ProjectReport>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return const [];
@@ -24,6 +27,7 @@ final activeReportsProvider = FutureProvider<List<ProjectReport>>((ref) async {
 
 final archivedReportsProvider =
     FutureProvider<List<ProjectReport>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return const [];
@@ -38,11 +42,13 @@ final archivedReportsProvider =
 final reportSectionsProvider =
     FutureProvider.family<List<ProjectReportSection>, String>(
         (ref, reportId) async {
+  ref.watch(moduleRefreshRevisionProvider);
   return ref.read(reportsRepositoryProvider).fetchSections(reportId);
 });
 
 final reportSourcesProvider =
     FutureProvider.family<List<ProjectReportSource>, String>(
         (ref, reportId) async {
+  ref.watch(moduleRefreshRevisionProvider);
   return ref.read(reportsRepositoryProvider).fetchSources(reportId);
 });

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_task.dart';
+import '../../../core/providers/module_refresh_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/planning_providers.dart';
@@ -20,6 +23,7 @@ enum _PlanningViewMode {
 
 final _planningTasksProvider =
     FutureProvider.autoDispose<List<_PlanningTask>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   final project = await ref.watch(selectedProjectProvider.future);
 
@@ -82,6 +86,18 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
   _PlanningViewMode _mode = _PlanningViewMode.list;
   String _statusFilter = 'all';
   String _priorityFilter = 'all';
+  String _lotFilter = 'all';
+  String _deadlineFilter = 'all';
+
+  void _resetFilters() {
+    setState(() {
+      _searchController.clear();
+      _statusFilter = 'all';
+      _priorityFilter = 'all';
+      _lotFilter = 'all';
+      _deadlineFilter = 'all';
+    });
+  }
 
   @override
   void dispose() {
@@ -102,13 +118,41 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
       final statusOk = _statusFilter == 'all' || task.status == _statusFilter;
       final priorityOk =
           _priorityFilter == 'all' || task.priority == _priorityFilter;
+      final lotOk = _lotFilter == 'all' || task.lot == _lotFilter;
+      final today = DateUtils.dateOnly(DateTime.now());
+      final start =
+          task.startDate == null ? null : DateUtils.dateOnly(task.startDate!);
+      final end =
+          task.endDate == null ? null : DateUtils.dateOnly(task.endDate!);
+      final isFinished = task.status == 'terminee' ||
+          task.status == 'annulee' ||
+          task.progress >= 100;
+      final deadlineOk = switch (_deadlineFilter) {
+        'overdue' => end != null && end.isBefore(today) && !isFinished,
+        'today' => start != null &&
+            end != null &&
+            !start.isAfter(today) &&
+            !end.isBefore(today),
+        'week' => end != null &&
+            !end.isBefore(today) &&
+            end.isBefore(today.add(const Duration(days: 7))),
+        'month' => end != null &&
+            !end.isBefore(today) &&
+            end.isBefore(today.add(const Duration(days: 30))),
+        'undated' => start == null || end == null,
+        _ => true,
+      };
 
-      return textOk && statusOk && priorityOk;
+      return textOk && statusOk && priorityOk && lotOk && deadlineOk;
     }).toList();
   }
 
   Future<void> _refresh() async {
     ref.invalidate(_planningTasksProvider);
+    ref.invalidate(activeTasksProvider);
+    ref.invalidate(archivedTasksProvider);
+    ref.invalidate(taskDependenciesProvider);
+    await ref.read(_planningTasksProvider.future);
   }
 
   Future<void> _openTaskForm(BuildContext context, {ProjectTask? task}) async {
@@ -163,7 +207,8 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Supprimer la tâche'),
-        content: Text('Supprimer "${task.title}" ? Cette action est définitive.'),
+        content:
+            Text('Supprimer "${task.title}" ? Cette action est définitive.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -236,7 +281,7 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
+      child: ProjectModuleScaffold(
         appBar: AppBar(
           title: const Text('Planning'),
           bottom: TabBar(
@@ -252,10 +297,16 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
         ),
         body: projectAsync.when(
           data: (project) {
-            final projectName = project?.name ?? 'Projet non selectionne';
+            final projectName = project?.name ?? 'Aucun projet sélectionné';
 
             return tasksAsync.when(
               data: (allTasks) {
+                final lots = {
+                  for (final task in allTasks)
+                    if (task.lot.isNotEmpty) task.lot,
+                  if (_lotFilter != 'all') _lotFilter,
+                }.toList()
+                  ..sort();
                 final activeTasks = _filterTasks(
                     allTasks.where((task) => !task.isArchived).toList());
                 final archivedTasks = _filterTasks(
@@ -272,8 +323,23 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                       statusFilter: _statusFilter,
                       priorityFilter: _priorityFilter,
                       searchController: _searchController,
+                      lots: lots,
+                      lotFilter: _lotFilter,
+                      deadlineFilter: _deadlineFilter,
+                      onLotChanged: (value) {
+                        if (value != null) {
+                          setState(() => _lotFilter = value);
+                        }
+                      },
+                      onDeadlineChanged: (value) {
+                        if (value != null) {
+                          setState(() => _deadlineFilter = value);
+                        }
+                      },
+                      onReset: _resetFilters,
                       onRefresh: _refresh,
-                      onCreateTask: () => _openTaskForm(context),
+                      onCreateTask:
+                          project == null ? null : () => _openTaskForm(context),
                       onEditTask: (task) => _openEditTask(context, task),
                       onDeleteTask: (task) => _deleteTask(context, task),
                       onToggleArchive: (task) =>
@@ -289,7 +355,8 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                           setState(() => _priorityFilter = value);
                         }
                       },
-                      onSearchChanged: (_) => setState(() {}),
+                      onSearchChanged: (value) =>
+                          setState(() => _searchController.text = value),
                     ),
                     _PlanningTabContent(
                       projectName: projectName,
@@ -300,8 +367,23 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                       statusFilter: _statusFilter,
                       priorityFilter: _priorityFilter,
                       searchController: _searchController,
+                      lots: lots,
+                      lotFilter: _lotFilter,
+                      deadlineFilter: _deadlineFilter,
+                      onLotChanged: (value) {
+                        if (value != null) {
+                          setState(() => _lotFilter = value);
+                        }
+                      },
+                      onDeadlineChanged: (value) {
+                        if (value != null) {
+                          setState(() => _deadlineFilter = value);
+                        }
+                      },
+                      onReset: _resetFilters,
                       onRefresh: _refresh,
-                      onCreateTask: () => _openTaskForm(context),
+                      onCreateTask:
+                          project == null ? null : () => _openTaskForm(context),
                       onEditTask: (task) => _openEditTask(context, task),
                       onDeleteTask: (task) => _deleteTask(context, task),
                       onToggleArchive: (task) =>
@@ -317,7 +399,8 @@ class _PlanningPageState extends ConsumerState<PlanningPage> {
                           setState(() => _priorityFilter = value);
                         }
                       },
-                      onSearchChanged: (_) => setState(() {}),
+                      onSearchChanged: (value) =>
+                          setState(() => _searchController.text = value),
                     ),
                   ],
                 );
@@ -353,6 +436,12 @@ class _PlanningTabContent extends StatelessWidget {
     required this.statusFilter,
     required this.priorityFilter,
     required this.searchController,
+    required this.lots,
+    required this.lotFilter,
+    required this.deadlineFilter,
+    required this.onLotChanged,
+    required this.onDeadlineChanged,
+    required this.onReset,
     required this.onRefresh,
     required this.onCreateTask,
     required this.onEditTask,
@@ -371,8 +460,14 @@ class _PlanningTabContent extends StatelessWidget {
   final String statusFilter;
   final String priorityFilter;
   final TextEditingController searchController;
+  final List<String> lots;
+  final String lotFilter;
+  final String deadlineFilter;
+  final ValueChanged<String?> onLotChanged;
+  final ValueChanged<String?> onDeadlineChanged;
+  final VoidCallback onReset;
   final Future<void> Function() onRefresh;
-  final VoidCallback onCreateTask;
+  final VoidCallback? onCreateTask;
   final ValueChanged<_PlanningTask> onEditTask;
   final ValueChanged<_PlanningTask> onDeleteTask;
   final ValueChanged<_PlanningTask> onToggleArchive;
@@ -396,6 +491,12 @@ class _PlanningTabContent extends StatelessWidget {
           const SizedBox(height: 14),
           _PlanningFiltersCard(
             searchController: searchController,
+            lots: lots,
+            lotFilter: lotFilter,
+            deadlineFilter: deadlineFilter,
+            onLotChanged: onLotChanged,
+            onDeadlineChanged: onDeadlineChanged,
+            onReset: onReset,
             statusFilter: statusFilter,
             priorityFilter: priorityFilter,
             onStatusChanged: onStatusChanged,
@@ -446,25 +547,52 @@ class _PlanningTabContent extends StatelessWidget {
                     ),
                   );
                 }
-                return GanttView(tasks: shown, dependencies: deps);
+                final ids = shown.map((task) => task.id).toSet();
+                return GanttView(
+                  tasks: shown,
+                  dependencies: deps
+                      .where((dependency) =>
+                          ids.contains(dependency.predecessorTaskId) &&
+                          ids.contains(dependency.successorTaskId))
+                      .toList(),
+                );
               },
             )
           else
             Consumer(
               builder: (context, ref, _) {
                 final realTasksAsync = ref.watch(activeTasksProvider);
+                final archivedAsync = ref.watch(archivedTasksProvider);
                 final depsAsync = ref.watch(taskDependenciesProvider);
 
                 return realTasksAsync.when(
                   data: (realTasks) => depsAsync.when(
-                    data: (deps) => TaskDependenciesPanel(
-                      tasks: realTasks,
-                      dependencies: deps,
-                    ),
+                    data: (deps) {
+                      final ids = tasks.map((task) => task.id).toSet();
+                      final visibleTasks = [
+                        ...realTasks,
+                        ...?archivedAsync.value
+                      ].where((task) => ids.contains(task.id)).toList();
+                      if (visibleTasks.isEmpty) {
+                        return const _PremiumBox(
+                          child: Text(
+                              'Aucune tâche ne correspond aux filtres. Réinitialisez-les pour afficher les dépendances.'),
+                        );
+                      }
+                      return TaskDependenciesPanel(
+                        key: ValueKey(
+                            visibleTasks.map((task) => task.id).join(',')),
+                        tasks: visibleTasks,
+                        dependencies: deps
+                            .where((dependency) =>
+                                ids.contains(dependency.predecessorTaskId) &&
+                                ids.contains(dependency.successorTaskId))
+                            .toList(),
+                      );
+                    },
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (error, _) =>
-                        Text('Erreur dépendances : $error'),
+                    error: (error, _) => Text('Erreur dépendances : $error'),
                   ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -487,7 +615,7 @@ class _PlanningHeroCard extends StatelessWidget {
   });
 
   final String projectName;
-  final VoidCallback onCreateTask;
+  final VoidCallback? onCreateTask;
   final Future<void> Function() onRefresh;
 
   @override
@@ -533,6 +661,12 @@ class _PlanningHeroCard extends StatelessWidget {
 class _PlanningFiltersCard extends StatelessWidget {
   const _PlanningFiltersCard({
     required this.searchController,
+    required this.lots,
+    required this.lotFilter,
+    required this.deadlineFilter,
+    required this.onLotChanged,
+    required this.onDeadlineChanged,
+    required this.onReset,
     required this.statusFilter,
     required this.priorityFilter,
     required this.onStatusChanged,
@@ -541,6 +675,12 @@ class _PlanningFiltersCard extends StatelessWidget {
   });
 
   final TextEditingController searchController;
+  final List<String> lots;
+  final String lotFilter;
+  final String deadlineFilter;
+  final ValueChanged<String?> onLotChanged;
+  final ValueChanged<String?> onDeadlineChanged;
+  final VoidCallback onReset;
   final String statusFilter;
   final String priorityFilter;
   final ValueChanged<String?> onStatusChanged;
@@ -549,45 +689,66 @@ class _PlanningFiltersCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PremiumBox(
-      child: Column(
-        children: [
-          TextField(
-            controller: searchController,
-            onChanged: onSearchChanged,
-            decoration: const InputDecoration(
-              labelText: 'Recherche',
-              prefixIcon: Icon(Icons.search),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: statusFilter,
-            decoration: const InputDecoration(labelText: 'Statut'),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('Tous')),
-              DropdownMenuItem(value: 'a_faire', child: Text('\u00c0 faire')),
-              DropdownMenuItem(value: 'en_cours', child: Text('En cours')),
-              DropdownMenuItem(value: 'bloquee', child: Text('Bloqu\u00e9e')),
-              DropdownMenuItem(value: 'terminee', child: Text('Termin\u00e9e')),
-            ],
-            onChanged: onStatusChanged,
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: priorityFilter,
-            decoration: const InputDecoration(labelText: 'Priorit\u00e9'),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('Toutes')),
-              DropdownMenuItem(value: 'low', child: Text('Faible')),
-              DropdownMenuItem(value: 'normal', child: Text('Normale')),
-              DropdownMenuItem(value: 'high', child: Text('Haute')),
-              DropdownMenuItem(value: 'urgent', child: Text('Urgente')),
-            ],
-            onChanged: onPriorityChanged,
-          ),
-        ],
-      ),
+    return ModuleFilterBar(
+      searchQuery: searchController.text,
+      onSearchChanged: onSearchChanged,
+      searchHint: 'Tâche, lot, statut, priorité',
+      onReset: onReset,
+      filters: [
+        ModuleFilterDropdown<String>(
+          label: 'Statut',
+          value: statusFilter,
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('Tous les statuts')),
+            DropdownMenuItem(value: 'brouillon', child: Text('Brouillon')),
+            DropdownMenuItem(value: 'a_faire', child: Text('À faire')),
+            DropdownMenuItem(value: 'en_cours', child: Text('En cours')),
+            DropdownMenuItem(value: 'bloquee', child: Text('Bloquée')),
+            DropdownMenuItem(value: 'terminee', child: Text('Terminée')),
+            DropdownMenuItem(value: 'annulee', child: Text('Annulée')),
+          ],
+          onChanged: onStatusChanged,
+        ),
+        ModuleFilterDropdown<String>(
+          label: 'Priorité',
+          value: priorityFilter,
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('Toutes les priorités')),
+            DropdownMenuItem(value: 'low', child: Text('Faible')),
+            DropdownMenuItem(value: 'normal', child: Text('Normale')),
+            DropdownMenuItem(value: 'high', child: Text('Haute')),
+            DropdownMenuItem(value: 'urgent', child: Text('Urgente')),
+          ],
+          onChanged: onPriorityChanged,
+        ),
+        ModuleFilterDropdown<String>(
+          label: 'Lot',
+          value: lotFilter,
+          items: [
+            const DropdownMenuItem(value: 'all', child: Text('Tous les lots')),
+            for (final lot in lots)
+              DropdownMenuItem(value: lot, child: Text(lot)),
+          ],
+          onChanged: onLotChanged,
+        ),
+        ModuleFilterDropdown<String>(
+          label: 'Échéance',
+          value: deadlineFilter,
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('Toutes les dates')),
+            DropdownMenuItem(value: 'overdue', child: Text('En retard')),
+            DropdownMenuItem(
+                value: 'today', child: Text('Planifiées aujourd’hui')),
+            DropdownMenuItem(
+                value: 'week', child: Text('Échéance sous 7 jours')),
+            DropdownMenuItem(
+                value: 'month', child: Text('Échéance sous 30 jours')),
+            DropdownMenuItem(
+                value: 'undated', child: Text('Dates incomplètes')),
+          ],
+          onChanged: onDeadlineChanged,
+        ),
+      ],
     );
   }
 }
@@ -792,7 +953,8 @@ class _TaskCard extends StatelessWidget {
               ),
               OutlinedButton.icon(
                 onPressed: onDelete,
-                icon: Icon(Icons.delete_outline, size: 18, color: colors.danger),
+                icon:
+                    Icon(Icons.delete_outline, size: 18, color: colors.danger),
                 label: Text(
                   'Supprimer',
                   style: TextStyle(color: colors.danger),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/supplier.dart';
+import '../../../core/enums/entity_type.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import 'providers/suppliers_providers.dart';
 import 'supplier_form_dialog.dart';
@@ -15,6 +18,7 @@ class SuppliersPage extends ConsumerStatefulWidget {
 
 class _SuppliersPageState extends ConsumerState<SuppliersPage> {
   final TextEditingController _searchController = TextEditingController();
+  String _entityFilter = 'all';
 
   @override
   void dispose() {
@@ -24,15 +28,15 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
 
   List<Supplier> _filter(List<Supplier> suppliers) {
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      return suppliers;
-    }
-
     return suppliers.where((supplier) {
-      return supplier.name.toLowerCase().contains(query) ||
+      final typeMatch = _entityFilter == 'all' ||
+          supplier.entityType.dbValue == _entityFilter;
+      final textMatch = supplier.name.toLowerCase().contains(query) ||
           supplier.contactName.toLowerCase().contains(query) ||
           supplier.email.toLowerCase().contains(query) ||
-          supplier.phone.toLowerCase().contains(query);
+          supplier.phone.toLowerCase().contains(query) ||
+          supplier.address.toLowerCase().contains(query);
+      return typeMatch && textMatch;
     }).toList();
   }
 
@@ -88,13 +92,15 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
     ref.invalidate(archivedSuppliersProvider);
   }
 
-  Widget _buildList(AsyncValue<List<Supplier>> async, {required bool archivedTab}) {
+  Widget _buildList(AsyncValue<List<Supplier>> async,
+      {required bool archivedTab}) {
     return async.when(
       data: (suppliers) {
         final filtered = _filter(suppliers);
 
         if (filtered.isEmpty) {
-          return const Center(child: Text('Aucun fournisseur.'));
+          return const Center(
+              child: Text('Aucun fournisseur pour ces filtres.'));
         }
 
         return ListView.builder(
@@ -133,7 +139,8 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
                       value: 'archive',
                       child: Text(archivedTab ? 'Désarchiver' : 'Archiver'),
                     ),
-                    const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                    const PopupMenuItem(
+                        value: 'delete', child: Text('Supprimer')),
                   ],
                 ),
               ),
@@ -153,7 +160,7 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
+      child: ProjectModuleScaffold(
         appBar: AppBar(
           title: const Text('Fournisseurs'),
           bottom: const TabBar(
@@ -172,14 +179,33 @@ class _SuppliersPageState extends ConsumerState<SuppliersPage> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Recherche',
-                  hintText: 'Nom, contact, email, téléphone',
-                  prefixIcon: Icon(Icons.search),
-                ),
+              child: ModuleFilterBar(
+                searchQuery: _searchController.text,
+                searchHint: 'Nom, contact, email, téléphone…',
+                onSearchChanged: (value) =>
+                    setState(() => _searchController.text = value),
+                filters: [
+                  ModuleFilterDropdown<String>(
+                    value: _entityFilter,
+                    label: 'Type',
+                    items: [
+                      const DropdownMenuItem(
+                          value: 'all', child: Text('Tous les types')),
+                      for (final type in EntityType.values)
+                        DropdownMenuItem(
+                            value: type.dbValue, child: Text(type.label)),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _entityFilter = value ?? 'all'),
+                  ),
+                ],
+                onReset: () => setState(() {
+                  _searchController.clear();
+                  _entityFilter = 'all';
+                }),
+                resultLabel:
+                    '${_filter(activeAsync.value ?? []).length} actif(s) · '
+                    '${_filter(archivedAsync.value ?? []).length} archivé(s)',
               ),
             ),
             Expanded(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_report.dart';
 import '../../../core/services/pdf_letterhead.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
@@ -119,6 +121,10 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   DateTimeRange? _customRange;
 
   String _historyModuleFilter = 'all';
+  String _historyStatusFilter = 'all';
+  String _historyTypeFilter = 'all';
+  String _historyPeriodFilter = 'all';
+  DateTimeRange? _historyCustomRange;
   bool _generating = false;
 
   @override
@@ -196,20 +202,93 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
   List<ProjectReport> _filterReports(List<ProjectReport> reports) {
     final query = _searchController.text.trim().toLowerCase();
+    final now = DateTime.now();
+    final range = switch (_historyPeriodFilter) {
+      'current_week' => DateTimeRange(
+          start: _startOfWeek(now),
+          end: _startOfWeek(now).add(const Duration(days: 6)),
+        ),
+      'current_month' => DateTimeRange(
+          start: DateTime(now.year, now.month),
+          end: DateTime(now.year, now.month + 1, 0),
+        ),
+      'custom' => _historyCustomRange,
+      _ => null,
+    };
 
     return reports.where((report) {
       final moduleMatch = _historyModuleFilter == 'all' ||
           report.sourceModule == _historyModuleFilter;
+      final statusMatch = _historyStatusFilter == 'all' ||
+          report.status == _historyStatusFilter;
+      final typeMatch = _historyTypeFilter == 'all' ||
+          report.reportType == _historyTypeFilter;
+      final day = DateTime(report.reportDate.year, report.reportDate.month,
+          report.reportDate.day);
+      final dateMatch = range == null ||
+          (!day.isBefore(range.start) && !day.isAfter(range.end));
 
       final textMatch = query.isEmpty ||
-          report.title.toLowerCase().contains(query) ||
-          report.sourceModule.toLowerCase().contains(query) ||
-          report.reportType.toLowerCase().contains(query) ||
-          report.status.toLowerCase().contains(query) ||
-          report.progressSummary.toLowerCase().contains(query);
+          [
+            report.title,
+            report.sourceModule,
+            _moduleLabel(report.sourceModule),
+            report.reportType,
+            _reportTypeLabel(report.reportType),
+            report.status,
+            _statusLabel(report.status),
+            report.progressSummary,
+            report.blockers,
+            report.decisions,
+            report.nextSteps,
+          ].join(' ').toLowerCase().contains(query);
 
-      return moduleMatch && textMatch;
+      return moduleMatch && statusMatch && typeMatch && dateMatch && textMatch;
     }).toList();
+  }
+
+  bool get _hasHistoryFilters =>
+      _searchController.text.trim().isNotEmpty ||
+      _historyModuleFilter != 'all' ||
+      _historyStatusFilter != 'all' ||
+      _historyTypeFilter != 'all' ||
+      _historyPeriodFilter != 'all';
+
+  void _resetHistoryFilters() {
+    _searchController.clear();
+    setState(() {
+      _historyModuleFilter = 'all';
+      _historyStatusFilter = 'all';
+      _historyTypeFilter = 'all';
+      _historyPeriodFilter = 'all';
+      _historyCustomRange = null;
+    });
+  }
+
+  Future<void> _pickHistoryRange() async {
+    final now = DateTime.now();
+    final previousPeriod = _historyPeriodFilter;
+    final previousRange = _historyCustomRange;
+    final today = DateTime(now.year, now.month, now.day);
+    // Commit the dropdown value while choosing dates so cancelling restores
+    // both the selected label and the previously applied filter.
+    setState(() {
+      _historyPeriodFilter = 'custom';
+      _historyCustomRange ??= DateTimeRange(start: today, end: today);
+    });
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 5, 12, 31),
+      initialDateRange: _historyCustomRange,
+      helpText: 'Dates des rapports',
+      saveText: 'Appliquer',
+    );
+    if (!mounted) return;
+    setState(() {
+      _historyCustomRange = picked ?? previousRange;
+      _historyPeriodFilter = picked == null ? previousPeriod : 'custom';
+    });
   }
 
   Future<void> _runAutomaticGeneration({
@@ -493,6 +572,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     required int autoCount,
     required int manualCount,
     required String subtitle,
+    required int shownCount,
+    required int totalCount,
   }) {
     final selectedRange = _resolveSelectedRange();
 
@@ -684,36 +765,102 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 subtitle: 'Recherche et lecture des rapports déjà produits',
               ),
               const SizedBox(height: 14),
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Recherche',
-                  hintText: 'Titre, module, statut...',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _historyModuleFilter,
-                decoration: const InputDecoration(
-                  labelText: 'Filtre module',
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('Tous')),
-                  DropdownMenuItem(value: 'manual', child: Text('Manuel')),
-                  DropdownMenuItem(value: 'global', child: Text('Tout')),
-                  DropdownMenuItem(value: 'project', child: Text('Projet')),
-                  DropdownMenuItem(value: 'planning', child: Text('Planning')),
-                  DropdownMenuItem(value: 'devis', child: Text('Devis')),
-                  DropdownMenuItem(value: 'achats', child: Text('Achats')),
-                  DropdownMenuItem(value: 'metrage', child: Text('Métré')),
+              ModuleFilterBar(
+                searchQuery: _searchController.text,
+                onSearchChanged: (value) => setState(() {
+                  _searchController.text = value;
+                }),
+                searchHint: 'Titre, module, statut, contenu…',
+                onReset: _hasHistoryFilters ? _resetHistoryFilters : null,
+                resultLabel: '$shownCount sur $totalCount rapports',
+                filters: [
+                  ModuleFilterDropdown<String>(
+                    label: 'Module du rapport',
+                    value: _historyModuleFilter,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'all', child: Text('Tous les modules')),
+                      DropdownMenuItem(value: 'manual', child: Text('Manuel')),
+                      DropdownMenuItem(value: 'global', child: Text('Global')),
+                      DropdownMenuItem(value: 'project', child: Text('Projet')),
+                      DropdownMenuItem(
+                          value: 'planning', child: Text('Planning')),
+                      DropdownMenuItem(value: 'devis', child: Text('Devis')),
+                      DropdownMenuItem(value: 'achats', child: Text('Achats')),
+                      DropdownMenuItem(value: 'metrage', child: Text('Métré')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _historyModuleFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Statut du rapport',
+                    value: _historyStatusFilter,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'all', child: Text('Tous les statuts')),
+                      DropdownMenuItem(
+                          value: 'draft', child: Text('Brouillon')),
+                      DropdownMenuItem(
+                          value: 'generated', child: Text('Généré')),
+                      DropdownMenuItem(
+                          value: 'finalized', child: Text('Finalisé')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _historyStatusFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Type de rapport',
+                    value: _historyTypeFilter,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'all', child: Text('Tous les types')),
+                      DropdownMenuItem(value: 'manual', child: Text('Manuel')),
+                      DropdownMenuItem(
+                          value: 'weekly_auto', child: Text('Auto hebdo')),
+                      DropdownMenuItem(
+                          value: 'module_auto', child: Text('Auto module')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _historyTypeFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Date du rapport',
+                    value: _historyPeriodFilter,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'all', child: Text('Toutes les dates')),
+                      DropdownMenuItem(
+                          value: 'current_week',
+                          child: Text('Semaine en cours')),
+                      DropdownMenuItem(
+                          value: 'current_month', child: Text('Mois en cours')),
+                      DropdownMenuItem(
+                          value: 'custom', child: Text('Personnalisée')),
+                    ],
+                    onChanged: (value) {
+                      if (value == 'custom') {
+                        _pickHistoryRange();
+                      } else if (value != null) {
+                        setState(() => _historyPeriodFilter = value);
+                      }
+                    },
+                  ),
+                  if (_historyPeriodFilter == 'custom')
+                    OutlinedButton.icon(
+                      onPressed: _pickHistoryRange,
+                      icon: const Icon(Icons.date_range_outlined),
+                      label: Text(_formatRange(_historyCustomRange!)),
+                    ),
                 ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _historyModuleFilter = value);
-                  }
-                },
               ),
             ],
           ),
@@ -728,21 +875,23 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final activeReportsAsync = ref.watch(activeReportsProvider);
     final archivedReportsAsync = ref.watch(archivedReportsProvider);
 
-    final activeReports =
-        activeReportsAsync.value ?? const <ProjectReport>[];
+    final activeReports = activeReportsAsync.value ?? const <ProjectReport>[];
     final archivedReports =
         archivedReportsAsync.value ?? const <ProjectReport>[];
+    final filteredActiveReports = _filterReports(activeReports);
+    final filteredArchivedReports = _filterReports(archivedReports);
 
-    final totalReports = activeReports.length + archivedReports.length;
+    final totalReports =
+        filteredActiveReports.length + filteredArchivedReports.length;
     final autoReports = [
-      ...activeReports,
-      ...archivedReports,
+      ...filteredActiveReports,
+      ...filteredArchivedReports,
     ].where((report) => report.reportType != 'manual').length;
     final manualReports = totalReports - autoReports;
 
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
+      child: ProjectModuleScaffold(
         appBar: AppBar(
           title: const Text('Rapports'),
           bottom: const TabBar(
@@ -765,11 +914,13 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 activeReportsAsync.when(
                   data: (reports) => _ReportsTabContent(
                     header: _buildHeaderBlock(
-                      activeCount: activeReports.length,
-                      archivedCount: archivedReports.length,
+                      activeCount: filteredActiveReports.length,
+                      archivedCount: filteredArchivedReports.length,
                       autoCount: autoReports,
                       manualCount: manualReports,
                       subtitle: subtitle,
+                      shownCount: filteredActiveReports.length,
+                      totalCount: reports.length,
                     ),
                     reports: _filterReports(reports),
                     onEdit: (report) =>
@@ -788,11 +939,13 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 archivedReportsAsync.when(
                   data: (reports) => _ReportsTabContent(
                     header: _buildHeaderBlock(
-                      activeCount: activeReports.length,
-                      archivedCount: archivedReports.length,
+                      activeCount: filteredActiveReports.length,
+                      archivedCount: filteredArchivedReports.length,
                       autoCount: autoReports,
                       manualCount: manualReports,
                       subtitle: subtitle,
+                      shownCount: filteredArchivedReports.length,
+                      totalCount: reports.length,
                     ),
                     reports: _filterReports(reports),
                     onEdit: (report) =>

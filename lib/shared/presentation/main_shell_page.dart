@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/supabase_service.dart';
-import '../../core/utils/app_refresh.dart';
+import '../../core/providers/module_refresh_provider.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
 import 'premium_ui.dart';
 
@@ -185,7 +185,7 @@ class MainShellPage extends StatelessWidget {
   }
 }
 
-class _NavRailContent extends StatelessWidget {
+class _NavRailContent extends ConsumerWidget {
   const _NavRailContent({
     required this.colors,
     required this.selectedIndex,
@@ -199,7 +199,7 @@ class _NavRailContent extends StatelessWidget {
   final VoidCallback onLogout;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         Expanded(
@@ -232,7 +232,9 @@ class _NavRailContent extends StatelessWidget {
                 child: Tooltip(
                   message: 'Actualiser',
                   child: OutlinedButton(
-                    onPressed: reloadApp,
+                    onPressed: () => ref
+                        .read(moduleRefreshRevisionProvider.notifier)
+                        .refresh(),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colors.petrol,
                       backgroundColor: colors.surface,

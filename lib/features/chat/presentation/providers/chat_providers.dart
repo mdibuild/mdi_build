@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/models/chat_message.dart';
@@ -33,6 +35,7 @@ final chatConversationProvider =
 /// Messages du projet sélectionné uniquement.
 final currentProjectMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     yield const <ChatMessage>[];
@@ -45,6 +48,7 @@ final currentProjectMessagesProvider =
 /// Messages du chat général (sans projet) de l'entreprise de l'utilisateur.
 final generalChatMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   if (profile == null) {
     yield const <ChatMessage>[];
@@ -63,6 +67,7 @@ final generalChatMessagesProvider =
 /// Tous les messages de l'entreprise, en temps réel (compteurs de non-lus).
 final companyChatMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   if (profile == null) {
     yield const <ChatMessage>[];
@@ -119,7 +124,8 @@ class ChatReadStateNotifier extends AsyncNotifier<ChatReadState> {
       }
     }
     return ChatReadState(
-      baseline: DateTime.fromMicrosecondsSinceEpoch(baselineMicros, isUtc: true),
+      baseline:
+          DateTime.fromMicrosecondsSinceEpoch(baselineMicros, isUtc: true),
       lastSeen: lastSeen,
     );
   }
@@ -135,7 +141,8 @@ class ChatReadStateNotifier extends AsyncNotifier<ChatReadState> {
       return;
     }
     final next = {...current.lastSeen, conversationKey: latest};
-    state = AsyncData(ChatReadState(baseline: current.baseline, lastSeen: next));
+    state =
+        AsyncData(ChatReadState(baseline: current.baseline, lastSeen: next));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _lastSeenKey,

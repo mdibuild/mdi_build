@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/enums/record_status.dart';
 import '../../../core/models/project.dart';
+import '../../../core/providers/module_refresh_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import 'providers/current_profile_provider.dart';
 import 'providers/projects_providers.dart';
@@ -13,6 +16,7 @@ import 'providers/selected_project_provider.dart';
 
 final companyProjectsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   if (profile == null) {
     return const <Map<String, dynamic>>[];
@@ -74,17 +78,14 @@ class ProjectsPage extends ConsumerStatefulWidget {
 }
 
 class _ProjectsPageState extends ConsumerState<ProjectsPage> {
-  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   String _filter = 'all';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  bool _currentOnly = false;
+  String? _selectingProjectId;
 
   List<Map<String, dynamic>> _filterProjects(List<Map<String, dynamic>> rows) {
-    final query = _searchController.text.trim().toLowerCase();
+    final query = _searchQuery.trim().toLowerCase();
+    final currentId = ref.read(selectedProjectProvider).asData?.value?.id;
 
     return rows.where((row) {
       final status = (row['status'] ?? '').toString().toLowerCase();
@@ -96,17 +97,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
               .toString()
               .toLowerCase();
 
-      bool filterOk;
-      switch (_filter) {
-        case 'active':
-          filterOk = !status.contains('archive');
-          break;
-        case 'archived':
-          filterOk = status.contains('archive');
-          break;
-        default:
-          filterOk = true;
-      }
+      final filterOk = _filter == 'all' || status == _filter;
 
       final textOk = query.isEmpty ||
           name.toLowerCase().contains(query) ||
@@ -114,8 +105,37 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
           location.contains(query) ||
           status.contains(query);
 
-      return filterOk && textOk;
+      return filterOk && textOk && (!_currentOnly || row['id'] == currentId);
     }).toList();
+  }
+
+  Future<void> _selectProject(Map<String, dynamic> row, {String? route}) async {
+    final projectId = row['id'] as String;
+    setState(() => _selectingProjectId = projectId);
+    try {
+      await ref
+          .read(selectedProjectIdProvider.notifier)
+          .setProjectId(projectId);
+      await ref.read(selectedProjectProvider.future);
+      if (!mounted) return;
+      if (route != null) {
+        context.go(route);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('${_projectLabel(row)} sélectionné pour le travail.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sélection impossible : $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _selectingProjectId = null);
+    }
   }
 
   double _progressOf(Map<String, dynamic> row) {
@@ -267,7 +287,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
     final currentProjectAsync = ref.watch(selectedProjectProvider);
     final projectsAsync = ref.watch(companyProjectsProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(
         title: const Text('Projets'),
       ),
@@ -303,49 +323,40 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  PremiumSurfaceCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const PremiumSectionHeader(
-                          title: 'Filtrer les projets',
-                          subtitle: 'Navigation simple pour smartphone',
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _searchController,
-                          onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
-                            labelText: 'Recherche',
-                            hintText: 'Nom, client, lieu, statut',
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        PremiumActionRow(
-                          children: [
-                            FilterChip(
-                              selected: _filter == 'all',
-                              label: const Text('Tous'),
-                              onSelected: (_) =>
-                                  setState(() => _filter = 'all'),
-                            ),
-                            FilterChip(
-                              selected: _filter == 'active',
-                              label: const Text('Actifs'),
-                              onSelected: (_) =>
-                                  setState(() => _filter = 'active'),
-                            ),
-                            FilterChip(
-                              selected: _filter == 'archived',
-                              label: const Text('Archivés'),
-                              onSelected: (_) =>
-                                  setState(() => _filter = 'archived'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  ModuleFilterBar(
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (value) =>
+                        setState(() => _searchQuery = value),
+                    searchHint: 'Nom, client, lieu, statut',
+                    resultLabel:
+                        '${filtered.length} projet(s) sur ${rows.length}',
+                    onReset: () => setState(() {
+                      _searchQuery = '';
+                      _filter = 'all';
+                      _currentOnly = false;
+                    }),
+                    filters: [
+                      ModuleFilterDropdown<String>(
+                        value: _filter,
+                        label: 'Statut',
+                        items: [
+                          const DropdownMenuItem(
+                              value: 'all', child: Text('Tous les statuts')),
+                          for (final status in RecordStatus.values)
+                            DropdownMenuItem(
+                                value: status.dbValue,
+                                child: Text(status.label)),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _filter = value ?? 'all'),
+                      ),
+                      FilterChip(
+                        selected: _currentOnly,
+                        label: const Text('Projet courant'),
+                        onSelected: (value) =>
+                            setState(() => _currentOnly = value),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   PremiumSurfaceCard(
@@ -371,14 +382,22 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                             final progress = _progressOf(row);
                             final startDate = _dateLabel(row['start_date']);
                             final endDate = _dateLabel(row['end_date']);
+                            final isCurrent = currentProject?.id == row['id'];
+                            final selecting = _selectingProjectId != null;
 
                             return Container(
+                              key: ValueKey(row['id']),
                               margin: const EdgeInsets.only(bottom: 14),
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: context.palette.surfaceAlt,
                                 borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: context.palette.border),
+                                border: Border.all(
+                                  color: isCurrent
+                                      ? context.palette.petrol
+                                      : context.palette.border,
+                                  width: isCurrent ? 2 : 1,
+                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,6 +455,15 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                     ],
                                   ),
                                   const SizedBox(height: 12),
+                                  if (isCurrent) ...[
+                                    Chip(
+                                      avatar: Icon(Icons.check_circle_outline,
+                                          color: context.palette.petrol,
+                                          size: 18),
+                                      label: const Text('Projet courant'),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
                                   PremiumInfoLine(
                                     label: 'Client',
                                     value: _clientLabel(row),
@@ -472,29 +500,84 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                                   PremiumActionRow(
                                     children: [
                                       FilledButton.icon(
-                                        onPressed: () =>
-                                            context.go('/planning'),
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/dashboard'),
+                                        icon: const Icon(Icons.open_in_new),
+                                        label: const Text('Ouvrir le chantier'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: selecting || isCurrent
+                                            ? null
+                                            : () => _selectProject(row),
+                                        icon: const Icon(
+                                            Icons.check_circle_outline),
+                                        label: Text(isCurrent
+                                            ? 'Projet sélectionné'
+                                            : 'Choisir pour travailler'),
+                                      ),
+                                      FilledButton.icon(
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/planning'),
                                         icon: const Icon(
                                             Icons.calendar_month_outlined),
                                         label: const Text('Planning'),
                                       ),
                                       ElevatedButton.icon(
-                                        onPressed: () => context.go('/reports'),
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/reports'),
                                         icon: const Icon(
                                             Icons.description_outlined),
                                         label: const Text('Rapports'),
                                       ),
                                       OutlinedButton.icon(
-                                        onPressed: () =>
-                                            context.go('/documents'),
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/documents'),
                                         icon: const Icon(Icons.folder_outlined),
                                         label: const Text('Documents'),
                                       ),
                                       OutlinedButton.icon(
-                                        onPressed: () => context.go('/achats'),
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/achats'),
                                         icon: const Icon(
                                             Icons.shopping_cart_outlined),
                                         label: const Text('Achats'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/metrage'),
+                                        icon: const Icon(
+                                            Icons.straighten_outlined),
+                                        label: const Text('Métré'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/quantitatif'),
+                                        icon: const Icon(
+                                            Icons.table_chart_outlined),
+                                        label: const Text('Quantitatif'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: selecting
+                                            ? null
+                                            : () => _selectProject(row,
+                                                route: '/devis'),
+                                        icon: const Icon(
+                                            Icons.request_quote_outlined),
+                                        label: const Text('Devis'),
                                       ),
                                     ],
                                   ),

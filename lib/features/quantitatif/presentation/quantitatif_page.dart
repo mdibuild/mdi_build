@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/enums/record_status.dart';
+import '../../../core/enums/space_type.dart';
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/models/quantity_line.dart';
+import '../../../core/models/space_item.dart';
 import '../../../core/services/quantity_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/project_selector_card.dart';
 import '../../achats/presentation/providers/purchases_providers.dart';
@@ -15,13 +20,51 @@ import '../../metrage/presentation/providers/spaces_providers.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 
-class QuantitatifPage extends ConsumerWidget {
+class QuantitatifPage extends ConsumerStatefulWidget {
   const QuantitatifPage({super.key});
+
+  @override
+  ConsumerState<QuantitatifPage> createState() => _QuantitatifPageState();
+}
+
+class _QuantitatifPageState extends ConsumerState<QuantitatifPage> {
+  String _searchQuery = '';
+  String _status = 'all';
+  String _type = 'all';
+  String _level = 'all';
+  final _verticalController = ScrollController();
+  final _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  List<SpaceItem> _filterSpaces(List<SpaceItem> spaces) {
+    final query = _searchQuery.trim().toLowerCase();
+    return spaces.where((space) {
+      final text =
+          '${space.name} ${space.levelName} ${space.type.label} ${space.status.label}';
+      return (query.isEmpty || text.toLowerCase().contains(query)) &&
+          (_status == 'all' || space.status.dbValue == _status) &&
+          (_type == 'all' || space.type.dbValue == _type) &&
+          (_level == 'all' || space.levelName == _level);
+    }).toList();
+  }
+
+  void _resetFilters() => setState(() {
+        _searchQuery = '';
+        _status = 'all';
+        _type = 'all';
+        _level = 'all';
+      });
 
   Future<void> _openGeneratePurchaseDialog(
     BuildContext context,
     WidgetRef ref, {
-    required dynamic line,
+    required QuantityLine line,
     required String projectId,
     required String projectName,
   }) async {
@@ -44,7 +87,7 @@ class QuantitatifPage extends ConsumerWidget {
           purchaseId: '',
           article: 'Quantité sol - ${line.spaceName}',
           description: 'Surface sol à approvisionner depuis le quantitatif',
-          quantity: (line.floorArea as num).toDouble(),
+          quantity: line.floorArea,
           unit: 'm²',
           unitPrice: 0,
           notes: '',
@@ -58,7 +101,7 @@ class QuantitatifPage extends ConsumerWidget {
           purchaseId: '',
           article: 'Quantité plafond - ${line.spaceName}',
           description: 'Surface plafond à approvisionner depuis le quantitatif',
-          quantity: (line.ceilingArea as num).toDouble(),
+          quantity: line.ceilingArea,
           unit: 'm²',
           unitPrice: 0,
           notes: '',
@@ -73,7 +116,7 @@ class QuantitatifPage extends ConsumerWidget {
           article: 'Quantité murs nets - ${line.spaceName}',
           description:
               'Surface murs nets à approvisionner depuis le quantitatif',
-          quantity: (line.netWallArea as num).toDouble(),
+          quantity: line.netWallArea,
           unit: 'm²',
           unitPrice: 0,
           notes: '',
@@ -174,12 +217,12 @@ class QuantitatifPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
     final spacesAsync = ref.watch(spacesProvider);
     final quantityService = QuantityService();
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Quantitatif')),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -232,72 +275,190 @@ class QuantitatifPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
+            spacesAsync.maybeWhen(
+              data: (spaces) {
+                final levels = spaces
+                    .map((space) => space.levelName)
+                    .toSet()
+                    .toList()
+                  ..sort();
+                if (_level != 'all' && !levels.contains(_level)) {
+                  levels.add(_level);
+                }
+                return ModuleFilterBar(
+                  searchQuery: _searchQuery,
+                  onSearchChanged: (value) =>
+                      setState(() => _searchQuery = value),
+                  searchHint: 'Espace, niveau, type…',
+                  resultLabel:
+                      '${_filterSpaces(spaces).length} ligne(s) sur ${spaces.length} · Totaux des lignes affichées',
+                  onReset: _resetFilters,
+                  filters: [
+                    ModuleFilterDropdown<String>(
+                      value: _status,
+                      label: 'Statut',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les statuts')),
+                        for (final status in RecordStatus.values)
+                          DropdownMenuItem(
+                              value: status.dbValue, child: Text(status.label)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _status = value ?? 'all'),
+                    ),
+                    ModuleFilterDropdown<String>(
+                      value: _type,
+                      label: 'Type',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les types')),
+                        for (final type in SpaceType.values)
+                          DropdownMenuItem(
+                              value: type.dbValue, child: Text(type.label)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _type = value ?? 'all'),
+                    ),
+                    ModuleFilterDropdown<String>(
+                      value: _level,
+                      label: 'Niveau',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les niveaux')),
+                        for (final level in levels)
+                          DropdownMenuItem(
+                              value: level,
+                              child:
+                                  Text(level.isEmpty ? 'Sans niveau' : level)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _level = value ?? 'all'),
+                    ),
+                  ],
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: spacesAsync.when(
                 data: (spaces) {
-                  final lines = quantityService.buildLines(spaces);
+                  final lines =
+                      quantityService.buildLines(_filterSpaces(spaces));
+
+                  if (lines.isEmpty) {
+                    return PremiumSurfaceCard(
+                      child: Center(
+                          child: Text(spaces.isEmpty
+                              ? 'Aucun espace pour ce projet. Ajoute un espace dans le module Métré.'
+                              : 'Aucune ligne ne correspond aux filtres.')),
+                    );
+                  }
 
                   return selectedProjectAsync.when(
                     data: (project) {
                       return PremiumSurfaceCard(
                         padding: EdgeInsets.zero,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: 1820,
-                            child: DataTable(
-                              columns: const [
-                                DataColumn(label: Text('Espace')),
-                                DataColumn(label: Text('Type')),
-                                DataColumn(label: Text('Sol')),
-                                DataColumn(label: Text('Plafond')),
-                                DataColumn(label: Text('Murs bruts')),
-                                DataColumn(label: Text('Ouvertures')),
-                                DataColumn(label: Text('Murs nets')),
-                                DataColumn(label: Text('Périmètre')),
-                                DataColumn(label: Text('Action')),
-                              ],
-                              rows: [
-                                for (final line in lines)
-                                  DataRow(
-                                    cells: [
-                                      DataCell(Text(line.spaceName)),
-                                      DataCell(Text(line.spaceType)),
-                                      DataCell(Text(
-                                          line.floorArea.toStringAsFixed(2))),
-                                      DataCell(Text(
-                                          line.ceilingArea.toStringAsFixed(2))),
-                                      DataCell(Text(line.grossWallArea
-                                          .toStringAsFixed(2))),
-                                      DataCell(Text(line.openingsArea
-                                          .toStringAsFixed(2))),
-                                      DataCell(Text(
-                                          line.netWallArea.toStringAsFixed(2))),
-                                      DataCell(Text(
-                                          line.perimeter.toStringAsFixed(2))),
-                                      DataCell(
-                                        ElevatedButton.icon(
-                                          onPressed: project == null
-                                              ? null
-                                              : () =>
-                                                  _openGeneratePurchaseDialog(
-                                                    context,
-                                                    ref,
-                                                    line: line,
-                                                    projectId: project.id,
-                                                    projectName: project.name,
-                                                  ),
-                                          icon: const Icon(
-                                              Icons.shopping_cart_outlined),
-                                          label: const Text('Générer achat'),
+                        child: Scrollbar(
+                          controller: _verticalController,
+                          thumbVisibility: true,
+                          notificationPredicate: (notification) =>
+                              notification.metrics.axis == Axis.vertical,
+                          child: Scrollbar(
+                            controller: _horizontalController,
+                            thumbVisibility: true,
+                            notificationPredicate: (notification) =>
+                                notification.metrics.axis == Axis.horizontal,
+                            child: LayoutBuilder(
+                                builder: (context, constraints) =>
+                                    SingleChildScrollView(
+                                      controller: _horizontalController,
+                                      scrollDirection: Axis.horizontal,
+                                      child: SizedBox(
+                                        width: 1820,
+                                        height: constraints.maxHeight,
+                                        child: SingleChildScrollView(
+                                          controller: _verticalController,
+                                          child: DataTable(
+                                            columns: const [
+                                              DataColumn(label: Text('Espace')),
+                                              DataColumn(label: Text('Type')),
+                                              DataColumn(
+                                                  label: Text('Sol\n(m²)')),
+                                              DataColumn(
+                                                  label: Text('Plafond\n(m²)')),
+                                              DataColumn(
+                                                  label:
+                                                      Text('Murs bruts\n(m²)')),
+                                              DataColumn(
+                                                  label:
+                                                      Text('Ouvertures\n(m²)')),
+                                              DataColumn(
+                                                  label:
+                                                      Text('Murs nets\n(m²)')),
+                                              DataColumn(
+                                                  label:
+                                                      Text('Périmètre\n(ml)')),
+                                              DataColumn(label: Text('Action')),
+                                            ],
+                                            rows: [
+                                              for (final line in lines)
+                                                DataRow(
+                                                  key: ValueKey(line.spaceId),
+                                                  cells: [
+                                                    DataCell(
+                                                        Text(line.spaceName)),
+                                                    DataCell(
+                                                        Text(line.spaceType)),
+                                                    DataCell(Text(line.floorArea
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(Text(line
+                                                        .ceilingArea
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(Text(line
+                                                        .grossWallArea
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(Text(line
+                                                        .openingsArea
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(Text(line
+                                                        .netWallArea
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(Text(line.perimeter
+                                                        .toStringAsFixed(2))),
+                                                    DataCell(
+                                                      ElevatedButton.icon(
+                                                        onPressed: project ==
+                                                                null
+                                                            ? null
+                                                            : () =>
+                                                                _openGeneratePurchaseDialog(
+                                                                  context,
+                                                                  ref,
+                                                                  line: line,
+                                                                  projectId:
+                                                                      project
+                                                                          .id,
+                                                                  projectName:
+                                                                      project
+                                                                          .name,
+                                                                ),
+                                                        icon: const Icon(Icons
+                                                            .shopping_cart_outlined),
+                                                        label: const Text(
+                                                            'Générer achat'),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              if (lines.isNotEmpty)
+                                                _totalsRow(context, lines),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                if (lines.isNotEmpty)
-                                  _totalsRow(context, lines),
-                              ],
-                            ),
+                                    )),
                           ),
                         ),
                       );
@@ -335,7 +496,7 @@ DataRow _totalsRow(BuildContext context, List<QuantityLine> lines) {
       Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
     ),
     cells: [
-      DataCell(Text('Total', style: style)),
+      DataCell(Text('Total affiché', style: style)),
       const DataCell(SizedBox.shrink()),
       DataCell(total(sum((line) => line.floorArea))),
       DataCell(total(sum((line) => line.ceilingArea))),

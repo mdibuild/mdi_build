@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/project_document.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
 import '../../data/documents_repository.dart';
@@ -10,6 +12,7 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
 
 final activeDocumentsProvider =
     FutureProvider<List<ProjectDocument>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];
@@ -23,6 +26,7 @@ final activeDocumentsProvider =
 
 final archivedDocumentsProvider =
     FutureProvider<List<ProjectDocument>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];
@@ -36,6 +40,7 @@ final archivedDocumentsProvider =
 
 final taskDocumentsProvider =
     FutureProvider.family<List<ProjectDocument>, String>((ref, taskId) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];
@@ -51,6 +56,7 @@ final taskDocumentsProvider =
 final purchaseDocumentsProvider =
     FutureProvider.family<List<ProjectDocument>, String>(
         (ref, purchaseId) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];

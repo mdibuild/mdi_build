@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/premium_ui.dart';
@@ -47,7 +48,7 @@ class _NotificationsSettingsPageState
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Notifications')),
       body: profileAsync.when(
         data: (profile) {

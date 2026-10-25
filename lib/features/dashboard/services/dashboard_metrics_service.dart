@@ -21,14 +21,16 @@ class DashboardMetricsService {
       orderBy: 'updated_at',
     );
 
-    final tasks = projectId == null
+    final taskRows = projectId == null
         ? const <Map<String, dynamic>>[]
         : await _fetchRows(
-            tableNames: const ['tasks', 'planning_tasks'],
+            tableNames: const ['project_tasks', 'tasks', 'planning_tasks'],
             companyId: null,
             projectId: projectId,
             orderBy: 'updated_at',
           );
+
+    final tasks = taskRows.where((row) => row['is_archived'] != true).toList();
 
     final quotes = projectId == null
         ? const <Map<String, dynamic>>[]
@@ -73,7 +75,17 @@ class DashboardMetricsService {
 
     final lateTasks = tasks.where((row) {
       final status = (row['status'] ?? '').toString().toLowerCase();
-      return status.contains('late') || status.contains('retard');
+      if (status.contains('done') ||
+          status.contains('term') ||
+          status.contains('annul')) {
+        return false;
+      }
+      final end = DateTime.tryParse((row['planned_end_date'] ?? '').toString());
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return end != null
+          ? DateTime(end.year, end.month, end.day).isBefore(today)
+          : status.contains('late') || status.contains('retard');
     }).length;
 
     final autoReports = reports.where((row) {
@@ -90,14 +102,11 @@ class DashboardMetricsService {
 
     final highlights = <String>[
       if (projects.isNotEmpty) '${projects.length} projet(s) suivis',
-      if (tasks.isNotEmpty)
-        '$doneTasks tâche(s) terminée(s)',
-      if (lateTasks > 0)
-        '$lateTasks tâche(s) en retard',
+      if (tasks.isNotEmpty) '$doneTasks tâche(s) terminée(s)',
+      if (lateTasks > 0) '$lateTasks tâche(s) en retard',
       if (quotes.isNotEmpty) '${quotes.length} devis disponibles',
       if (purchases.isNotEmpty) '${purchases.length} achat(s) suivis',
-      if (reports.isNotEmpty)
-        '${reports.length} rapport(s) déjà créé(s)',
+      if (reports.isNotEmpty) '${reports.length} rapport(s) déjà créé(s)',
     ];
 
     return DashboardMetrics(

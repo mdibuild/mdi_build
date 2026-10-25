@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/tax_rate.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/module_filters.dart';
 import 'providers/tax_rates_providers.dart';
 import 'tax_rate_form_dialog.dart';
 
@@ -14,6 +16,20 @@ class TaxRatesPage extends ConsumerStatefulWidget {
 }
 
 class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
+  String _query = '';
+  String _defaultFilter = 'all';
+
+  List<TaxRate> _filter(List<TaxRate> rates) => rates.where((rate) {
+        final textMatch = '${rate.label} ${rate.rate}'
+            .toLowerCase()
+            .contains(_query.trim().toLowerCase());
+        return textMatch &&
+            (_defaultFilter == 'all' ||
+                (_defaultFilter == 'default'
+                    ? rate.isDefault
+                    : !rate.isDefault));
+      }).toList();
+
   Future<void> _openForm({TaxRate? existing}) async {
     final saved = await showDialog<bool>(
       context: context,
@@ -66,18 +82,20 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
     ref.invalidate(archivedTaxRatesProvider);
   }
 
-  Widget _buildList(AsyncValue<List<TaxRate>> async, {required bool archivedTab}) {
+  Widget _buildList(AsyncValue<List<TaxRate>> async,
+      {required bool archivedTab}) {
     return async.when(
       data: (rates) {
-        if (rates.isEmpty) {
-          return const Center(child: Text('Aucun taux.'));
+        final filtered = _filter(rates);
+        if (filtered.isEmpty) {
+          return const Center(child: Text('Aucun taux pour ces filtres.'));
         }
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: rates.length,
+          itemCount: filtered.length,
           itemBuilder: (context, index) {
-            final taxRate = rates[index];
+            final taxRate = filtered[index];
 
             return PremiumSurfaceCard(
               margin: const EdgeInsets.only(bottom: 12),
@@ -108,7 +126,8 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
                       value: 'archive',
                       child: Text(archivedTab ? 'Désarchiver' : 'Archiver'),
                     ),
-                    const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                    const PopupMenuItem(
+                        value: 'delete', child: Text('Supprimer')),
                   ],
                 ),
               ),
@@ -128,7 +147,7 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
+      child: ProjectModuleScaffold(
         appBar: AppBar(
           title: const Text('Taxes & TVA'),
           bottom: const TabBar(
@@ -143,10 +162,44 @@ class _TaxRatesPageState extends ConsumerState<TaxRatesPage> {
           icon: const Icon(Icons.add),
           label: const Text('Nouveau taux'),
         ),
-        body: TabBarView(
+        body: AdaptiveHeaderColumn(
           children: [
-            _buildList(activeAsync, archivedTab: false),
-            _buildList(archivedAsync, archivedTab: true),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ModuleFilterBar(
+                searchQuery: _query,
+                searchHint: 'Libellé ou taux…',
+                onSearchChanged: (value) => setState(() => _query = value),
+                filters: [
+                  ModuleFilterDropdown<String>(
+                    value: _defaultFilter,
+                    label: 'Utilisation',
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'all', child: Text('Tous les taux')),
+                      DropdownMenuItem(
+                          value: 'default', child: Text('Taux par défaut')),
+                      DropdownMenuItem(
+                          value: 'other', child: Text('Autres taux')),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _defaultFilter = value ?? 'all'),
+                  ),
+                ],
+                onReset: () => setState(() {
+                  _query = '';
+                  _defaultFilter = 'all';
+                }),
+                resultLabel:
+                    '${_filter(activeAsync.value ?? []).length} actif(s) · '
+                    '${_filter(archivedAsync.value ?? []).length} archivé(s)',
+              ),
+            ),
+            Expanded(
+                child: TabBarView(children: [
+              _buildList(activeAsync, archivedTab: false),
+              _buildList(archivedAsync, archivedTab: true),
+            ])),
           ],
         ),
       ),

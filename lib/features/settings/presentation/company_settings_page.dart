@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,7 +14,7 @@ class CompanySettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final companyAsync = ref.watch(currentCompanyProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Entreprise')),
       body: companyAsync.when(
         data: (company) {

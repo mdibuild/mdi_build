@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -9,8 +10,10 @@ import '../../../core/services/pdf_letterhead.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/projects_providers.dart';
+import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../settings/presentation/providers/company_providers.dart';
 import '../../settings/presentation/providers/suppliers_providers.dart';
 import '../services/purchase_pdf_service.dart';
@@ -27,6 +30,21 @@ class AchatsPage extends ConsumerStatefulWidget {
 class _AchatsPageState extends ConsumerState<AchatsPage> {
   final TextEditingController searchController = TextEditingController();
   String statusFilter = 'tous';
+  String projectFilter = 'current';
+  String lotFilter = 'tous';
+  String supplierFilter = 'tous';
+  String periodFilter = 'toutes';
+
+  void _resetFilters() {
+    setState(() {
+      searchController.clear();
+      statusFilter = 'tous';
+      projectFilter = 'current';
+      lotFilter = 'tous';
+      supplierFilter = 'tous';
+      periodFilter = 'toutes';
+    });
+  }
 
   @override
   void dispose() {
@@ -179,9 +197,8 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
       final company = await ref.read(currentCompanyProvider.future);
       final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
       final suppliers = await ref.read(activeSuppliersProvider.future);
-      final supplier = suppliers
-          .where((s) => s.id == purchase.supplierId)
-          .firstOrNull;
+      final supplier =
+          suppliers.where((s) => s.id == purchase.supplierId).firstOrNull;
 
       await PurchasePdfService().printPurchase(
         supplier: supplier,
@@ -272,8 +289,10 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
 
   List<Purchase> _applyFilters(
     List<Purchase> purchases,
-    Map<String, String> projectNamesById,
-  ) {
+    Map<String, String> projectNamesById, {
+    String? currentProjectId,
+    Map<String, String> supplierNamesById = const {},
+  }) {
     final query = searchController.text.trim().toLowerCase();
 
     return purchases.where((purchase) {
@@ -287,9 +306,37 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
           purchase.title.toLowerCase().contains(query) ||
           purchase.lot.toLowerCase().contains(query) ||
           projectName.contains(query) ||
-          purchase.notes.toLowerCase().contains(query);
+          purchase.notes.toLowerCase().contains(query) ||
+          (supplierNamesById[purchase.supplierId] ?? '')
+              .toLowerCase()
+              .contains(query);
+      final projectId =
+          projectFilter == 'current' ? currentProjectId : projectFilter;
+      final matchesProject =
+          projectFilter == 'all' || purchase.projectId == projectId;
+      final matchesLot = lotFilter == 'tous' || purchase.lot == lotFilter;
+      final matchesSupplier = supplierFilter == 'tous' ||
+          (supplierFilter == 'sans'
+              ? purchase.supplierId == null
+              : purchase.supplierId == supplierFilter);
+      final today = DateUtils.dateOnly(DateTime.now());
+      final created = DateUtils.dateOnly(purchase.createdAt);
+      final matchesPeriod = switch (periodFilter) {
+        'semaine' => !created.isAfter(today) &&
+            !created.isBefore(today.subtract(const Duration(days: 6))),
+        'mois' => !created.isAfter(today) &&
+            !created.isBefore(today.subtract(const Duration(days: 29))),
+        'mois_courant' =>
+          created.year == today.year && created.month == today.month,
+        _ => true,
+      };
 
-      return matchesStatus && matchesSearch;
+      return matchesStatus &&
+          matchesSearch &&
+          matchesProject &&
+          matchesLot &&
+          matchesSupplier &&
+          matchesPeriod;
     }).toList();
   }
 
@@ -298,10 +345,38 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
     final activePurchasesAsync = ref.watch(activePurchasesProvider);
     final archivedPurchasesAsync = ref.watch(archivedPurchasesProvider);
     final projectsAsync = ref.watch(projectsProvider);
+    final selectedProject = ref.watch(selectedProjectProvider).value;
+    final suppliers = ref.watch(activeSuppliersProvider).value ?? const [];
+    final supplierNames = <String, String>{
+      for (final supplier in suppliers) supplier.id: supplier.name
+    };
+    final allPurchases = <Purchase>[
+      ...?activePurchasesAsync.value,
+      ...?archivedPurchasesAsync.value,
+    ];
+    final projectNames = <String, String>{
+      for (final project in projectsAsync.value ?? const [])
+        project.id: project.name,
+    };
+    final lots = {
+      for (final purchase in allPurchases)
+        if (purchase.lot.isNotEmpty) purchase.lot,
+      if (lotFilter != 'tous') lotFilter,
+    }.toList()
+      ..sort();
+    final supplierIds = <String>{
+      ...supplierNames.keys,
+      for (final purchase in allPurchases)
+        if (purchase.supplierId != null) purchase.supplierId!,
+      if (supplierFilter != 'tous' && supplierFilter != 'sans') supplierFilter,
+    };
+    final filtered = _applyFilters(allPurchases, projectNames,
+        currentProjectId: selectedProject?.id,
+        supplierNamesById: supplierNames);
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
+      child: ProjectModuleScaffold(
         appBar: AppBar(
           title: const Text('Achats'),
           bottom: const TabBar(
@@ -325,58 +400,118 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: searchController,
-                          onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
-                            labelText: 'Recherche',
-                            hintText: 'Titre, lot, projet, remarque',
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width < 600
-                            ? 150
-                            : 220,
-                        child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          initialValue: statusFilter,
-                          decoration:
-                              const InputDecoration(labelText: 'Statut'),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'tous', child: Text('Tous')),
-                            DropdownMenuItem(
-                                value: 'brouillon', child: Text('Brouillon')),
-                            DropdownMenuItem(
-                                value: 'dg_valide', child: Text('DG validé')),
-                            DropdownMenuItem(
-                                value: 'commande', child: Text('Commandé')),
-                            DropdownMenuItem(
-                                value: 'livre', child: Text('Livré')),
-                            DropdownMenuItem(
-                                value: 'annule', child: Text('Annulé')),
-                            DropdownMenuItem(
-                                value: 'archive', child: Text('Archivé')),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => statusFilter = value);
-                            }
-                          },
-                        ),
-                      ),
+              ModuleFilterBar(
+                searchQuery: searchController.text,
+                onSearchChanged: (value) =>
+                    setState(() => searchController.text = value),
+                searchHint: 'Titre, lot, projet, fournisseur, remarque',
+                onReset: _resetFilters,
+                resultLabel:
+                    '${filtered.length} achat(s) sur ${allPurchases.length} · en cours et archives',
+                filters: [
+                  ModuleFilterDropdown<String>(
+                    label: 'Projet',
+                    value: projectFilter,
+                    items: [
+                      DropdownMenuItem(
+                          value: 'current',
+                          child: Text(
+                              'Projet courant : ${selectedProject?.name ?? "aucun"}')),
+                      const DropdownMenuItem(
+                          value: 'all', child: Text('Tous les projets')),
+                      for (final project in projectsAsync.value ?? const [])
+                        DropdownMenuItem(
+                            value: project.id, child: Text(project.name)),
+                      if (projectFilter != 'current' &&
+                          projectFilter != 'all' &&
+                          !projectNames.containsKey(projectFilter))
+                        DropdownMenuItem(
+                            value: projectFilter,
+                            child: const Text('Projet indisponible')),
                     ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => projectFilter = value);
+                      }
+                    },
                   ),
-                ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Statut',
+                    value: statusFilter,
+                    items: const [
+                      DropdownMenuItem(value: 'tous', child: Text('Tous')),
+                      DropdownMenuItem(
+                          value: 'brouillon', child: Text('Brouillon')),
+                      DropdownMenuItem(
+                          value: 'dg_valide', child: Text('DG validé')),
+                      DropdownMenuItem(
+                          value: 'commande', child: Text('Commandé')),
+                      DropdownMenuItem(value: 'livre', child: Text('Livré')),
+                      DropdownMenuItem(value: 'annule', child: Text('Annulé')),
+                      DropdownMenuItem(
+                          value: 'archive', child: Text('Archivé')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => statusFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Lot',
+                    value: lotFilter,
+                    items: [
+                      const DropdownMenuItem(
+                          value: 'tous', child: Text('Tous les lots')),
+                      for (final lot in lots)
+                        DropdownMenuItem(value: lot, child: Text(lot)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => lotFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Fournisseur',
+                    value: supplierFilter,
+                    items: [
+                      const DropdownMenuItem(
+                          value: 'tous', child: Text('Tous les fournisseurs')),
+                      const DropdownMenuItem(
+                          value: 'sans', child: Text('Sans fournisseur')),
+                      for (final id in supplierIds)
+                        DropdownMenuItem(
+                            value: id,
+                            child: Text(supplierNames[id] ??
+                                'Fournisseur indisponible')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => supplierFilter = value);
+                      }
+                    },
+                  ),
+                  ModuleFilterDropdown<String>(
+                    label: 'Création',
+                    value: periodFilter,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'toutes', child: Text('Toutes les dates')),
+                      DropdownMenuItem(
+                          value: 'semaine', child: Text('7 derniers jours')),
+                      DropdownMenuItem(
+                          value: 'mois', child: Text('30 derniers jours')),
+                      DropdownMenuItem(
+                          value: 'mois_courant', child: Text('Ce mois')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => periodFilter = value);
+                      }
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -390,8 +525,10 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                       children: [
                         activePurchasesAsync.when(
                           data: (purchases) => _PurchasesList(
-                            purchases:
-                                _applyFilters(purchases, projectNamesById),
+                            purchases: _applyFilters(
+                                purchases, projectNamesById,
+                                currentProjectId: selectedProject?.id,
+                                supplierNamesById: supplierNames),
                             projectNamesById: projectNamesById,
                             onEdit: (purchase) => _openEditDialog(
                               context,
@@ -419,8 +556,10 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                         ),
                         archivedPurchasesAsync.when(
                           data: (purchases) => _PurchasesList(
-                            purchases:
-                                _applyFilters(purchases, projectNamesById),
+                            purchases: _applyFilters(
+                                purchases, projectNamesById,
+                                currentProjectId: selectedProject?.id,
+                                supplierNamesById: supplierNames),
                             projectNamesById: projectNamesById,
                             onEdit: (purchase) => _openEditDialog(
                               context,
@@ -485,7 +624,8 @@ class _PurchasesList extends ConsumerWidget {
     if (purchases.isEmpty) {
       return const PremiumSurfaceCard(
         child: Center(
-          child: Text('Aucun achat.'),
+          child: Text(
+              'Aucun achat ne correspond aux filtres. Réinitialisez-les ou changez de projet.'),
         ),
       );
     }
@@ -738,104 +878,104 @@ class _PurchaseItemsSection extends StatelessWidget {
         children: [
           Row(
             children: [
+              Expanded(
+                flex: 4,
+                child: Text(
+                  'Article',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Qté',
+                  style: Theme.of(context).textTheme.labelLarge,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'PU',
+                  style: Theme.of(context).textTheme.labelLarge,
+                  textAlign: TextAlign.end,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Total',
+                  style: Theme.of(context).textTheme.labelLarge,
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final item in items) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Expanded(
                   flex: 4,
-                  child: Text(
-                    'Article',
-                    style: Theme.of(context).textTheme.labelLarge,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.article,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (item.description.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            item.description,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Qté',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    '${item.quantity.toStringAsFixed(2)} ${item.unit}',
                     textAlign: TextAlign.center,
                   ),
                 ),
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'PU',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    item.unitPrice.toStringAsFixed(2),
                     textAlign: TextAlign.end,
                   ),
                 ),
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Total',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    item.total.toStringAsFixed(2),
                     textAlign: TextAlign.end,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            for (final item in items) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.article,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        if (item.description.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              item.description,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      '${item.quantity.toStringAsFixed(2)} ${item.unit}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      item.unitPrice.toStringAsFixed(2),
-                      textAlign: TextAlign.end,
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      item.total.toStringAsFixed(2),
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              if (item.notes.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 6),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Remarque : ${item.notes}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+            if (item.notes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Remarque : ${item.notes}',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-              const Divider(height: 18),
-            ],
+              ),
+            const Divider(height: 18),
           ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 }
 

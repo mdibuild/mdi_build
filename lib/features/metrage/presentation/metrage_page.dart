@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/enums/opening_type.dart';
 import '../../../core/enums/record_status.dart';
+import '../../../core/enums/space_type.dart';
 import '../../../core/models/opening_item.dart';
 import '../../../core/models/space_item.dart';
 import '../../../core/widgets/app_scaffold_title.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/project_selector_card.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
@@ -31,8 +34,37 @@ Color _recordStatusColor(AppPaletteColors colors, RecordStatus status) {
   }
 }
 
-class MetragePage extends ConsumerWidget {
+class MetragePage extends ConsumerStatefulWidget {
   const MetragePage({super.key});
+
+  @override
+  ConsumerState<MetragePage> createState() => _MetragePageState();
+}
+
+class _MetragePageState extends ConsumerState<MetragePage> {
+  String _searchQuery = '';
+  String _status = 'all';
+  String _type = 'all';
+  String _level = 'all';
+
+  List<SpaceItem> _filterSpaces(List<SpaceItem> spaces) {
+    final query = _searchQuery.trim().toLowerCase();
+    return spaces.where((space) {
+      final text = '${space.name} ${space.levelName} ${space.type.label} '
+          '${space.status.label} ${space.openings.map((opening) => opening.name).join(' ')}';
+      return (query.isEmpty || text.toLowerCase().contains(query)) &&
+          (_status == 'all' || space.status.dbValue == _status) &&
+          (_type == 'all' || space.type.dbValue == _type) &&
+          (_level == 'all' || space.levelName == _level);
+    }).toList();
+  }
+
+  void _resetFilters() => setState(() {
+        _searchQuery = '';
+        _status = 'all';
+        _type = 'all';
+        _level = 'all';
+      });
 
   Future<void> _openCreateSpaceDialog(
       BuildContext context, WidgetRef ref, String projectId) async {
@@ -122,7 +154,7 @@ class MetragePage extends ConsumerWidget {
               onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
-            style: PremiumButtonStyles.destructive(context),
+              style: PremiumButtonStyles.destructive(context),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Supprimer')),
         ],
@@ -234,7 +266,7 @@ class MetragePage extends ConsumerWidget {
               onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Annuler')),
           ElevatedButton(
-            style: PremiumButtonStyles.destructive(context),
+              style: PremiumButtonStyles.destructive(context),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Supprimer')),
         ],
@@ -250,11 +282,11 @@ class MetragePage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final spacesAsync = ref.watch(spacesProvider);
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Métré')),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -294,13 +326,83 @@ class MetragePage extends ConsumerWidget {
               orElse: () => const SizedBox.shrink(),
             ),
             const SizedBox(height: 16),
+            spacesAsync.maybeWhen(
+              data: (spaces) {
+                final levels = spaces
+                    .map((space) => space.levelName)
+                    .toSet()
+                    .toList()
+                  ..sort();
+                // Keep the chosen level visible if the active project changes.
+                if (_level != 'all' && !levels.contains(_level)) {
+                  levels.add(_level);
+                }
+                return ModuleFilterBar(
+                  searchQuery: _searchQuery,
+                  onSearchChanged: (value) =>
+                      setState(() => _searchQuery = value),
+                  searchHint: 'Espace, niveau, ouverture…',
+                  resultLabel:
+                      '${_filterSpaces(spaces).length} espace(s) sur ${spaces.length}',
+                  onReset: _resetFilters,
+                  filters: [
+                    ModuleFilterDropdown<String>(
+                      value: _status,
+                      label: 'Statut',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les statuts')),
+                        for (final status in RecordStatus.values)
+                          DropdownMenuItem(
+                              value: status.dbValue, child: Text(status.label)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _status = value ?? 'all'),
+                    ),
+                    ModuleFilterDropdown<String>(
+                      value: _type,
+                      label: 'Type',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les types')),
+                        for (final type in SpaceType.values)
+                          DropdownMenuItem(
+                              value: type.dbValue, child: Text(type.label)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _type = value ?? 'all'),
+                    ),
+                    ModuleFilterDropdown<String>(
+                      value: _level,
+                      label: 'Niveau',
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'all', child: Text('Tous les niveaux')),
+                        for (final level in levels)
+                          DropdownMenuItem(
+                              value: level,
+                              child:
+                                  Text(level.isEmpty ? 'Sans niveau' : level)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _level = value ?? 'all'),
+                    ),
+                  ],
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: spacesAsync.when(
                 data: (spaces) {
-                  if (spaces.isEmpty) {
-                    return const PremiumSurfaceCard(
+                  final filtered = _filterSpaces(spaces);
+                  if (filtered.isEmpty) {
+                    return PremiumSurfaceCard(
                       child: Center(
-                        child: Text('Aucun espace pour ce projet.'),
+                        child: Text(spaces.isEmpty
+                            ? 'Aucun espace pour ce projet.'
+                            : 'Aucun espace ne correspond aux filtres.'),
                       ),
                     );
                   }
@@ -309,16 +411,17 @@ class MetragePage extends ConsumerWidget {
                     padding: EdgeInsets.zero,
                     child: ListView.separated(
                       padding: const EdgeInsets.all(16),
-                      itemCount: spaces.length,
+                      itemCount: filtered.length,
                       separatorBuilder: (_, __) => const Divider(),
                       itemBuilder: (context, index) {
-                        final item = spaces[index];
+                        final item = filtered[index];
                         final statusColor =
                             _recordStatusColor(context.palette, item.status);
                         return ExpansionTile(
+                          key: ValueKey(item.id),
                           title: Text('${item.name} • ${item.type.label}'),
                           subtitle: Text(
-                            'Sol=${item.floorArea.toStringAsFixed(2)} m² • Murs nets=${item.netWallArea.toStringAsFixed(2)} m²',
+                            '${item.levelName.isEmpty ? 'Sans niveau' : item.levelName} • Sol=${item.floorArea.toStringAsFixed(2)} m² • Murs nets=${item.netWallArea.toStringAsFixed(2)} m²',
                           ),
                           trailing: PopupMenuButton<RecordStatus>(
                             tooltip: 'Changer le statut',

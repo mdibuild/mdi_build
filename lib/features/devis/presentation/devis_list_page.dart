@@ -1,16 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
 import '../../../core/models/project_quote.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/project_selector_card.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/devis_providers.dart';
 
-class DevisListPage extends ConsumerWidget {
+class DevisListPage extends ConsumerStatefulWidget {
   const DevisListPage({super.key});
+
+  @override
+  ConsumerState<DevisListPage> createState() => _DevisListPageState();
+}
+
+class _DevisListPageState extends ConsumerState<DevisListPage> {
+  String _searchQuery = '';
+  String _status = 'all';
+  String _mode = 'all';
+
+  List<ProjectQuote> _filterQuotes(List<ProjectQuote> quotes) {
+    final query = _searchQuery.trim().toLowerCase();
+    return quotes.where((quote) {
+      final text =
+          '${quote.title} ${_statusLabel(quote.status)} ${_modeLabel(quote.mode)}';
+      return (query.isEmpty || text.toLowerCase().contains(query)) &&
+          (_status == 'all' || quote.status == _status) &&
+          (_mode == 'all' || quote.mode == _mode);
+    }).toList();
+  }
 
   void _openQuote(
     BuildContext context, {
@@ -86,10 +108,10 @@ class DevisListPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(title: const Text('Devis')),
       body: selectedProjectAsync.when(
         data: (project) {
@@ -106,6 +128,7 @@ class DevisListPage extends ConsumerWidget {
 
           return quotesAsync.when(
             data: (quotes) {
+              final filtered = _filterQuotes(quotes);
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -124,20 +147,72 @@ class DevisListPage extends ConsumerWidget {
                     labelText: 'Projet affecté',
                   ),
                   const SizedBox(height: 16),
-                  if (quotes.isEmpty)
-                    const PremiumSurfaceCard(
+                  ModuleFilterBar(
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (value) =>
+                        setState(() => _searchQuery = value),
+                    searchHint: 'Titre, statut, mode du devis…',
+                    resultLabel:
+                        '${filtered.length} devis sur ${quotes.length}',
+                    onReset: () => setState(() {
+                      _searchQuery = '';
+                      _status = 'all';
+                      _mode = 'all';
+                    }),
+                    filters: [
+                      ModuleFilterDropdown<String>(
+                        value: _status,
+                        label: 'Statut',
+                        items: [
+                          const DropdownMenuItem(
+                              value: 'all', child: Text('Tous les statuts')),
+                          for (final status in [
+                            'brouillon',
+                            'envoye',
+                            'signe',
+                            'annule',
+                            'archive'
+                          ])
+                            DropdownMenuItem(
+                                value: status,
+                                child: Text(_statusLabel(status))),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _status = value ?? 'all'),
+                      ),
+                      ModuleFilterDropdown<String>(
+                        value: _mode,
+                        label: 'Mode',
+                        items: [
+                          const DropdownMenuItem(
+                              value: 'all', child: Text('Tous les modes')),
+                          for (final mode in ['piece', 'corps_etat', 'mixte'])
+                            DropdownMenuItem(
+                                value: mode, child: Text(_modeLabel(mode))),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _mode = value ?? 'all'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (filtered.isEmpty)
+                    PremiumSurfaceCard(
                       child: Center(
                         child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text('Aucun devis pour ce projet.'),
+                          padding: const EdgeInsets.all(20),
+                          child: Text(quotes.isEmpty
+                              ? 'Aucun devis pour ce projet.'
+                              : 'Aucun devis ne correspond aux filtres.'),
                         ),
                       ),
                     )
                   else
-                    ...quotes.map(
+                    ...filtered.map(
                       (quote) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _QuoteCard(
+                          key: ValueKey(quote.id),
                           quote: quote,
                           onOpen: () => _openQuote(context, quote: quote),
                           onChangeStatus: (status) =>
@@ -163,6 +238,7 @@ class DevisListPage extends ConsumerWidget {
 
 class _QuoteCard extends StatefulWidget {
   const _QuoteCard({
+    super.key,
     required this.quote,
     required this.onOpen,
     required this.onChangeStatus,

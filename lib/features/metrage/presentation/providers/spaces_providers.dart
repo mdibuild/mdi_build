@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/space_item.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
 import '../../data/spaces_repository.dart';
@@ -9,6 +11,7 @@ final spacesRepositoryProvider = Provider<SpacesRepository>((ref) {
 });
 
 final spacesProvider = FutureProvider<List<SpaceItem>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];

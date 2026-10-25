@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/app_user.dart';
 import '../../../../core/services/supabase_service.dart';
 
 final currentProfileProvider = FutureProvider<AppUser?>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final authUser = SupabaseService.client.auth.currentUser;
   if (authUser == null) {
     debugPrint('CURRENT PROFILE: aucun utilisateur connecté');

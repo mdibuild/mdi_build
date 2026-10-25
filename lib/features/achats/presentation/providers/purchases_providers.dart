@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/purchase.dart';
 import '../../../../core/models/purchase_item.dart';
 import '../../../projects/presentation/providers/current_profile_provider.dart';
@@ -10,6 +12,7 @@ final purchasesRepositoryProvider = Provider<PurchasesRepository>((ref) {
 });
 
 final activePurchasesProvider = FutureProvider<List<Purchase>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   if (profile == null) {
     return [];
@@ -22,6 +25,7 @@ final activePurchasesProvider = FutureProvider<List<Purchase>>((ref) async {
 });
 
 final archivedPurchasesProvider = FutureProvider<List<Purchase>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   if (profile == null) {
     return [];
@@ -35,5 +39,6 @@ final archivedPurchasesProvider = FutureProvider<List<Purchase>>((ref) async {
 
 final purchaseItemsProvider =
     FutureProvider.family<List<PurchaseItem>, String>((ref, purchaseId) async {
+  ref.watch(moduleRefreshRevisionProvider);
   return ref.watch(purchasesRepositoryProvider).fetchPurchaseItems(purchaseId);
 });

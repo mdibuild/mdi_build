@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/models/project_document.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'document_form_dialog.dart';
 import 'document_view_page.dart';
@@ -23,6 +25,18 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 
   String categoryFilter = 'toutes';
   String relationFilter = 'toutes';
+  String typeFilter = 'tous';
+  String periodFilter = 'toutes';
+
+  void _resetFilters() {
+    setState(() {
+      searchController.clear();
+      categoryFilter = 'toutes';
+      relationFilter = 'toutes';
+      typeFilter = 'tous';
+      periodFilter = 'toutes';
+    });
+  }
 
   @override
   void dispose() {
@@ -150,6 +164,11 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 
       final hasTask = (document.taskId ?? '').isNotEmpty;
       final hasPurchase = (document.purchaseId ?? '').isNotEmpty;
+      final hasReport = (document.reportId ?? '').isNotEmpty;
+      final hasClient = (document.clientId ?? '').isNotEmpty;
+      final hasSupplier = (document.supplierId ?? '').isNotEmpty;
+      final hasRelation =
+          hasTask || hasPurchase || hasReport || hasClient || hasSupplier;
 
       var matchesRelation = true;
       if (relationFilter == 'tache') {
@@ -157,12 +176,39 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
       } else if (relationFilter == 'achat') {
         matchesRelation = hasPurchase;
       } else if (relationFilter == 'avec_liaison') {
-        matchesRelation = hasTask || hasPurchase;
+        matchesRelation = hasRelation;
       } else if (relationFilter == 'sans_liaison') {
-        matchesRelation = !hasTask && !hasPurchase;
+        matchesRelation = !hasRelation;
+      } else if (relationFilter == 'rapport') {
+        matchesRelation = hasReport;
+      } else if (relationFilter == 'client') {
+        matchesRelation = hasClient;
+      } else if (relationFilter == 'fournisseur') {
+        matchesRelation = hasSupplier;
       }
+      final matchesType = switch (typeFilter) {
+        'pdf' => document.isPdf,
+        'image' => document.isImage,
+        'autre' => !document.isPdf && !document.isImage,
+        _ => true,
+      };
+      final today = DateUtils.dateOnly(DateTime.now());
+      final created = DateUtils.dateOnly(document.createdAt);
+      final matchesPeriod = switch (periodFilter) {
+        'semaine' => !created.isAfter(today) &&
+            !created.isBefore(today.subtract(const Duration(days: 6))),
+        'mois' => !created.isAfter(today) &&
+            !created.isBefore(today.subtract(const Duration(days: 29))),
+        'mois_courant' =>
+          created.year == today.year && created.month == today.month,
+        _ => true,
+      };
 
-      return matchesSearch && matchesCategory && matchesRelation;
+      return matchesSearch &&
+          matchesCategory &&
+          matchesRelation &&
+          matchesType &&
+          matchesPeriod;
     }).toList();
   }
 
@@ -171,6 +217,12 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     final selectedProjectAsync = ref.watch(selectedProjectProvider);
     final activeDocumentsAsync = ref.watch(activeDocumentsProvider);
     final archivedDocumentsAsync = ref.watch(archivedDocumentsProvider);
+    final allDocuments = [
+      ...?activeDocumentsAsync.value,
+      ...?archivedDocumentsAsync.value
+    ];
+    final resultLabel =
+        '${_applyFilters(allDocuments).length} document(s) sur ${allDocuments.length} · en cours et archives';
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -178,7 +230,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
 
         return DefaultTabController(
           length: 2,
-          child: Scaffold(
+          child: ProjectModuleScaffold(
             appBar: AppBar(
               title: const Text('Documents'),
               bottom: TabBar(
@@ -204,6 +256,7 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                     loading: () => _DocumentsHeader(
                       isCompact: isCompact,
                       projectName: null,
+                      loading: true,
                     ),
                     error: (_, __) => _DocumentsHeader(
                       isCompact: isCompact,
@@ -217,7 +270,22 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                     searchController: searchController,
                     categoryFilter: categoryFilter,
                     relationFilter: relationFilter,
-                    onSearchChanged: (_) => setState(() {}),
+                    typeFilter: typeFilter,
+                    periodFilter: periodFilter,
+                    resultLabel: resultLabel,
+                    onReset: _resetFilters,
+                    onTypeChanged: (value) {
+                      if (value != null) {
+                        setState(() => typeFilter = value);
+                      }
+                    },
+                    onPeriodChanged: (value) {
+                      if (value != null) {
+                        setState(() => periodFilter = value);
+                      }
+                    },
+                    onSearchChanged: (value) =>
+                        setState(() => searchController.text = value),
                     onCategoryChanged: (value) {
                       if (value != null) {
                         setState(() => categoryFilter = value);
@@ -287,19 +355,23 @@ class _DocumentsHeader extends StatelessWidget {
     this.projectName,
     this.onCreate,
     this.unavailable = false,
+    this.loading = false,
   });
 
   final bool isCompact;
   final String? projectName;
   final VoidCallback? onCreate;
   final bool unavailable;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
     final subtitle = unavailable
         ? 'Projet courant indisponible.'
         : projectName == null
-            ? 'Chargement projet courant...'
+            ? loading
+                ? 'Chargement projet courant...'
+                : 'Aucun projet sélectionné.'
             : 'Projet courant : $projectName';
 
     return PremiumHeroHeader(
@@ -320,89 +392,100 @@ class _DocumentsFilters extends StatelessWidget {
     required this.searchController,
     required this.categoryFilter,
     required this.relationFilter,
+    required this.typeFilter,
+    required this.periodFilter,
+    required this.resultLabel,
+    required this.onReset,
     required this.onSearchChanged,
     required this.onCategoryChanged,
     required this.onRelationChanged,
+    required this.onTypeChanged,
+    required this.onPeriodChanged,
   });
 
   final bool isCompact;
   final TextEditingController searchController;
   final String categoryFilter;
   final String relationFilter;
+  final String typeFilter;
+  final String periodFilter;
+  final String resultLabel;
+  final VoidCallback onReset;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<String?> onRelationChanged;
+  final ValueChanged<String?> onTypeChanged;
+  final ValueChanged<String?> onPeriodChanged;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumSurfaceCard(
-      padding: const EdgeInsets.all(14),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-          children: [
-            SizedBox(
-              width: isCompact ? double.infinity : 360,
-              child: TextField(
-                controller: searchController,
-                onChanged: onSearchChanged,
-                decoration: const InputDecoration(
-                  labelText: 'Recherche',
-                  hintText: 'Titre, description, fichier, type',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: isCompact ? double.infinity : 220,
-              child: DropdownButtonFormField<String>(
-                initialValue: categoryFilter,
-                decoration: const InputDecoration(labelText: 'Catégorie'),
-                items: const [
-                  DropdownMenuItem(value: 'toutes', child: Text('Toutes')),
-                  DropdownMenuItem(value: 'plan', child: Text('Plan')),
-                  DropdownMenuItem(value: 'photo', child: Text('Photo')),
-                  DropdownMenuItem(value: 'facture', child: Text('Facture')),
-                  DropdownMenuItem(
-                    value: 'bon_commande',
-                    child: Text('Bon commande'),
-                  ),
-                  DropdownMenuItem(value: 'pv', child: Text('PV')),
-                  DropdownMenuItem(value: 'rapport', child: Text('Rapport')),
-                  DropdownMenuItem(value: 'autre', child: Text('Autre')),
-                ],
-                onChanged: onCategoryChanged,
-              ),
-            ),
-            SizedBox(
-              width: isCompact ? double.infinity : 220,
-              child: DropdownButtonFormField<String>(
-                initialValue: relationFilter,
-                decoration: const InputDecoration(labelText: 'Liaison'),
-                items: const [
-                  DropdownMenuItem(value: 'toutes', child: Text('Toutes')),
-                  DropdownMenuItem(
-                    value: 'avec_liaison',
-                    child: Text('Avec liaison'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'sans_liaison',
-                    child: Text('Sans liaison'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'tache',
-                    child: Text('Liés à une tâche'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'achat',
-                    child: Text('Liés à un achat'),
-                  ),
-                ],
-                onChanged: onRelationChanged,
-              ),
-            ),
+    return ModuleFilterBar(
+      searchQuery: searchController.text,
+      onSearchChanged: onSearchChanged,
+      searchHint: 'Titre, description, fichier, type',
+      resultLabel: resultLabel,
+      onReset: onReset,
+      filters: [
+        ModuleFilterDropdown<String>(
+          label: 'Catégorie',
+          value: categoryFilter,
+          items: const [
+            DropdownMenuItem(
+                value: 'toutes', child: Text('Toutes les catégories')),
+            DropdownMenuItem(value: 'plan', child: Text('Plan')),
+            DropdownMenuItem(value: 'photo', child: Text('Photo')),
+            DropdownMenuItem(value: 'facture', child: Text('Facture')),
+            DropdownMenuItem(
+                value: 'bon_commande', child: Text('Bon de commande')),
+            DropdownMenuItem(value: 'pv', child: Text('PV')),
+            DropdownMenuItem(value: 'rapport', child: Text('Rapport')),
+            DropdownMenuItem(value: 'autre', child: Text('Autre')),
           ],
+          onChanged: onCategoryChanged,
         ),
+        ModuleFilterDropdown<String>(
+          label: 'Liaison',
+          value: relationFilter,
+          items: const [
+            DropdownMenuItem(
+                value: 'toutes', child: Text('Toutes les liaisons')),
+            DropdownMenuItem(
+                value: 'avec_liaison', child: Text('Avec liaison')),
+            DropdownMenuItem(
+                value: 'sans_liaison', child: Text('Sans liaison')),
+            DropdownMenuItem(value: 'tache', child: Text('Liés à une tâche')),
+            DropdownMenuItem(value: 'achat', child: Text('Liés à un achat')),
+            DropdownMenuItem(
+                value: 'rapport', child: Text('Liés à un rapport')),
+            DropdownMenuItem(value: 'client', child: Text('Liés à un client')),
+            DropdownMenuItem(
+                value: 'fournisseur', child: Text('Liés à un fournisseur')),
+          ],
+          onChanged: onRelationChanged,
+        ),
+        ModuleFilterDropdown<String>(
+          label: 'Type de fichier',
+          value: typeFilter,
+          items: const [
+            DropdownMenuItem(value: 'tous', child: Text('Tous les types')),
+            DropdownMenuItem(value: 'pdf', child: Text('PDF')),
+            DropdownMenuItem(value: 'image', child: Text('Images')),
+            DropdownMenuItem(value: 'autre', child: Text('Autres fichiers')),
+          ],
+          onChanged: onTypeChanged,
+        ),
+        ModuleFilterDropdown<String>(
+          label: 'Ajout',
+          value: periodFilter,
+          items: const [
+            DropdownMenuItem(value: 'toutes', child: Text('Toutes les dates')),
+            DropdownMenuItem(value: 'semaine', child: Text('7 derniers jours')),
+            DropdownMenuItem(value: 'mois', child: Text('30 derniers jours')),
+            DropdownMenuItem(value: 'mois_courant', child: Text('Ce mois')),
+          ],
+          onChanged: onPeriodChanged,
+        ),
+      ],
     );
   }
 }
@@ -429,7 +512,8 @@ class _DocumentsList extends StatelessWidget {
     if (documents.isEmpty) {
       return const PremiumSurfaceCard(
         child: Center(
-          child: Text('Aucun document.'),
+          child: Text(
+              'Aucun document ne correspond aux filtres dans ce projet. Réinitialisez-les pour élargir la recherche.'),
         ),
       );
     }
@@ -562,176 +646,172 @@ class _DocumentTileState extends State<_DocumentTile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                if (widget.isCompact)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              if (widget.isCompact)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DocumentPreview(
+                          document: widget.document,
+                          compact: true,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.document.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _CategoryChip(category: widget.document.category),
+                        if ((widget.document.taskId ?? '').isNotEmpty)
+                          _LinkChip(
+                            label: relations.taskTitle,
+                            icon: Icons.task_alt_outlined,
+                          ),
+                        if ((widget.document.purchaseId ?? '').isNotEmpty)
+                          _LinkChip(
+                            label: relations.purchaseTitle,
+                            icon: Icons.shopping_bag_outlined,
+                          ),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DocumentPreview(
+                      document: widget.document,
+                      compact: false,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _DocumentPreview(
-                            document: widget.document,
-                            compact: true,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              widget.document.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
+                          Text(
+                            widget.document.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _CategoryChip(category: widget.document.category),
+                              if ((widget.document.taskId ?? '').isNotEmpty)
+                                _LinkChip(
+                                  label: relations.taskTitle,
+                                  icon: Icons.task_alt_outlined,
+                                ),
+                              if ((widget.document.purchaseId ?? '').isNotEmpty)
+                                _LinkChip(
+                                  label: relations.purchaseTitle,
+                                  icon: Icons.shopping_bag_outlined,
+                                ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _CategoryChip(category: widget.document.category),
-                          if ((widget.document.taskId ?? '').isNotEmpty)
-                            _LinkChip(
-                              label: relations.taskTitle,
-                              icon: Icons.task_alt_outlined,
-                            ),
-                          if ((widget.document.purchaseId ?? '').isNotEmpty)
-                            _LinkChip(
-                              label: relations.purchaseTitle,
-                              icon: Icons.shopping_bag_outlined,
-                            ),
-                        ],
-                      ),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _DocumentPreview(
-                        document: widget.document,
-                        compact: false,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.document.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _CategoryChip(
-                                    category: widget.document.category),
-                                if ((widget.document.taskId ?? '').isNotEmpty)
-                                  _LinkChip(
-                                    label: relations.taskTitle,
-                                    icon: Icons.task_alt_outlined,
-                                  ),
-                                if ((widget.document.purchaseId ?? '')
-                                    .isNotEmpty)
-                                  _LinkChip(
-                                    label: relations.purchaseTitle,
-                                    icon: Icons.shopping_bag_outlined,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Fichier',
+                value: widget.document.fileName,
+              ),
+              const SizedBox(height: 6),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Type',
+                value: widget.document.mimeType,
+              ),
+              const SizedBox(height: 6),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Taille',
+                value: _formatFileSize(widget.document.fileSize),
+              ),
+              const SizedBox(height: 6),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Ajouté le',
+                value: createdAt,
+              ),
+              const SizedBox(height: 6),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Tâche',
+                value: relations.taskTitle,
+              ),
+              const SizedBox(height: 6),
+              _InfoLine(
+                compact: widget.isCompact,
+                label: 'Achat',
+                value: relations.purchaseTitle,
+              ),
+              if (widget.document.description.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Fichier',
-                  value: widget.document.fileName,
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Type',
-                  value: widget.document.mimeType,
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Taille',
-                  value: _formatFileSize(widget.document.fileSize),
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Ajouté le',
-                  value: createdAt,
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Tâche',
-                  value: relations.taskTitle,
-                ),
-                const SizedBox(height: 6),
-                _InfoLine(
-                  compact: widget.isCompact,
-                  label: 'Achat',
-                  value: relations.purchaseTitle,
-                ),
-                if (widget.document.description.trim().isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(widget.document.description),
-                ],
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: widget.onOpen,
-                        icon: const Icon(Icons.open_in_new),
-                        label: const Text('Ouvrir'),
+                Text(widget.document.description),
+              ],
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: widget.onOpen,
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Ouvrir'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: widget.onCopyLink,
+                      icon: const Icon(Icons.link_outlined),
+                      label: const Text('Lien'),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.onArchiveToggle,
+                      icon: Icon(
+                        widget.document.isArchived
+                            ? Icons.unarchive_outlined
+                            : Icons.archive_outlined,
                       ),
-                      OutlinedButton.icon(
-                        onPressed: widget.onCopyLink,
-                        icon: const Icon(Icons.link_outlined),
-                        label: const Text('Lien'),
+                      label: Text(
+                        widget.document.isArchived ? 'Désarchiver' : 'Archiver',
                       ),
-                      TextButton.icon(
-                        onPressed: widget.onArchiveToggle,
-                        icon: Icon(
-                          widget.document.isArchived
-                              ? Icons.unarchive_outlined
-                              : Icons.archive_outlined,
-                        ),
-                        label: Text(
-                          widget.document.isArchived
-                              ? 'Désarchiver'
-                              : 'Archiver',
-                        ),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
                       ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                        ),
-                        onPressed: widget.onDelete,
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Supprimer'),
-                      ),
-                    ],
-                  ),
+                      onPressed: widget.onDelete,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Supprimer'),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
         );

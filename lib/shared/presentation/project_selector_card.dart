@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/projects/presentation/providers/projects_providers.dart';
 import '../../features/projects/presentation/providers/selected_project_provider.dart';
 import 'premium_ui.dart';
+import 'project_workspace_toolbar.dart';
 
 /// Sélecteur de projet réutilisable : change le projet actif dans toute
 /// l'app (Devis, Chat, Métré, Planning...) via [selectedProjectIdProvider].
@@ -19,6 +20,7 @@ class ProjectSelectorCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ProjectWorkspaceScope.contains(context)) return const SizedBox.shrink();
     final projectsAsync = ref.watch(projectsProvider);
 
     return projectsAsync.when(
@@ -26,6 +28,8 @@ class ProjectSelectorCard extends ConsumerWidget {
         return PremiumSurfaceCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: DropdownButtonFormField<String>(
+            key: ValueKey(currentProjectId),
+            isExpanded: true,
             initialValue: currentProjectId,
             decoration: InputDecoration(
               labelText: labelText,
@@ -34,7 +38,9 @@ class ProjectSelectorCard extends ConsumerWidget {
             ),
             items: [
               for (final project in projects)
-                DropdownMenuItem(value: project.id, child: Text(project.name)),
+                DropdownMenuItem(
+                    value: project.id,
+                    child: Text(project.name, overflow: TextOverflow.ellipsis)),
             ],
             onChanged: (value) {
               if (value == null || value == currentProjectId) {

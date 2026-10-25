@@ -67,12 +67,16 @@ class _PremiumSurfaceCardState extends State<PremiumSurfaceCard> {
         ),
         boxShadow: _hovered ? _premiumCardShadowHovered : _premiumCardShadow,
       ),
-      transform: _hovered
-          ? Matrix4.translationValues(0, -2, 0)
-          : Matrix4.identity(),
-      child: Padding(
-        padding: widget.padding,
-        child: widget.child,
+      transform:
+          _hovered ? Matrix4.translationValues(0, -2, 0) : Matrix4.identity(),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: widget.padding,
+          child: widget.child,
+        ),
       ),
     );
 
@@ -173,7 +177,8 @@ class PremiumHeroHeader extends StatelessWidget {
                                     .textTheme
                                     .bodyMedium
                                     ?.copyWith(
-                                      color: Colors.white.withValues(alpha: 0.88),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.88),
                                     ),
                               ),
                             ],
@@ -276,8 +281,8 @@ class _HeroActionsTheme extends StatelessWidget {
             ? Colors.white.withValues(alpha: 0.6)
             : color;
 
-    final primary = (theme.elevatedButtonTheme.style ?? const ButtonStyle())
-        .copyWith(
+    final primary =
+        (theme.elevatedButtonTheme.style ?? const ButtonStyle()).copyWith(
       backgroundColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.disabled)
             ? Colors.white.withValues(alpha: 0.22)
@@ -295,8 +300,8 @@ class _HeroActionsTheme extends StatelessWidget {
       ),
     );
 
-    final secondary = (theme.outlinedButtonTheme.style ?? const ButtonStyle())
-        .copyWith(
+    final secondary =
+        (theme.outlinedButtonTheme.style ?? const ButtonStyle()).copyWith(
       backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
       foregroundColor:
           WidgetStateProperty.resolveWith((s) => disabledOr(s, Colors.white)),
@@ -485,42 +490,42 @@ class PremiumMetricTile extends StatelessWidget {
     );
 
     final content = Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: colors.petrolSoft,
-              borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
-            ),
-            child: Icon(
-              icon,
-              color: colors.petrol,
-              size: 22,
-            ),
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: colors.petrolSoft,
+            borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: colors.petrol,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
+          child: Icon(
+            icon,
+            color: colors.petrol,
+            size: 22,
           ),
-        ],
-      );
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: colors.petrol,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     if (onTap == null) {
       return Container(

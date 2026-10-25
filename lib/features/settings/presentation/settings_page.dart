@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../shared/presentation/premium_ui.dart';
+import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import 'providers/settings_providers.dart';
 
@@ -174,7 +176,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
 
-    return Scaffold(
+    return ProjectModuleScaffold(
       appBar: AppBar(
         title: const Text('Paramètres'),
       ),
@@ -219,7 +221,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ),
                             ),
                             FilledButton.icon(
-                              onPressed: () => _openCreateUserDialog(profile.companyId),
+                              onPressed: () =>
+                                  _openCreateUserDialog(profile.companyId),
                               icon: const Icon(Icons.person_add_alt_1),
                               label: const Text('Créer un utilisateur'),
                             ),
@@ -244,23 +247,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 12),
                   PremiumSurfaceCard(
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _searchController,
-                          onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
-                            labelText: 'Recherche',
-                            hintText: 'Nom, email, rôle',
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: _roleFilter,
-                          decoration: const InputDecoration(
-                            labelText: 'Filtre rôle',
-                          ),
+                    child: ModuleFilterBar(
+                      searchQuery: _searchController.text,
+                      searchHint: 'Nom, email, rôle…',
+                      onSearchChanged: (value) =>
+                          setState(() => _searchController.text = value),
+                      filters: [
+                        ModuleFilterDropdown<String>(
+                          value: _roleFilter,
+                          label: 'Rôle',
                           items: [
                             const DropdownMenuItem(
                                 value: 'all', child: Text('Tous')),
@@ -277,6 +272,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           },
                         ),
                       ],
+                      onReset: () => setState(() {
+                        _searchController.clear();
+                        _roleFilter = 'all';
+                      }),
+                      resultLabel:
+                          '${filtered.length} utilisateur(s) sur ${users.length}',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -311,8 +312,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   PremiumStatusBadge(
                                     label:
                                         'Rôle actuel : ${_roleLabel(user.role)}',
-                                    backgroundColor:
-                                        context.palette.petrolSoft,
+                                    backgroundColor: context.palette.petrolSoft,
                                     foregroundColor: context.palette.petrol,
                                     icon: Icons.verified_user_outlined,
                                   ),
@@ -333,15 +333,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                             ),
                                           )
                                           .toList(),
-                                      onChanged:
-                                          _updatingIds.contains(user.id)
-                                              ? null
-                                              : (value) {
-                                                  if (value != null &&
-                                                      value != user.role) {
-                                                    _updateRole(user, value);
-                                                  }
-                                                },
+                                      onChanged: _updatingIds.contains(user.id)
+                                          ? null
+                                          : (value) {
+                                              if (value != null &&
+                                                  value != user.role) {
+                                                _updateRole(user, value);
+                                              }
+                                            },
                                     ),
                                   ),
                                   if (_updatingIds.contains(user.id))
@@ -354,8 +353,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   OutlinedButton.icon(
                                     onPressed: () =>
                                         _openResetPasswordDialog(user),
-                                    icon: const Icon(Icons.lock_reset, size: 18),
-                                    label: const Text('Réinitialiser le mot de passe'),
+                                    icon:
+                                        const Icon(Icons.lock_reset, size: 18),
+                                    label: const Text(
+                                        'Réinitialiser le mot de passe'),
                                   ),
                                 ],
                               ),
@@ -429,8 +430,7 @@ class _SettingsNavTile extends StatelessWidget {
 }
 
 String _generatePassword() {
-  const chars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%*';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%*';
   final random = Random.secure();
   return List.generate(12, (_) => chars[random.nextInt(chars.length)]).join();
 }
@@ -568,7 +568,8 @@ class _CreateUserDialogState extends ConsumerState<_CreateUserDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed:
+              _submitting ? null : () => Navigator.of(context).pop(false),
           child: const Text('Annuler'),
         ),
         FilledButton(
@@ -681,7 +682,8 @@ class _ResetPasswordDialogState extends ConsumerState<_ResetPasswordDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed:
+              _submitting ? null : () => Navigator.of(context).pop(false),
           child: const Text('Annuler'),
         ),
         FilledButton(

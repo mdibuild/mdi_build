@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mdi_build/core/providers/module_refresh_provider.dart';
+
 import '../../../../core/models/project_task.dart';
 import '../../../../core/models/project_task_dependency.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
@@ -10,6 +12,7 @@ final planningRepositoryProvider = Provider<PlanningRepository>((ref) {
 });
 
 final activeTasksProvider = FutureProvider<List<ProjectTask>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];
@@ -22,6 +25,7 @@ final activeTasksProvider = FutureProvider<List<ProjectTask>>((ref) async {
 });
 
 final archivedTasksProvider = FutureProvider<List<ProjectTask>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];
@@ -35,6 +39,7 @@ final archivedTasksProvider = FutureProvider<List<ProjectTask>>((ref) async {
 
 final taskDependenciesProvider =
     FutureProvider<List<ProjectTaskDependency>>((ref) async {
+  ref.watch(moduleRefreshRevisionProvider);
   final project = await ref.watch(selectedProjectProvider.future);
   if (project == null) {
     return [];

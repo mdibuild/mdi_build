@@ -7,6 +7,8 @@ import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/party_pickers.dart';
 import 'providers/current_profile_provider.dart';
 import 'providers/projects_providers.dart';
+import 'providers/selected_project_provider.dart';
+import '../../../core/utils/number_input.dart';
 
 class ProjectFormPage extends ConsumerStatefulWidget {
   const ProjectFormPage({
@@ -81,7 +83,7 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
         clientName: clientController.text.trim(),
         location: locationController.text.trim(),
         description: descriptionController.text.trim(),
-        budgetInitial: double.tryParse(budgetController.text.trim()) ?? 0,
+        budgetInitial: parseDecimal(budgetController.text) ?? 0,
         progress: widget.project?.progress ?? 0,
         status: widget.project?.status ?? RecordStatus.brouillon,
         clientId: clientId,
@@ -95,7 +97,10 @@ class _ProjectFormPageState extends ConsumerState<ProjectFormPage> {
       if (isEditing) {
         await repository.updateProject(project);
       } else {
-        await repository.createProject(project);
+        final newId = await repository.createProject(project);
+        // Le nouveau chantier devient le chantier de travail, quel que soit
+        // le module depuis lequel il a été créé.
+        await ref.read(selectedProjectIdProvider.notifier).setProjectId(newId);
       }
 
       ref.invalidate(projectsProvider);

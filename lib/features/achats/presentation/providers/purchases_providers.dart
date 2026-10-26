@@ -6,6 +6,7 @@ import '../../../../core/models/purchase.dart';
 import '../../../../core/models/purchase_item.dart';
 import '../../../projects/presentation/providers/current_profile_provider.dart';
 import '../../data/purchases_repository.dart';
+import '../../../../core/models/purchase_workflow.dart';
 
 final purchasesRepositoryProvider = Provider<PurchasesRepository>((ref) {
   return PurchasesRepository();
@@ -41,4 +42,11 @@ final purchaseItemsProvider =
     FutureProvider.family<List<PurchaseItem>, String>((ref, purchaseId) async {
   ref.watch(moduleRefreshRevisionProvider);
   return ref.watch(purchasesRepositoryProvider).fetchPurchaseItems(purchaseId);
+});
+
+/// Historique (suivi) d'un achat.
+final purchaseEventsProvider =
+    FutureProvider.family<List<PurchaseEvent>, String>((ref, purchaseId) async {
+  ref.watch(moduleRefreshRevisionProvider);
+  return ref.read(purchasesRepositoryProvider).fetchEvents(purchaseId);
 });

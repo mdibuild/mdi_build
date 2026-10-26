@@ -16,10 +16,19 @@ class DocumentFormDialog extends ConsumerStatefulWidget {
     super.key,
     this.taskId,
     this.purchaseId,
+    this.projectId,
+    this.initialCategory,
   });
 
   final String? taskId;
   final String? purchaseId;
+
+  /// Chantier du document. Par défaut, le chantier sélectionné ; pour un
+  /// achat, son propre chantier (il peut différer du chantier courant).
+  final String? projectId;
+
+  /// Catégorie proposée à l'ouverture (ex. « proforma » pour un achat).
+  final String? initialCategory;
 
   @override
   ConsumerState<DocumentFormDialog> createState() => _DocumentFormDialogState();
@@ -42,6 +51,7 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
     super.initState();
     titleController = TextEditingController();
     descriptionController = TextEditingController();
+    category = widget.initialCategory ?? category;
   }
 
   @override
@@ -88,7 +98,9 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
       return;
     }
 
-    final project = await ref.read(selectedProjectProvider.future);
+    final project = widget.projectId == null
+        ? await ref.read(selectedProjectProvider.future)
+        : await ref.read(projectByIdProvider(widget.projectId!).future);
     final profile = await ref.read(currentProfileProvider.future);
     final authUser = SupabaseService.client.auth.currentUser;
 
@@ -314,6 +326,9 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                     DropdownMenuItem(value: 'facture', child: Text('Facture')),
                     DropdownMenuItem(
                         value: 'bon_commande', child: Text('Bon commande')),
+                    DropdownMenuItem(
+                        value: 'proforma',
+                        child: Text('Devis / proforma fournisseur')),
                     DropdownMenuItem(value: 'pv', child: Text('PV')),
                     DropdownMenuItem(value: 'rapport', child: Text('Rapport')),
                     DropdownMenuItem(value: 'autre', child: Text('Autre')),

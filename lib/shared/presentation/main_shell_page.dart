@@ -8,6 +8,7 @@ import '../../core/services/supabase_service.dart';
 import '../../core/providers/module_refresh_provider.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
 import 'premium_ui.dart';
+import 'signature_icon.dart';
 
 /// Clé stable du contenu de la coque : quand la largeur change (rotation
 /// portrait/paysage), la coque passe du tiroir à la barre latérale, mais
@@ -432,11 +433,7 @@ class _RailItem extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Icon(
-                    icon,
-                    size: 20,
-                    color: selected ? colors.petrol : colors.textSoft,
-                  ),
+                  SignatureIcon(icon, size: 30, highlighted: selected),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(

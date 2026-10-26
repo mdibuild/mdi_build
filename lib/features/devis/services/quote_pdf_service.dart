@@ -6,10 +6,20 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../core/models/company.dart';
+import '../../../core/models/document_layout.dart';
 import '../../../core/models/estimate_item.dart';
 import '../../../core/services/pdf_letterhead.dart';
 
 class QuotePdfService {
+  QuotePdfService(
+      {this.hiddenColumns = const {}, this.globalDiscountPercent = 0});
+
+  /// Colonnes masquées sur le PDF (la désignation reste affichée).
+  final Set<LineColumn> hiddenColumns;
+
+  /// Remise globale (%) appliquée après les remises de ligne.
+  final double globalDiscountPercent;
+
   Future<Uint8List> buildQuotePdf({
     required String projectName,
     required String mode,
@@ -32,9 +42,17 @@ class QuotePdfService {
       ),
     );
 
-    final subtotal = items.fold<double>(0, (sum, item) => sum + item.total);
-    final tax = subtotal * 0.19;
-    final total = subtotal + tax;
+    final totals = DocumentTotals(
+      [
+        for (final i in items)
+          PricedLine(
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            discountPercent: i.discountPercent,
+          ),
+      ],
+      globalDiscountPercent: globalDiscountPercent,
+    );
     final issuedAt = DateFormat('dd/MM/yyyy').format(DateTime.now());
 
     pdf.addPage(
@@ -78,7 +96,7 @@ class QuotePdfService {
                 ),
                 _buildItemsTable(items),
                 pw.SizedBox(height: 10),
-                _buildTotals(subtotal: subtotal, tax: tax, total: total),
+                _buildTotals(totals),
                 pw.SizedBox(height: 20),
                 PdfLetterhead.sectionBar(
                   'CONDITIONS GÉNÉRALES',
@@ -235,45 +253,53 @@ class QuotePdfService {
   }
 
   pw.Widget _buildItemsTable(List<EstimateItem> items) {
+    bool show(LineColumn c) => !hiddenColumns.contains(c);
+    final anyDiscount = items.any((i) => i.discountPercent != 0);
+    final columns = <(String, double, String Function(EstimateItem))>[
+      ('Désignation', 4, (i) => i.label),
+      if (show(LineColumn.quantity)) ('Qté', 1.2, (i) => _qty(i.quantity)),
+      if (show(LineColumn.unit)) ('Unité', 1, (i) => i.unit),
+      if (show(LineColumn.unitPrice))
+        ('PU HT', 1.4, (i) => _money(i.unitPrice)),
+      if (show(LineColumn.discount) && anyDiscount)
+        (
+          'Remise',
+          1,
+          (i) => i.discountPercent == 0 ? '-' : '${_qty(i.discountPercent)} %'
+        ),
+      if (show(LineColumn.total)) ('Montant HT', 1.6, (i) => _money(i.total)),
+    ];
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
-      columnWidths: const {
-        0: pw.FlexColumnWidth(4),
-        1: pw.FlexColumnWidth(1.2),
-        2: pw.FlexColumnWidth(1),
-        3: pw.FlexColumnWidth(1.4),
-        4: pw.FlexColumnWidth(1.4),
+      columnWidths: {
+        for (var c = 0; c < columns.length; c++)
+          c: pw.FlexColumnWidth(columns[c].$2),
       },
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-          children: [
-            _cell('Désignation', bold: true),
-            _cell('Qté', bold: true),
-            _cell('Unité', bold: true),
-            _cell('PU', bold: true),
-            _cell('Total', bold: true),
-          ],
+          children: [for (final c in columns) _cell(c.$1, bold: true)],
         ),
         for (final item in items)
-          pw.TableRow(
-            children: [
-              _cell(item.label),
-              _cell(item.quantity.toStringAsFixed(2)),
-              _cell(item.unit),
-              _cell(item.unitPrice.toStringAsFixed(2)),
-              _cell(item.total.toStringAsFixed(2)),
-            ],
-          ),
+          pw.TableRow(children: [for (final c in columns) _cell(c.$3(item))]),
       ],
     );
   }
 
-  pw.Widget _buildTotals({
-    required double subtotal,
-    required double tax,
-    required double total,
-  }) {
+  static String _qty(double v) => v == v.roundToDouble()
+      ? v.toStringAsFixed(0)
+      : v.toStringAsFixed(2).replaceAll('.', ',');
+
+  static String _money(double v) => NumberFormat('#,##0.00', 'fr_FR')
+      .format(v)
+      .replaceAll('\u202f', ' ')
+      .replaceAll('\u00a0', ' ');
+
+  pw.Widget _buildTotals(DocumentTotals t) {
+    final rate = t.taxRatePercent == t.taxRatePercent.roundToDouble()
+        ? t.taxRatePercent.toStringAsFixed(0)
+        : t.taxRatePercent.toStringAsFixed(2);
+    final total = t.ttc;
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.end,
       children: [
@@ -281,9 +307,19 @@ class QuotePdfService {
           width: 240,
           child: pw.Column(
             children: [
-              _totalLine('Sous-total', subtotal),
+              if (t.hasDiscount) ...[
+                _totalLine('Total brut HT', t.gross),
+                if (t.lineDiscounts > 0.004)
+                  _totalLine('Remises sur lignes', -t.lineDiscounts),
+                if (t.globalDiscount > 0.004)
+                  _totalLine(
+                      'Remise globale ${_qty(t.globalDiscountPercent)} %',
+                      -t.globalDiscount),
+                pw.SizedBox(height: 4),
+              ],
+              _totalLine('Total HT', t.netHt, bold: true),
               pw.SizedBox(height: 4),
-              _totalLine('TVA 19 %', tax),
+              _totalLine('TVA $rate %', t.tax),
             ],
           ),
         ),
@@ -311,7 +347,7 @@ class QuotePdfService {
                 ),
               ),
               pw.Text(
-                total.toStringAsFixed(2),
+                '${_money(total)} DA',
                 style: const pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
                   fontSize: 14,
@@ -410,7 +446,7 @@ class QuotePdfService {
           ),
         ),
         pw.Text(
-          value.toStringAsFixed(2),
+          '${_money(value)} DA',
           style: pw.TextStyle(
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
             fontSize: 10,

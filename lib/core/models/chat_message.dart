@@ -25,6 +25,7 @@ class ChatMessage extends Equatable {
 
   final String id;
   final String companyId;
+
   /// Projet de la conversation ; null = message du chat général.
   final String? projectId;
   final String? senderId;

@@ -6,6 +6,7 @@ import '../../core/providers/module_refresh_provider.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
 import '../../features/projects/presentation/providers/projects_providers.dart';
 import '../../features/projects/presentation/providers/selected_project_provider.dart';
+import 'signature_icon.dart';
 
 /// Allows standalone pages to retain their selector without duplicating it
 /// when they are displayed inside the application workspace.
@@ -72,7 +73,7 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
                 )
               : null;
           final picker = SizedBox(
-            width: compact ? constraints.maxWidth - 100 : 300,
+            width: compact ? constraints.maxWidth - 148 : 300,
             child: DropdownButtonFormField<String>(
               key: ValueKey(selectedId),
               initialValue: selectedId,
@@ -139,16 +140,25 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
                 PopupMenuItem(
                   value: destination.$1,
                   child: Row(children: [
-                    Icon(destination.$3, size: 19),
+                    SignatureIcon(destination.$3, size: 26),
                     const SizedBox(width: 10),
-                    Text(destination.$2),
+                    Flexible(
+                        child: Text(destination.$2,
+                            overflow: TextOverflow.ellipsis)),
                   ]),
                 ),
             ],
           );
+          final addProject = IconButton(
+            tooltip: 'Nouveau projet',
+            style: compactButtonStyle,
+            onPressed: () => context.push('/projects/new'),
+            icon: const Icon(Icons.add_business_outlined),
+          );
           return Row(children: [
             picker,
             if (!compact) const Spacer(),
+            addProject,
             menu,
             Tooltip(
               message: 'Actualiser les données du module',

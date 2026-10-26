@@ -20,6 +20,8 @@ import '../services/purchase_pdf_service.dart';
 import 'providers/purchases_providers.dart';
 import 'widgets/purchase_form.dart';
 import '../../../shared/presentation/party_pickers.dart';
+import '../../../core/models/purchase_workflow.dart';
+import 'purchase_tracking.dart';
 
 class AchatsPage extends ConsumerStatefulWidget {
   const AchatsPage({super.key});
@@ -225,11 +227,23 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
   }) async {
     final authUser = SupabaseService.client.auth.currentUser;
 
-    await ref.read(purchasesRepositoryProvider).updatePurchaseStatus(
-          purchaseId: purchase.id,
-          status: status,
-          actorId: authUser?.id,
-        );
+    try {
+      await ref.read(purchasesRepositoryProvider).updatePurchaseStatus(
+            purchaseId: purchase.id,
+            status: status,
+            actorId: authUser?.id,
+          );
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$error'.contains('en_traitement')
+              ? 'Étape « En traitement » non activée : passe le script SQL v2.1.'
+              : 'Changement d’étape impossible : $error'),
+        ));
+      }
+      return;
+    }
+    ref.invalidate(purchaseEventsProvider(purchase.id));
 
     ref.invalidate(activePurchasesProvider);
     ref.invalidate(archivedPurchasesProvider);
@@ -439,18 +453,13 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
                   ModuleFilterDropdown<String>(
                     label: 'Statut',
                     value: statusFilter,
-                    items: const [
-                      DropdownMenuItem(value: 'tous', child: Text('Tous')),
-                      DropdownMenuItem(
-                          value: 'brouillon', child: Text('Brouillon')),
-                      DropdownMenuItem(
-                          value: 'dg_valide', child: Text('DG validé')),
-                      DropdownMenuItem(
-                          value: 'commande', child: Text('Commandé')),
-                      DropdownMenuItem(value: 'livre', child: Text('Livré')),
-                      DropdownMenuItem(value: 'annule', child: Text('Annulé')),
-                      DropdownMenuItem(
-                          value: 'archive', child: Text('Archivé')),
+                    items: [
+                      const DropdownMenuItem(
+                          value: 'tous', child: Text('Tous')),
+                      for (final status in PurchaseWorkflow.statuses)
+                        DropdownMenuItem(
+                            value: status,
+                            child: Text(PurchaseWorkflow.label(status))),
                     ],
                     onChanged: (value) {
                       if (value != null) {
@@ -730,6 +739,12 @@ class _PurchaseTile extends ConsumerWidget {
                       _InfoBadge(
                           icon: Icons.calendar_today_outlined, label: dateText),
                       _StatusChip(status: purchase.status),
+                      if (purchase.orderNumber != null)
+                        _InfoBadge(
+                          icon: Icons.receipt_outlined,
+                          label: purchase.orderNumber!,
+                        ),
+                      PurchaseAttachButton(purchase: purchase),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -741,6 +756,11 @@ class _PurchaseTile extends ConsumerWidget {
               ),
             ),
             children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: PurchaseStepper(status: purchase.status),
+              ),
+              const SizedBox(height: 12),
               _PurchaseMetaSection(
                 purchase: purchase,
                 projectName: projectName,
@@ -765,6 +785,8 @@ class _PurchaseTile extends ConsumerWidget {
                 _PurchaseTotalCard(total: total),
               ],
               const SizedBox(height: 16),
+              PurchaseTimeline(purchase: purchase),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -779,23 +801,27 @@ class _PurchaseTile extends ConsumerWidget {
                     icon: const Icon(Icons.picture_as_pdf_outlined),
                     label: const Text('PDF'),
                   ),
-                  if (purchase.status == 'brouillon')
-                    FilledButton.icon(
-                      onPressed: () => onChangeStatus('dg_valide'),
-                      icon: const Icon(Icons.verified_outlined),
-                      label: const Text('DG validé'),
+                  OutlinedButton.icon(
+                    onPressed: () => printPurchaseState(
+                      context,
+                      ref,
+                      purchase: purchase,
+                      projectName: projectName,
                     ),
-                  if (purchase.status == 'dg_valide')
+                    icon: const Icon(Icons.summarize_outlined),
+                    label: const Text('État + pièces jointes'),
+                  ),
+                  for (final next
+                      in PurchaseWorkflow.nextSteps(purchase.status))
                     FilledButton.icon(
-                      onPressed: () => onChangeStatus('commande'),
-                      icon: const Icon(Icons.shopping_cart_checkout_outlined),
-                      label: const Text('Commander'),
-                    ),
-                  if (purchase.status == 'commande')
-                    FilledButton.icon(
-                      onPressed: () => onChangeStatus('livre'),
-                      icon: const Icon(Icons.inventory_2_outlined),
-                      label: const Text('Livré'),
+                      onPressed: () => onChangeStatus(next),
+                      icon: Icon(switch (next) {
+                        'dg_valide' => Icons.verified_outlined,
+                        'en_traitement' => Icons.manage_accounts_outlined,
+                        'commande' => Icons.shopping_cart_checkout_outlined,
+                        _ => Icons.inventory_2_outlined,
+                      }),
+                      label: Text(PurchaseWorkflow.actionLabel(next)),
                     ),
                   if (purchase.status != 'annule' &&
                       purchase.status != 'archive')
@@ -845,6 +871,10 @@ class _PurchaseMetaSection extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Column(
         children: [
+          if (purchase.orderNumber != null) ...[
+            _MetaRow(label: 'N° commande', value: purchase.orderNumber!),
+            const SizedBox(height: 8),
+          ],
           _MetaRow(label: 'Projet', value: projectName),
           const SizedBox(height: 8),
           _MetaRow(label: 'Lot', value: purchase.lot),
@@ -1102,6 +1132,8 @@ Color _statusColor(String status) {
       return Colors.blueGrey;
     case 'dg_valide':
       return Colors.blue;
+    case 'en_traitement':
+      return Colors.teal;
     case 'commande':
       return Colors.orange;
     case 'livre':
@@ -1115,21 +1147,4 @@ Color _statusColor(String status) {
   }
 }
 
-String _statusLabel(String status) {
-  switch (status) {
-    case 'brouillon':
-      return 'Brouillon';
-    case 'dg_valide':
-      return 'DG validé';
-    case 'commande':
-      return 'Commandé';
-    case 'livre':
-      return 'Livré';
-    case 'annule':
-      return 'Annulé';
-    case 'archive':
-      return 'Archivé';
-    default:
-      return status;
-  }
-}
+String _statusLabel(String status) => PurchaseWorkflow.label(status);

@@ -213,6 +213,11 @@ class DocumentsRepository {
     await _client.from('project_documents').delete().eq('id', document.id);
   }
 
+  /// Contenu du fichier (pour l'intégrer dans un PDF).
+  Future<Uint8List> downloadBytes(ProjectDocument document) {
+    return _client.storage.from(document.bucketId).download(document.filePath);
+  }
+
   Future<String> createSignedUrl({
     required String bucketId,
     required String filePath,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_palette_colors.dart';
 import '../../app/theme/app_spacing.dart';
+import 'signature_icon.dart';
 
 const _premiumCardShadow = [
   BoxShadow(
@@ -502,19 +503,7 @@ class PremiumMetricTile extends StatelessWidget {
 
     final content = Row(
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: colors.petrolSoft,
-            borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
-          ),
-          child: Icon(
-            icon,
-            color: colors.petrol,
-            size: 22,
-          ),
-        ),
+        SignatureIcon(icon, size: 42),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

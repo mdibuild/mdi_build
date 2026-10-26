@@ -10,6 +10,7 @@ import '../../achats/presentation/purchase_draft_dialog.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../domain/concrete_mix.dart';
 import '../domain/rebar.dart';
+import '../../../shared/presentation/signature_icon.dart';
 
 String _n(double v, {int decimals = 2}) =>
     NumberFormat(decimals == 0 ? '#,##0' : '#,##0.${'#' * decimals}', 'fr_FR')
@@ -740,9 +741,11 @@ class _ResultTile extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, color: colors.petrol, size: 20),
+          SignatureIcon(icon, size: 30),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
         ]),
         const SizedBox(height: 8),
         Text(main,

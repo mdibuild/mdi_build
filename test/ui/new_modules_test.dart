@@ -10,6 +10,7 @@ import 'package:mdi_build/core/enums/record_status.dart';
 import 'package:mdi_build/core/models/checklist_item.dart';
 import 'package:mdi_build/core/models/project.dart';
 import 'package:mdi_build/core/models/project_invoice.dart';
+import 'package:mdi_build/core/models/quantity_item.dart';
 import 'package:mdi_build/features/chat/presentation/providers/chat_providers.dart';
 import 'package:mdi_build/features/checklist/presentation/checklist_page.dart';
 import 'package:mdi_build/features/devis/presentation/devis_list_page.dart';
@@ -92,6 +93,18 @@ ProviderContainer _container() => ProviderContainer(overrides: [
           ],
         }),
       ),
+      quantityItemsProvider('p1').overrideWith((ref) async => const [
+            QuantityItem(
+              id: 'q1',
+              companyId: 'c1',
+              projectId: 'p1',
+              label: 'Béton de propreté',
+              quantity: 12.5,
+              unit: 'm³',
+              total: 112500,
+              sourceFile: 'dqe.xlsx',
+            ),
+          ]),
       checklistItemsProvider('p1').overrideWith((ref) async => [
             _todo('k1', 'Commander le ciment'),
             _todo('k2', 'Valider le plan', done: true),
@@ -153,6 +166,12 @@ void main() {
       await tester.tap(find.widgetWithText(Tab, 'Quantitatif'));
       await tester.pumpAndSettle();
       expect(find.byType(ProjectWorkspaceToolbar), findsOneWidget);
+      await tester.tap(find.widgetWithText(Tab, 'Quantités Excel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Béton de propreté'), findsOneWidget);
+      expect(find.textContaining('dqe.xlsx'), findsWidgets);
+      // Un projet peut être créé depuis n'importe quel module.
+      expect(find.byTooltip('Nouveau projet'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

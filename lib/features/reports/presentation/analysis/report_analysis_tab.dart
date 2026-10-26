@@ -453,7 +453,7 @@ class _ReportAnalysisTabState extends ConsumerState<ReportAnalysisTab> {
       case ReportModule.documents:
         return chips<String>(
           title: 'Catégories',
-          values: const ['plan', 'photo', 'facture', 'bon_commande', 'pv', 'rapport', 'autre'],
+          values: const ['plan', 'photo', 'facture', 'bon_commande', 'proforma', 'pv', 'rapport', 'autre'],
           selected: _documentCategories,
           label: documentCategoryLabel,
           onChanged: (s) => setState(() => _documentCategories = s),

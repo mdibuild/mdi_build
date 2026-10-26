@@ -11,6 +11,7 @@ import '../../../shared/presentation/module_filters.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../settings/presentation/providers/clients_providers.dart';
 import 'providers/invoices_providers.dart';
+import '../../../shared/presentation/signature_icon.dart';
 
 /// Onglet « Factures » du module Devis & Factures : suivi des montants
 /// facturés, réglés et restant dus du chantier.
@@ -192,7 +193,7 @@ class _Kpi extends StatelessWidget {
         border: Border.all(color: alert ? colors.danger : colors.border),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: accent),
+        SignatureIcon(icon, size: 34, highlighted: alert),
         const SizedBox(width: 10),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label, style: Theme.of(context).textTheme.bodySmall),

@@ -25,6 +25,7 @@ class Purchase {
     required this.createdAt,
     required this.updatedAt,
     this.supplierId,
+    this.orderNumber,
   });
 
   final String id;
@@ -53,6 +54,9 @@ class Purchase {
   /// Fournisseur de l'achat.
   final String? supplierId;
 
+  /// N° de bon de commande (BC-AAAA-NNN), attribué au passage en « Commandé ».
+  final String? orderNumber;
+
   factory Purchase.fromMap(Map<String, dynamic> map) {
     return Purchase(
       id: map['id'] as String,
@@ -76,6 +80,7 @@ class Purchase {
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       supplierId: map['supplier_id']?.toString(),
+      orderNumber: map['order_number']?.toString(),
     );
   }
 

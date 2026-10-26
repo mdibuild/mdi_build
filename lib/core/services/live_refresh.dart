@@ -26,6 +26,8 @@ const liveRefreshTables = [
   'clients',
   'suppliers',
   'checklist_items',
+  'project_quantity_items',
+  'purchase_events',
 ];
 
 /// Regroupe une rafale de changements (un devis = un en-tête + N lignes)

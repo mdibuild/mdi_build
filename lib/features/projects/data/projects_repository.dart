@@ -35,8 +35,14 @@ class ProjectsRepository {
         .toList();
   }
 
-  Future<void> createProject(Project project) async {
-    await _client.from('projects').insert(project.toInsertMap());
+  /// Crée le projet et renvoie son identifiant.
+  Future<String> createProject(Project project) async {
+    final row = await _client
+        .from('projects')
+        .insert(project.toInsertMap())
+        .select('id')
+        .single();
+    return row['id'].toString();
   }
 
   Future<void> updateProject(Project project) async {

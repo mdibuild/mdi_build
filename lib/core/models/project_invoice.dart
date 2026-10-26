@@ -1,3 +1,5 @@
+import 'document_layout.dart';
+
 /// Facture d'un chantier. Elle peut être créée depuis un devis (lignes
 /// recopiées) ou saisie directement.
 class ProjectInvoice {
@@ -18,6 +20,9 @@ class ProjectInvoice {
     this.clientId,
     this.dueDate,
     this.createdBy,
+    this.discountPercent = 0,
+    this.hiddenColumns = const [],
+    this.layoutStored = false,
   });
 
   final String id;
@@ -42,6 +47,15 @@ class ProjectInvoice {
   final String? createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Remise globale (%) appliquée après les remises de ligne.
+  final double discountPercent;
+
+  /// Colonnes masquées sur le PDF (clés de [LineColumn]).
+  final List<String> hiddenColumns;
+
+  /// La base possède les colonnes de mise en page (v2.1).
+  final bool layoutStored;
 
   static const statuses = [
     'brouillon',
@@ -92,6 +106,12 @@ class ProjectInvoice {
       createdBy: map['created_by']?.toString(),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      discountPercent: (map['discount_percent'] as num?)?.toDouble() ?? 0,
+      hiddenColumns: [
+        for (final c in (map['hidden_columns'] as List<dynamic>?) ?? const [])
+          c.toString(),
+      ],
+      layoutStored: map.containsKey('discount_percent'),
     );
   }
 
@@ -114,6 +134,10 @@ class ProjectInvoice {
         'amount_paid': amountPaid,
         'notes': notes,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
+        if (layoutStored || discountPercent != 0)
+          'discount_percent': discountPercent,
+        if (layoutStored || hiddenColumns.isNotEmpty)
+          'hidden_columns': hiddenColumns,
       };
 
   ProjectInvoice copyWith({
@@ -129,6 +153,8 @@ class ProjectInvoice {
     String? notes,
     String? clientId,
     bool clearClient = false,
+    double? discountPercent,
+    List<String>? hiddenColumns,
   }) {
     return ProjectInvoice(
       id: id ?? this.id,
@@ -147,6 +173,9 @@ class ProjectInvoice {
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      discountPercent: discountPercent ?? this.discountPercent,
+      hiddenColumns: hiddenColumns ?? this.hiddenColumns,
+      layoutStored: layoutStored,
     );
   }
 
@@ -174,6 +203,7 @@ class InvoiceLineItem {
     this.id = '',
     this.invoiceId = '',
     this.sortOrder = 0,
+    this.discountPercent = 0,
   });
 
   final String id;
@@ -184,7 +214,11 @@ class InvoiceLineItem {
   final double unitPrice;
   final int sortOrder;
 
-  double get total => quantity * unitPrice;
+  /// Remise de la ligne en pourcentage (0 à 100).
+  final double discountPercent;
+
+  double get grossTotal => quantity * unitPrice;
+  double get total => grossTotal * (1 - discountPercent / 100);
 
   factory InvoiceLineItem.fromMap(Map<String, dynamic> map) => InvoiceLineItem(
         id: map['id'] as String,
@@ -194,6 +228,7 @@ class InvoiceLineItem {
         unit: map['unit'] as String? ?? 'u',
         unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0,
         sortOrder: (map['sort_order'] as num?)?.toInt() ?? 0,
+        discountPercent: (map['discount_percent'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toInsertMap(String invoiceId, int sortOrder) => {
@@ -203,20 +238,37 @@ class InvoiceLineItem {
         'unit': unit,
         'unit_price': unitPrice,
         'sort_order': sortOrder,
+        if (discountPercent != 0) 'discount_percent': discountPercent,
       };
 }
 
 /// Totaux d'une facture, calculés comme dans le devis (HT = somme des
 /// lignes, TVA au taux de la facture, TTC = HT + TVA).
 class InvoiceTotals {
-  InvoiceTotals(List<InvoiceLineItem> items, double taxRate, double paid)
-      : ht = items.fold<double>(0, (s, i) => s + i.total),
+  InvoiceTotals(List<InvoiceLineItem> items, double taxRate, double paid,
+      {double globalDiscountPercent = 0})
+      : document = DocumentTotals(
+          [
+            for (final i in items)
+              PricedLine(
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                discountPercent: i.discountPercent,
+              ),
+          ],
+          globalDiscountPercent: globalDiscountPercent,
+          taxRatePercent: taxRate,
+        ),
         rate = taxRate,
         amountPaid = paid;
 
-  final double ht;
+  /// Détail brut / remises / HT net.
+  final DocumentTotals document;
   final double rate;
   final double amountPaid;
+
+  /// Total HT après toutes les remises.
+  double get ht => document.netHt;
 
   double get tax => ht * rate / 100;
   double get ttc => ht + tax;

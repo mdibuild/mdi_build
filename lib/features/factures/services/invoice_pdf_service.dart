@@ -11,6 +11,7 @@ import '../../../core/models/project_invoice.dart';
 import '../../../core/services/amount_in_words.dart';
 import '../../../core/services/party_details.dart';
 import '../../../core/services/pdf_letterhead.dart';
+import '../../../core/models/document_layout.dart';
 
 /// Montant au format français : 1 250 080,50.
 String formatMoney(double value) => NumberFormat('#,##0.00', 'fr_FR')
@@ -34,7 +35,9 @@ class InvoicePdfService {
     final pdf = pw.Document(
       theme: pw.ThemeData.withFont(base: regular, bold: bold),
     );
-    final totals = InvoiceTotals(items, invoice.taxRate, invoice.amountPaid);
+    final totals = InvoiceTotals(items, invoice.taxRate, invoice.amountPaid,
+        globalDiscountPercent: invoice.discountPercent);
+    final hidden = LineColumn.fromKeys(invoice.hiddenColumns);
     final day = DateFormat('dd/MM/yyyy');
     final clientName = client?.name ?? (fallbackClientName ?? '').trim();
     final clientLines =
@@ -125,7 +128,7 @@ class InvoicePdfService {
                   ],
                 ),
                 pw.SizedBox(height: 14),
-                _itemsTable(items),
+                _itemsTable(items, hidden),
                 pw.SizedBox(height: 14),
                 _totals(totals),
                 pw.SizedBox(height: 12),
@@ -191,7 +194,7 @@ class InvoicePdfService {
     ].join(' · ');
   }
 
-  pw.Widget _itemsTable(List<InvoiceLineItem> items) {
+  pw.Widget _itemsTable(List<InvoiceLineItem> items, Set<LineColumn> hidden) {
     pw.Widget cell(String text, {bool bold = false, bool right = false}) =>
         pw.Padding(
           padding: const pw.EdgeInsets.all(7),
@@ -205,33 +208,41 @@ class InvoicePdfService {
             ),
           ),
         );
+    bool show(LineColumn c) => !hidden.contains(c);
+    final anyDiscount = items.any((i) => i.discountPercent != 0);
+    final columns = <(String, double, bool, String Function(InvoiceLineItem))>[
+      ('Désignation', 4, false, (i) => i.label),
+      if (show(LineColumn.quantity))
+        ('Qté', 1.2, true, (i) => _qty(i.quantity)),
+      if (show(LineColumn.unit)) ('Unité', 1, false, (i) => i.unit),
+      if (show(LineColumn.unitPrice))
+        ('PU HT', 1.6, true, (i) => formatMoney(i.unitPrice)),
+      if (show(LineColumn.discount) && anyDiscount)
+        (
+          'Remise',
+          1,
+          true,
+          (i) => i.discountPercent == 0 ? '-' : '${_qty(i.discountPercent)} %'
+        ),
+      if (show(LineColumn.total))
+        ('Total HT', 1.7, true, (i) => formatMoney(i.total)),
+    ];
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.6),
-      columnWidths: const {
-        0: pw.FlexColumnWidth(4),
-        1: pw.FlexColumnWidth(1.2),
-        2: pw.FlexColumnWidth(1),
-        3: pw.FlexColumnWidth(1.6),
-        4: pw.FlexColumnWidth(1.7),
+      columnWidths: {
+        for (var c = 0; c < columns.length; c++)
+          c: pw.FlexColumnWidth(columns[c].$2),
       },
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.grey200),
           children: [
-            cell('Désignation', bold: true),
-            cell('Qté', bold: true, right: true),
-            cell('Unité', bold: true),
-            cell('PU HT', bold: true, right: true),
-            cell('Total HT', bold: true, right: true),
+            for (final c in columns) cell(c.$1, bold: true, right: c.$3),
           ],
         ),
         for (final item in items)
           pw.TableRow(children: [
-            cell(item.label),
-            cell(_qty(item.quantity), right: true),
-            cell(item.unit),
-            cell(formatMoney(item.unitPrice), right: true),
-            cell(formatMoney(item.total), right: true),
+            for (final c in columns) cell(c.$4(item), right: c.$3),
           ]),
       ],
     );
@@ -268,7 +279,15 @@ class InvoicePdfService {
       child: pw.SizedBox(
         width: 270,
         child: pw.Column(children: [
-          line('Total HT', t.ht),
+          if (t.document.hasDiscount) ...[
+            line('Total brut HT', t.document.gross),
+            if (t.document.lineDiscounts > 0.004)
+              line('Remises sur lignes', -t.document.lineDiscounts),
+            if (t.document.globalDiscount > 0.004)
+              line('Remise globale ${_qty(t.document.globalDiscountPercent)} %',
+                  -t.document.globalDiscount),
+          ],
+          line('Total HT', t.ht, bold: t.document.hasDiscount),
           line('TVA $rate %', t.tax),
           pw.Container(
             margin: const pw.EdgeInsets.only(top: 6, bottom: 6),

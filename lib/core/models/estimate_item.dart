@@ -4,6 +4,7 @@ class EstimateItem {
     required this.quantity,
     required this.unit,
     required this.unitPrice,
+    this.discountPercent = 0,
   });
 
   final String label;
@@ -11,5 +12,9 @@ class EstimateItem {
   final String unit;
   final double unitPrice;
 
-  double get total => quantity * unitPrice;
+  /// Remise de la ligne en pourcentage (0 à 100).
+  final double discountPercent;
+
+  double get grossTotal => quantity * unitPrice;
+  double get total => grossTotal * (1 - discountPercent / 100);
 }

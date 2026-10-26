@@ -13,6 +13,7 @@ import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/models/quantity_line.dart';
 import '../../../core/models/quote_line_item.dart';
+import '../../../core/models/purchase_workflow.dart';
 
 DateTime dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
@@ -191,24 +192,7 @@ const purchaseStatuses = [
   'archive',
 ];
 
-String purchaseStatusLabel(String status) {
-  switch (status) {
-    case 'brouillon':
-      return 'Brouillon';
-    case 'dg_valide':
-      return 'DG validé';
-    case 'commande':
-      return 'Commandé';
-    case 'livre':
-      return 'Livré';
-    case 'annule':
-      return 'Annulé';
-    case 'archive':
-      return 'Archivé';
-    default:
-      return status;
-  }
-}
+String purchaseStatusLabel(String status) => PurchaseWorkflow.label(status);
 
 String quoteStatusLabel(String status) {
   switch (status) {
@@ -258,6 +242,8 @@ String documentCategoryLabel(String category) {
       return 'Facture';
     case 'bon_commande':
       return 'Bon de commande';
+    case 'proforma':
+      return 'Devis / proforma fournisseur';
     case 'pv':
       return 'PV';
     case 'rapport':
@@ -545,8 +531,10 @@ class QuoteRow {
   DateTime get day => quoteDay(quote);
 
   /// HT = somme des lignes, comme dans le module Devis ; null sans ligne.
-  double? get totalHt =>
-      items.isEmpty ? null : items.fold<double>(0, (s, i) => s + i.total);
+  double? get totalHt => items.isEmpty
+      ? null
+      : items.fold<double>(0, (s, i) => s + i.total) *
+          (1 - quote.discountPercent / 100);
   double? get tax => totalHt == null ? null : totalHt! * quoteTaxRate;
   double? get totalTtc => totalHt == null ? null : totalHt! + tax!;
 }

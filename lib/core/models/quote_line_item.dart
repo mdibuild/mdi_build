@@ -9,6 +9,7 @@ class QuoteLineItem {
     required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
+    this.discountPercent = 0,
   });
 
   final String id;
@@ -21,7 +22,11 @@ class QuoteLineItem {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  double get total => quantity * unitPrice;
+  /// Remise de la ligne en pourcentage (0 à 100).
+  final double discountPercent;
+
+  double get grossTotal => quantity * unitPrice;
+  double get total => grossTotal * (1 - discountPercent / 100);
 
   factory QuoteLineItem.fromMap(Map<String, dynamic> map) {
     return QuoteLineItem(
@@ -34,6 +39,7 @@ class QuoteLineItem {
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      discountPercent: (map['discount_percent'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -45,6 +51,8 @@ class QuoteLineItem {
       'unit': unit,
       'unit_price': unitPrice,
       'sort_order': sortOrder,
+      // Colonne ajoutée en v2.1 : envoyée seulement si une remise existe.
+      if (discountPercent != 0) 'discount_percent': discountPercent,
     };
   }
 
@@ -68,6 +76,7 @@ class QuoteLineItem {
     int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? discountPercent,
   }) {
     return QuoteLineItem(
       id: id ?? this.id,
@@ -79,6 +88,7 @@ class QuoteLineItem {
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      discountPercent: discountPercent ?? this.discountPercent,
     );
   }
 }

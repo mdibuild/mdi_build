@@ -57,14 +57,9 @@ final purchaseDocumentsProvider =
     FutureProvider.family<List<ProjectDocument>, String>(
         (ref, purchaseId) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return [];
-  }
-
-  return ref.watch(documentsRepositoryProvider).fetchDocuments(
-        projectId: project.id,
-        archived: false,
-        purchaseId: purchaseId,
-      );
+  // Tous les documents de l'achat, même si son chantier n'est pas le
+  // chantier sélectionné.
+  return ref
+      .watch(documentsRepositoryProvider)
+      .fetchPurchaseDocuments(purchaseId);
 });

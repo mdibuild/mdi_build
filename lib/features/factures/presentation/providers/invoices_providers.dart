@@ -20,6 +20,7 @@ class ProjectInvoicesData {
         itemsByInvoice[invoice.id] ?? const [],
         invoice.taxRate,
         invoice.amountPaid,
+        globalDiscountPercent: invoice.discountPercent,
       );
 }
 

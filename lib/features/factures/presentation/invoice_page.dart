@@ -16,6 +16,9 @@ import '../../settings/presentation/providers/company_providers.dart';
 import '../../settings/presentation/providers/tax_rates_providers.dart';
 import '../services/invoice_pdf_service.dart';
 import 'providers/invoices_providers.dart';
+import '../../../core/models/document_layout.dart';
+import '../../../shared/presentation/document_layout_card.dart';
+import '../../../shared/presentation/excel_import_dialog.dart';
 
 /// Création / modification d'une facture. Depuis un devis ([fromQuoteId]),
 /// les lignes, le client et l'objet sont repris automatiquement.
@@ -34,6 +37,8 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
   final _paid = TextEditingController(text: '0');
   final _notes = TextEditingController();
   final _taxRate = TextEditingController(text: '19');
+  final _globalDiscount = TextEditingController(text: '0');
+  Set<LineColumn> _hiddenColumns = {};
   final List<_LineDraft> _lines = [];
 
   ProjectInvoice? _invoice;
@@ -61,6 +66,7 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
     _paid.dispose();
     _notes.dispose();
     _taxRate.dispose();
+    _globalDiscount.dispose();
     for (final l in _lines) {
       l.dispose();
     }
@@ -90,6 +96,9 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
         _paid.text = formatDecimal(invoice.amountPaid, maxDecimals: 2);
         _notes.text = invoice.notes;
         _taxRate.text = formatDecimal(invoice.taxRate, maxDecimals: 2);
+        _globalDiscount.text =
+            formatDecimal(invoice.discountPercent, maxDecimals: 2);
+        _hiddenColumns = LineColumn.fromKeys(invoice.hiddenColumns);
         _lines.addAll(items.map(_LineDraft.fromItem));
       } else {
         final defaultRate = (await ref.read(activeTaxRatesProvider.future))
@@ -116,7 +125,12 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
                 quantity: formatDecimal(i.quantity),
                 unit: i.unit,
                 unitPrice: formatDecimal(i.unitPrice, maxDecimals: 2),
+                discount: formatDecimal(i.discountPercent, maxDecimals: 2),
               )));
+          // Même remise globale et mêmes colonnes que le devis.
+          _globalDiscount.text =
+              formatDecimal(quote.discountPercent, maxDecimals: 2);
+          _hiddenColumns = LineColumn.fromKeys(quote.hiddenColumns);
         } else {
           _projectId = (await ref.read(selectedProjectProvider.future))?.id;
         }
@@ -140,6 +154,7 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
               quantity: parseDecimal(l.quantity.text) ?? 0,
               unit: l.unit.text.trim().isEmpty ? 'u' : l.unit.text.trim(),
               unitPrice: parseDecimal(l.unitPrice.text) ?? 0,
+              discountPercent: clampPercent(parseDecimal(l.discount.text)),
             ),
       ];
 
@@ -147,6 +162,7 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
         _items,
         parseDecimal(_taxRate.text) ?? 0,
         parseDecimal(_paid.text) ?? 0,
+        globalDiscountPercent: clampPercent(parseDecimal(_globalDiscount.text)),
       );
 
   /// Première saisie invalide (texte non numérique) ou null.
@@ -194,6 +210,9 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
       taxRate: totals.rate,
       amountPaid: totals.amountPaid,
       notes: _notes.text.trim(),
+      discountPercent: clampPercent(parseDecimal(_globalDiscount.text)),
+      hiddenColumns: [for (final c in _hiddenColumns) c.key],
+      layoutStored: _invoice?.layoutStored ?? false,
       createdBy: _invoice?.createdBy ?? createdBy,
       createdAt: _invoice?.createdAt ?? now,
       updatedAt: now,
@@ -283,6 +302,28 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
+  }
+
+  Future<void> _importExcel() async {
+    final selection = await pickQuantitiesFromExcel(context);
+    if (selection == null || !mounted) {
+      return;
+    }
+    setState(() {
+      // Une ligne vide de départ est remplacée par l'import.
+      if (_lines.length == 1 && _lines.first.label.text.trim().isEmpty) {
+        _lines.removeAt(0).dispose();
+      }
+      for (final l in selection.lines) {
+        _lines.add(_LineDraft(
+          label: l.label,
+          quantity: formatDecimal(l.quantity),
+          unit: l.unit,
+          unitPrice: formatDecimal(l.effectiveUnitPrice ?? 0, maxDecimals: 2),
+        ));
+      }
+    });
+    _snack('${selection.lines.length} ligne(s) importée(s).');
   }
 
   Future<void> _pickDate({required bool due}) async {
@@ -479,13 +520,29 @@ class _InvoicePageState extends ConsumerState<InvoicePage> {
                       ? null
                       : () => setState(() => _lines.removeAt(i).dispose()),
                 ),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                OutlinedButton.icon(
+                  onPressed: _importExcel,
+                  icon: const Icon(Icons.table_view_outlined),
+                  label: const Text('Importer un fichier Excel'),
+                ),
+              ]),
               const Divider(height: 24),
-              _TotalRow('Total HT', money.format(totals.ht)),
-              _TotalRow('TVA ${formatDecimal(totals.rate, maxDecimals: 2)} %',
-                  money.format(totals.tax)),
-              _TotalRow('Total TTC', money.format(totals.ttc), strong: true),
+              for (final line in totalsLines(totals.document))
+                _TotalRow(line.$1, money.format(line.$2), strong: line.$3),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        DocumentLayoutCard(
+          hiddenColumns: _hiddenColumns,
+          onToggleColumn: (column, visible) => setState(() {
+            visible
+                ? _hiddenColumns.remove(column)
+                : _hiddenColumns.add(column);
+          }),
+          discountController: _globalDiscount,
+          onDiscountChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 16),
         PremiumSurfaceCard(
@@ -582,24 +639,29 @@ class _LineDraft {
     String quantity = '1',
     String unit = 'u',
     String unitPrice = '0',
+    String discount = '0',
   })  : label = TextEditingController(text: label),
         quantity = TextEditingController(text: quantity),
         unit = TextEditingController(text: unit),
-        unitPrice = TextEditingController(text: unitPrice);
+        unitPrice = TextEditingController(text: unitPrice),
+        discount = TextEditingController(text: discount);
 
   factory _LineDraft.fromItem(InvoiceLineItem item) => _LineDraft(
         label: item.label,
         quantity: formatDecimal(item.quantity),
         unit: item.unit,
         unitPrice: formatDecimal(item.unitPrice, maxDecimals: 2),
+        discount: formatDecimal(item.discountPercent, maxDecimals: 2),
       );
 
   final TextEditingController label;
   final TextEditingController quantity;
   final TextEditingController unit;
   final TextEditingController unitPrice;
+  final TextEditingController discount;
 
   void dispose() {
+    discount.dispose();
     label.dispose();
     quantity.dispose();
     unit.dispose();
@@ -626,7 +688,9 @@ class _LineEditor extends StatelessWidget {
     final colors = context.palette;
     final qty = parseDecimal(draft.quantity.text);
     final pu = parseDecimal(draft.unitPrice.text);
-    final total = (qty ?? 0) * (pu ?? 0);
+    final total = (qty ?? 0) *
+        (pu ?? 0) *
+        (1 - clampPercent(parseDecimal(draft.discount.text)) / 100);
     const numeric = TextInputType.numberWithOptions(decimal: true);
     Widget field(TextEditingController c, String label,
             {TextInputType? type, bool invalid = false}) =>
@@ -662,6 +726,8 @@ class _LineEditor extends StatelessWidget {
               flex: 2,
               child: field(draft.unitPrice, 'PU HT',
                   type: numeric, invalid: pu == null)),
+          const SizedBox(width: 8),
+          Expanded(child: field(draft.discount, 'Remise %', type: numeric)),
         ];
         final header = Row(children: [
           Text('Ligne ${index + 1}',

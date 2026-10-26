@@ -6,13 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_palette_colors.dart';
-import '../../../app/theme/app_spacing.dart';
 import '../../../core/enums/user_role.dart';
 import '../../../core/models/settings_user_entry.dart';
 import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import 'providers/settings_providers.dart';
+import '../../../shared/presentation/signature_icon.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -401,23 +401,7 @@ class _SettingsNavTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(AppRadius.iconAvatar),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, color: accent, size: 22),
-      ),
+      leading: SignatureIcon(icon, size: 46),
       title: Text(
         title,
         style: const TextStyle(fontWeight: FontWeight.w800),

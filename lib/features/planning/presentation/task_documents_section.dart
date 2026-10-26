@@ -371,6 +371,8 @@ Color _categoryColor(String category) {
       return Colors.orange;
     case 'bon_commande':
       return Colors.blue;
+    case 'proforma':
+      return Colors.indigo;
     case 'pv':
       return Colors.deepPurple;
     case 'rapport':
@@ -391,6 +393,8 @@ String _categoryLabel(String category) {
       return 'Facture';
     case 'bon_commande':
       return 'Bon commande';
+    case 'proforma':
+      return 'Devis / proforma';
     case 'pv':
       return 'PV';
     case 'rapport':

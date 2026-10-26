@@ -22,6 +22,9 @@ class ProjectQuote extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.clientId,
+    this.discountPercent = 0,
+    this.hiddenColumns = const [],
+    this.layoutStored = false,
   });
 
   final String id;
@@ -42,6 +45,22 @@ class ProjectQuote extends Equatable {
 
   /// Client destinataire du devis.
   final String? clientId;
+
+  /// Remise globale en pourcentage, appliquée après les remises de ligne.
+  final double discountPercent;
+
+  /// Colonnes masquées sur le PDF (clés de [LineColumn]).
+  final List<String> hiddenColumns;
+
+  /// La base possède les colonnes de mise en page (v2.1).
+  final bool layoutStored;
+
+  Map<String, dynamic> _layoutMap() => {
+        if (layoutStored || discountPercent != 0)
+          'discount_percent': discountPercent,
+        if (layoutStored || hiddenColumns.isNotEmpty)
+          'hidden_columns': hiddenColumns,
+      };
 
   factory ProjectQuote.fromMap(Map<String, dynamic> map) {
     return ProjectQuote(
@@ -65,6 +84,12 @@ class ProjectQuote extends Equatable {
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       clientId: map['client_id']?.toString(),
+      discountPercent: _toDouble(map['discount_percent']),
+      hiddenColumns: [
+        for (final c in (map['hidden_columns'] as List<dynamic>?) ?? const [])
+          c.toString(),
+      ],
+      layoutStored: map.containsKey('discount_percent'),
     );
   }
 
@@ -85,6 +110,7 @@ class ProjectQuote extends Equatable {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'client_id': clientId,
+      ..._layoutMap(),
     };
   }
 
@@ -101,6 +127,7 @@ class ProjectQuote extends Equatable {
       'updated_by': updatedBy,
       'updated_at': updatedAt.toIso8601String(),
       'client_id': clientId,
+      ..._layoutMap(),
     };
   }
 
@@ -124,6 +151,8 @@ class ProjectQuote extends Equatable {
     String? updatedBy,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? discountPercent,
+    List<String>? hiddenColumns,
   }) {
     return ProjectQuote(
       id: id ?? this.id,
@@ -144,6 +173,9 @@ class ProjectQuote extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
       clientId:
           identical(clientId, _keepLink) ? this.clientId : clientId as String?,
+      discountPercent: discountPercent ?? this.discountPercent,
+      hiddenColumns: hiddenColumns ?? this.hiddenColumns,
+      layoutStored: layoutStored,
     );
   }
 
@@ -162,6 +194,8 @@ class ProjectQuote extends Equatable {
 
   @override
   List<Object?> get props => [
+        discountPercent,
+        hiddenColumns,
         clientId,
         id,
         companyId,

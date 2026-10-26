@@ -30,6 +30,10 @@ import '../../settings/presentation/providers/company_providers.dart';
 import 'providers/devis_providers.dart';
 import '../services/quote_pdf_service.dart';
 import '../services/quote_report_bridge_service.dart';
+import '../../../core/models/document_layout.dart';
+import '../../../core/utils/number_input.dart';
+import '../../../shared/presentation/document_layout_card.dart';
+import '../../../shared/presentation/excel_import_dialog.dart';
 
 class DevisPage extends ConsumerStatefulWidget {
   const DevisPage({super.key, this.quoteId});
@@ -54,6 +58,11 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   double unitPriceCeiling = 0;
   Uint8List? savedSignatureBytes;
   List<_QuoteItemDraft> _items = [];
+
+  /// Remise globale (%) et colonnes masquées sur le PDF.
+  double _globalDiscount = 0;
+  Set<LineColumn> _hiddenColumns = {};
+  final _globalDiscountController = TextEditingController(text: '0');
 
   ProjectQuote? _currentQuote;
 
@@ -139,6 +148,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
     status = quote.status;
     unitPriceWalls = quote.unitPriceWalls;
     unitPriceCeiling = quote.unitPriceCeiling;
+    _globalDiscount = quote.discountPercent;
+    _globalDiscountController.text =
+        formatDecimal(quote.discountPercent, maxDecimals: 2);
+    _hiddenColumns = LineColumn.fromKeys(quote.hiddenColumns);
 
     for (final draft in _items) {
       draft.dispose();
@@ -207,6 +220,9 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       clientId: _clientChosen ? _clientId : (_clientId ?? projectClientId),
+      discountPercent: _globalDiscount,
+      hiddenColumns: [for (final c in _hiddenColumns) c.key],
+      layoutStored: existing?.layoutStored ?? false,
     );
 
     final repository = ref.read(devisRepositoryProvider);
@@ -260,6 +276,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                 ? 'u'
                 : entry.value.unitController.text.trim(),
             unitPrice: entry.value.unitPrice,
+            discountPercent: entry.value.discount,
             sortOrder: entry.key,
             createdAt: now,
             updatedAt: now,
@@ -278,6 +295,74 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       final draft = _items.removeAt(index);
       draft.dispose();
     });
+  }
+
+  /// Ajoute les lignes d'un fichier Excel (Désignation, Quantité, Unité,
+  /// PU, Total) au devis.
+  Future<void> _importFromExcel(BuildContext context) async {
+    final selection = await pickQuantitiesFromExcel(context);
+    if (selection == null || !mounted) {
+      return;
+    }
+    setState(() {
+      for (final line in selection.lines) {
+        _items.add(_QuoteItemDraft(
+          label: line.label,
+          quantity: formatDecimal(line.quantity),
+          unit: line.unit,
+          unitPrice: formatDecimal(line.effectiveUnitPrice ?? 0, maxDecimals: 2),
+        ));
+      }
+    });
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${selection.lines.length} ligne(s) importée(s) depuis '
+            '${selection.fileName}.'),
+      ));
+    }
+  }
+
+  /// Reprend les quantités importées dans le Quantitatif du chantier.
+  Future<void> _importFromQuantitatif(
+      BuildContext context, String projectId) async {
+    try {
+      final items =
+          await ref.read(quantityItemsRepositoryProvider).fetchItems(projectId);
+      if (!mounted) {
+        return;
+      }
+      if (items.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Aucune quantité importée dans le Quantitatif de '
+                'ce chantier.'),
+          ));
+        }
+        return;
+      }
+      setState(() {
+        for (final item in items) {
+          _items.add(_QuoteItemDraft(
+            label: item.label,
+            quantity: formatDecimal(item.quantity),
+            unit: item.unit,
+            unitPrice:
+                formatDecimal(item.effectiveUnitPrice ?? 0, maxDecimals: 2),
+          ));
+        }
+      });
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${items.length} ligne(s) reprise(s) du Quantitatif.'),
+        ));
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import impossible : $error')),
+        );
+      }
+    }
   }
 
   Future<void> _importFromMetre(
@@ -688,7 +773,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       final company = await ref.read(currentCompanyProvider.future);
       final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
 
-      await QuotePdfService().printQuote(
+      await QuotePdfService(
+        hiddenColumns: _hiddenColumns,
+        globalDiscountPercent: _globalDiscount,
+      ).printQuote(
         projectName: projectName,
         mode: mode,
         status: status,
@@ -737,7 +825,10 @@ class _DevisPageState extends ConsumerState<DevisPage> {
       final company = await ref.read(currentCompanyProvider.future);
       final logoBytes = await PdfLetterhead.fetchLogoBytes(company);
 
-      await QuotePdfService().shareQuote(
+      await QuotePdfService(
+        hiddenColumns: _hiddenColumns,
+        globalDiscountPercent: _globalDiscount,
+      ).shareQuote(
         projectName: projectName,
         mode: mode,
         status: saved.status,
@@ -840,6 +931,7 @@ class _DevisPageState extends ConsumerState<DevisPage> {
   void dispose() {
     _signatureController.dispose();
     _titleController.dispose();
+    _globalDiscountController.dispose();
     for (final draft in _items) {
       draft.dispose();
     }
@@ -901,12 +993,18 @@ class _DevisPageState extends ConsumerState<DevisPage> {
             final items = [
               for (final draft in _items) draft.toEstimateItem(),
             ];
-            final subtotal = items.fold<double>(
-              0,
-              (sum, item) => sum + item.total,
+            final totals = DocumentTotals(
+              [
+                for (final i in items)
+                  PricedLine(
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    discountPercent: i.discountPercent,
+                  ),
+              ],
+              globalDiscountPercent: _globalDiscount,
             );
-            final tax = subtotal * 0.19;
-            final total = subtotal + tax;
+            final total = totals.ttc;
 
             return ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -932,14 +1030,27 @@ class _DevisPageState extends ConsumerState<DevisPage> {
                 const SizedBox(height: 16),
                 _EstimateItemsCard(
                   items: _items,
-                  subtotal: subtotal,
-                  tax: tax,
-                  total: total,
+                  totals: totals,
                   onAddItem: _addItem,
                   onRemoveItem: _removeItem,
                   onImportFromMetre: () =>
                       _importFromMetre(context, project.id),
+                  onImportFromExcel: () => _importFromExcel(context),
+                  onImportFromQuantitatif: () =>
+                      _importFromQuantitatif(context, project.id),
                   onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+                DocumentLayoutCard(
+                  hiddenColumns: _hiddenColumns,
+                  onToggleColumn: (column, visible) => setState(() {
+                    visible
+                        ? _hiddenColumns.remove(column)
+                        : _hiddenColumns.add(column);
+                  }),
+                  discountController: _globalDiscountController,
+                  onDiscountChanged: (value) => setState(() =>
+                      _globalDiscount = clampPercent(parseDecimal(value))),
                 ),
                 const SizedBox(height: 16),
                 _DevisConfigurationCard(
@@ -1530,22 +1641,22 @@ class _QuoteActionsCard extends StatelessWidget {
 class _EstimateItemsCard extends StatelessWidget {
   const _EstimateItemsCard({
     required this.items,
-    required this.subtotal,
-    required this.tax,
-    required this.total,
+    required this.totals,
     required this.onAddItem,
     required this.onRemoveItem,
     required this.onImportFromMetre,
+    required this.onImportFromExcel,
+    required this.onImportFromQuantitatif,
     required this.onChanged,
   });
 
   final List<_QuoteItemDraft> items;
-  final double subtotal;
-  final double tax;
-  final double total;
+  final DocumentTotals totals;
   final VoidCallback onAddItem;
   final ValueChanged<int> onRemoveItem;
   final VoidCallback onImportFromMetre;
+  final VoidCallback onImportFromExcel;
+  final VoidCallback onImportFromQuantitatif;
   final VoidCallback onChanged;
 
   @override
@@ -1570,6 +1681,16 @@ class _EstimateItemsCard extends StatelessWidget {
                 icon: const Icon(Icons.download_outlined),
                 label: const Text('Importer depuis le m\u00e9tr\u00e9'),
               ),
+              OutlinedButton.icon(
+                onPressed: onImportFromExcel,
+                icon: const Icon(Icons.table_view_outlined),
+                label: const Text('Importer un fichier Excel'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onImportFromQuantitatif,
+                icon: const Icon(Icons.calculate_outlined),
+                label: const Text('Reprendre le quantitatif'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1592,10 +1713,9 @@ class _EstimateItemsCard extends StatelessWidget {
               const SizedBox(height: 12),
             ],
           const Divider(height: 28),
-          _QuoteTotalLine(label: 'Sous-total', value: subtotal),
-          _QuoteTotalLine(label: 'TVA 19%', value: tax),
-          const Divider(height: 24),
-          _QuoteTotalLine(label: 'Total TTC', value: total, important: true),
+          for (final line in totalsLines(totals))
+            _QuoteTotalLine(
+                label: line.$1, value: line.$2, important: line.$3),
         ],
       ),
     );
@@ -1674,6 +1794,16 @@ class _QuoteItemDraftCard extends StatelessWidget {
                   suffixText: 'DA',
                 ),
               ),
+              TextField(
+                controller: draft.discountController,
+                onChanged: (_) => onChanged(),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Remise',
+                  suffixText: '%',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -1696,10 +1826,12 @@ class _QuoteItemDraft {
     required String quantity,
     required String unit,
     required String unitPrice,
+    String discount = '0',
   })  : labelController = TextEditingController(text: label),
         quantityController = TextEditingController(text: quantity),
         unitController = TextEditingController(text: unit),
-        unitPriceController = TextEditingController(text: unitPrice);
+        unitPriceController = TextEditingController(text: unitPrice),
+        discountController = TextEditingController(text: discount);
 
   factory _QuoteItemDraft.empty() {
     return _QuoteItemDraft(
@@ -1713,9 +1845,11 @@ class _QuoteItemDraft {
   factory _QuoteItemDraft.fromItem(QuoteLineItem item) {
     return _QuoteItemDraft(
       label: item.label,
-      quantity: item.quantity.toStringAsFixed(2),
+      // Précision d'origine conservée (1,234 ne devient pas 1,23).
+      quantity: formatDecimal(item.quantity),
       unit: item.unit,
-      unitPrice: item.unitPrice.toStringAsFixed(2),
+      unitPrice: formatDecimal(item.unitPrice, maxDecimals: 2),
+      discount: formatDecimal(item.discountPercent, maxDecimals: 2),
     );
   }
 
@@ -1723,17 +1857,15 @@ class _QuoteItemDraft {
   final TextEditingController quantityController;
   final TextEditingController unitController;
   final TextEditingController unitPriceController;
+  final TextEditingController discountController;
 
-  double get quantity =>
-      double.tryParse(quantityController.text.trim().replaceAll(',', '.')) ?? 0;
+  double get quantity => parseDecimal(quantityController.text) ?? 0;
 
-  double get unitPrice =>
-      double.tryParse(
-        unitPriceController.text.trim().replaceAll(',', '.'),
-      ) ??
-      0;
+  double get unitPrice => parseDecimal(unitPriceController.text) ?? 0;
 
-  double get total => quantity * unitPrice;
+  double get discount => clampPercent(parseDecimal(discountController.text));
+
+  double get total => quantity * unitPrice * (1 - discount / 100);
 
   EstimateItem toEstimateItem() {
     final label = labelController.text.trim();
@@ -1744,10 +1876,12 @@ class _QuoteItemDraft {
       quantity: quantity,
       unit: unit.isEmpty ? 'u' : unit,
       unitPrice: unitPrice,
+      discountPercent: discount,
     );
   }
 
   void dispose() {
+    discountController.dispose();
     labelController.dispose();
     quantityController.dispose();
     unitController.dispose();

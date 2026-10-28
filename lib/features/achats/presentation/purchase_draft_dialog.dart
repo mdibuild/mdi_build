@@ -95,7 +95,7 @@ Future<void> showPurchaseDraftDialog(
   }
   await showDialog<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    builder: (_) => AlertDialog(
       title: Text(title),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
@@ -121,9 +121,8 @@ Future<void> showPurchaseDraftDialog(
                   );
               ref.invalidate(activePurchasesProvider);
               ref.invalidate(archivedPurchasesProvider);
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop();
-              }
+              // Le formulaire ferme lui-même la fenêtre après l'envoi : la
+              // fermer ici aussi retirait la page dessous (écran noir).
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

@@ -8,6 +8,7 @@ import '../../../core/models/project_document.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/presentation/party_pickers.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
+import '../../projects/presentation/providers/projects_providers.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/documents_providers.dart';
 
@@ -18,6 +19,7 @@ class DocumentFormDialog extends ConsumerStatefulWidget {
     this.purchaseId,
     this.projectId,
     this.initialCategory,
+    this.document,
   });
 
   final String? taskId;
@@ -30,6 +32,9 @@ class DocumentFormDialog extends ConsumerStatefulWidget {
   /// Catégorie proposée à l'ouverture (ex. « proforma » pour un achat).
   final String? initialCategory;
 
+  /// Document à modifier. Absent : ajout d'un nouveau document.
+  final ProjectDocument? document;
+
   @override
   ConsumerState<DocumentFormDialog> createState() => _DocumentFormDialogState();
 }
@@ -41,7 +46,10 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
   String category = 'autre';
   String? clientId;
   String? supplierId;
+  String? projectId;
   bool saving = false;
+
+  bool get _editing => widget.document != null;
 
   PlatformFile? selectedFile;
   Uint8List? selectedBytes;
@@ -52,6 +60,15 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
     titleController = TextEditingController();
     descriptionController = TextEditingController();
     category = widget.initialCategory ?? category;
+    final document = widget.document;
+    if (document != null) {
+      titleController.text = document.title;
+      descriptionController.text = document.description;
+      category = document.category;
+      clientId = document.clientId;
+      supplierId = document.supplierId;
+      projectId = document.projectId;
+    }
   }
 
   @override
@@ -96,6 +113,9 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
   Future<void> save() async {
     if (saving) {
       return;
+    }
+    if (_editing) {
+      return _saveChanges(widget.document!);
     }
 
     final project = widget.projectId == null
@@ -225,8 +245,117 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
     }
   }
 
+  /// Enregistre les changements d'un document existant. Un nouveau fichier
+  /// éventuel remplace l'ancien, qui n'est supprimé qu'une fois la fiche
+  /// mise à jour.
+  Future<void> _saveChanges(ProjectDocument document) async {
+    final title = titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saisis un titre.')),
+      );
+      return;
+    }
+
+    setState(() => saving = true);
+
+    final repository = ref.read(documentsRepositoryProvider);
+    final targetProjectId = projectId ?? document.projectId;
+    final newFile = selectedFile;
+    final newBytes = selectedBytes;
+    String? newPath;
+
+    try {
+      var updated = document.copyWith(
+        projectId: targetProjectId,
+        title: title,
+        description: descriptionController.text.trim(),
+        category: category,
+        clientId: clientId,
+        supplierId: supplierId,
+        updatedAt: DateTime.now(),
+      );
+
+      if (newFile != null && newBytes != null) {
+        newPath = repository.buildStoragePath(
+          projectId: targetProjectId,
+          fileName: newFile.name,
+          taskId: document.taskId,
+          purchaseId: document.purchaseId,
+          reportId: document.reportId,
+        );
+        final mimeType = _guessMimeType(newFile.name);
+        await repository.uploadFileBytes(
+          bucketId: document.bucketId,
+          storagePath: newPath,
+          bytes: newBytes,
+          mimeType: mimeType,
+        );
+        updated = updated.copyWith(
+          filePath: newPath,
+          fileName: newFile.name,
+          fileSize: newBytes.length,
+          mimeType: mimeType,
+        );
+      }
+
+      await repository.updateDocument(updated);
+
+      if (newPath != null && document.filePath.isNotEmpty) {
+        try {
+          await repository.deleteFile(
+            bucketId: document.bucketId,
+            filePath: document.filePath,
+          );
+        } catch (_) {
+          // L'ancien fichier reste dans le stockage : sans conséquence.
+        }
+      }
+
+      ref.invalidate(activeDocumentsProvider);
+      ref.invalidate(archivedDocumentsProvider);
+      if ((document.taskId ?? '').isNotEmpty) {
+        ref.invalidate(taskDocumentsProvider(document.taskId!));
+      }
+      if ((document.purchaseId ?? '').isNotEmpty) {
+        ref.invalidate(purchaseDocumentsProvider(document.purchaseId!));
+      }
+
+      if (!mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop(true);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Document modifié.')),
+      );
+    } catch (error) {
+      if (newPath != null) {
+        try {
+          await repository.deleteFile(
+            bucketId: document.bucketId,
+            filePath: newPath,
+          );
+        } catch (_) {}
+      }
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur modification : $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => saving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final current = widget.document;
+    final projects =
+        _editing ? ref.watch(projectsProvider).value ?? const [] : const [];
     return Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(
@@ -240,10 +369,10 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Nouveau document',
-                        style: TextStyle(
+                        _editing ? 'Modifier le document' : 'Nouveau document',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
@@ -266,7 +395,11 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                           children: [
                             Expanded(
                               child: selectedFile == null
-                                  ? const Text('Aucun fichier sélectionné.')
+                                  ? Text(current == null
+                                      ? 'Aucun fichier sélectionné.'
+                                      : 'Fichier actuel : ${current.fileName}\n'
+                                          'Gardé tel quel, sauf si tu en '
+                                          'choisis un autre.')
                                   : Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -297,7 +430,7 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                             ElevatedButton.icon(
                               onPressed: saving ? null : pickFile,
                               icon: const Icon(Icons.attach_file),
-                              label: const Text('Choisir'),
+                              label: Text(_editing ? 'Remplacer' : 'Choisir'),
                             ),
                           ],
                         ),
@@ -313,9 +446,38 @@ class _DocumentFormDialogState extends ConsumerState<DocumentFormDialog> {
                     prefixIcon: Icon(Icons.title_outlined),
                   ),
                 ),
+                if (_editing && projects.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: projects.any((p) => p.id == projectId)
+                        ? projectId
+                        : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Chantier',
+                      prefixIcon: Icon(Icons.apartment_outlined),
+                    ),
+                    items: [
+                      for (final project in projects)
+                        DropdownMenuItem(
+                          value: project.id,
+                          child: Text(
+                            project.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: saving
+                        ? null
+                        : (value) => setState(() => projectId = value),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: category,
+                  // Libellés longs (« Devis / proforma fournisseur ») sur
+                  // petit écran : coupés au lieu de déborder.
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Catégorie',
                     prefixIcon: Icon(Icons.folder_outlined),

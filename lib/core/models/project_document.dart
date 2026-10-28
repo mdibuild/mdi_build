@@ -107,6 +107,7 @@ class ProjectDocument extends Equatable {
 
   Map<String, dynamic> toUpdateMap() {
     return <String, dynamic>{
+      'project_id': projectId,
       'bucket_id': bucketId,
       'file_path': filePath,
       'file_name': fileName,

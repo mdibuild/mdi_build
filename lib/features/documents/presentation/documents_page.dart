@@ -56,6 +56,16 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
     }
   }
 
+  Future<void> _editDocument(
+    BuildContext context,
+    ProjectDocument document,
+  ) async {
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => DocumentFormDialog(document: document),
+    );
+  }
+
   Future<void> _openDocument(
     BuildContext context,
     ProjectDocument document,
@@ -309,6 +319,8 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                             onOpen: (document) =>
                                 _openDocument(context, document),
                             onArchiveToggle: _toggleArchive,
+                            onEdit: (document) =>
+                                _editDocument(context, document),
                             onDelete: (document) =>
                                 _deleteDocument(context, document),
                             onCopyLink: (document) =>
@@ -326,6 +338,8 @@ class _DocumentsPageState extends ConsumerState<DocumentsPage> {
                             onOpen: (document) =>
                                 _openDocument(context, document),
                             onArchiveToggle: _toggleArchive,
+                            onEdit: (document) =>
+                                _editDocument(context, document),
                             onDelete: (document) =>
                                 _deleteDocument(context, document),
                             onCopyLink: (document) =>
@@ -498,6 +512,7 @@ class _DocumentsList extends StatelessWidget {
     required this.documents,
     required this.onOpen,
     required this.onArchiveToggle,
+    required this.onEdit,
     required this.onDelete,
     required this.onCopyLink,
   });
@@ -506,6 +521,7 @@ class _DocumentsList extends StatelessWidget {
   final List<ProjectDocument> documents;
   final Future<void> Function(ProjectDocument document) onOpen;
   final Future<void> Function(ProjectDocument document) onArchiveToggle;
+  final Future<void> Function(ProjectDocument document) onEdit;
   final Future<void> Function(ProjectDocument document) onDelete;
   final Future<void> Function(ProjectDocument document) onCopyLink;
 
@@ -533,6 +549,7 @@ class _DocumentsList extends StatelessWidget {
             document: document,
             onOpen: () => onOpen(document),
             onArchiveToggle: () => onArchiveToggle(document),
+            onEdit: () => onEdit(document),
             onDelete: () => onDelete(document),
             onCopyLink: () => onCopyLink(document),
           );
@@ -548,6 +565,7 @@ class _DocumentTile extends StatefulWidget {
     required this.document,
     required this.onOpen,
     required this.onArchiveToggle,
+    required this.onEdit,
     required this.onDelete,
     required this.onCopyLink,
   });
@@ -556,6 +574,7 @@ class _DocumentTile extends StatefulWidget {
   final ProjectDocument document;
   final Future<void> Function() onOpen;
   final Future<void> Function() onArchiveToggle;
+  final Future<void> Function() onEdit;
   final Future<void> Function() onDelete;
   final Future<void> Function() onCopyLink;
 
@@ -786,6 +805,11 @@ class _DocumentTileState extends State<_DocumentTile> {
                       onPressed: widget.onOpen,
                       icon: const Icon(Icons.open_in_new),
                       label: const Text('Ouvrir'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: widget.onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Modifier'),
                     ),
                     OutlinedButton.icon(
                       onPressed: widget.onCopyLink,

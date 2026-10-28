@@ -6,16 +6,22 @@ import '../../../core/services/supabase_service.dart';
 class ChecklistRepository {
   final SupabaseClient _client = SupabaseService.client;
 
-  /// Éléments de l'entreprise : ceux du chantier [projectId] et les
-  /// éléments généraux (sans chantier). Sans [projectId] : tout.
+  /// Éléments de l'entreprise : ceux du chantier [projectId], les éléments
+  /// généraux (sans chantier) et, quel que soit leur chantier, ceux destinés
+  /// à [assignedTo]. Sans [projectId] : tout.
   Future<List<ChecklistItem>> fetchItems({
     required String companyId,
     String? projectId,
+    String? assignedTo,
   }) async {
     var query =
         _client.from('checklist_items').select().eq('company_id', companyId);
     if (projectId != null) {
-      query = query.or('project_id.eq.$projectId,project_id.is.null');
+      query = query.or([
+        'project_id.eq.$projectId',
+        'project_id.is.null',
+        if (assignedTo != null) 'assigned_to.eq.$assignedTo',
+      ].join(','));
     }
     final rows = await query
         .order('is_done', ascending: true)
@@ -36,6 +42,14 @@ class ChecklistRepository {
       'done_at': done ? DateTime.now().toUtc().toIso8601String() : null,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', id);
+  }
+
+  /// Modifie un élément (titre, échéance, rappel, destinataire…).
+  Future<void> updateItem(ChecklistItem item) async {
+    await _client
+        .from('checklist_items')
+        .update(item.toUpdateMap(clearSchedule: true))
+        .eq('id', item.id);
   }
 
   Future<void> deleteItem(String id) async {

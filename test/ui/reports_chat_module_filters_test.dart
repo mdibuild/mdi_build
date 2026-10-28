@@ -24,6 +24,7 @@ import 'package:mdi_build/features/reports/presentation/reports_page.dart';
 import 'package:mdi_build/features/settings/presentation/providers/settings_providers.dart';
 import 'package:mdi_build/features/settings/presentation/providers/suppliers_providers.dart';
 import 'package:mdi_build/shared/presentation/module_filters.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _project = Project(
   id: 'filters-project',
@@ -96,6 +97,9 @@ ChatMessage _message(String id, String type, String author) => ChatMessage(
 
 Widget _chatApp() => ProviderScope(
       overrides: [
+        // Tests écrits pour la vue « un chantier ».
+        projectScopeAllProvider
+            .overrideWith(() => ProjectScopeAll(initial: false)),
         selectedProjectProvider.overrideWith((ref) async => _project),
         currentProfileProvider.overrideWith((ref) async => _profile),
         projectsProvider.overrideWith((ref) async => [_project]),
@@ -152,6 +156,9 @@ void main() {
     ];
     await tester.pumpWidget(ProviderScope(
       overrides: [
+        // Tests écrits pour la vue « un chantier ».
+        projectScopeAllProvider
+            .overrideWith(() => ProjectScopeAll(initial: false)),
         selectedProjectProvider.overrideWith((ref) async => _project),
         currentProfileProvider.overrideWith((ref) async => _profile),
         projectsProvider.overrideWith((ref) async => [_project]),

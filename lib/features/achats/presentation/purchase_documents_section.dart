@@ -13,14 +13,22 @@ class PurchaseDocumentsSection extends ConsumerWidget {
   const PurchaseDocumentsSection({
     super.key,
     required this.purchaseId,
+    this.projectId,
   });
 
   final String purchaseId;
 
+  /// Chantier de l'achat (peut différer du chantier sélectionné).
+  final String? projectId;
+
   Future<void> _openUploadDialog(BuildContext context, WidgetRef ref) async {
     final created = await showDialog<bool>(
       context: context,
-      builder: (_) => DocumentFormDialog(purchaseId: purchaseId),
+      builder: (_) => DocumentFormDialog(
+        purchaseId: purchaseId,
+        projectId: projectId,
+        initialCategory: 'proforma',
+      ),
     );
 
     if (created == true) {
@@ -152,13 +160,15 @@ class PurchaseDocumentsSection extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    'Documents liés à l’achat',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                Text(
+                  'Documents liés à l’achat',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _openUploadDialog(context, ref),

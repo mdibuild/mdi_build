@@ -40,7 +40,8 @@ const _project = Project(
 
 String _iso(DateTime d) => d.toUtc().toIso8601String();
 
-Purchase _purchase(String id, DateTime created, {String status = 'commande', String lot = 'Gros œuvre'}) =>
+Purchase _purchase(String id, DateTime created,
+        {String status = 'commande', String lot = 'Gros œuvre'}) =>
     Purchase.fromMap({
       'id': id,
       'company_id': 'c1',
@@ -53,7 +54,8 @@ Purchase _purchase(String id, DateTime created, {String status = 'commande', Str
       'updated_at': _iso(created),
     });
 
-PurchaseItem _item(String id, String purchaseId, num qty, num price) => PurchaseItem.fromMap({
+PurchaseItem _item(String id, String purchaseId, num qty, num price) =>
+    PurchaseItem.fromMap({
       'id': id,
       'purchase_id': purchaseId,
       'article': 'Article $id',
@@ -67,7 +69,8 @@ PurchaseItem _item(String id, String purchaseId, num qty, num price) => Purchase
       'updated_at': _iso(DateTime.now()),
     });
 
-ProjectTask _task(String id, DateTime? start, DateTime? end, {String status = 'en_cours'}) {
+ProjectTask _task(String id, DateTime? start, DateTime? end,
+    {String status = 'en_cours'}) {
   String? d(DateTime? v) => v == null
       ? null
       : '${v.year}-${v.month.toString().padLeft(2, '0')}-${v.day.toString().padLeft(2, '0')}';
@@ -98,7 +101,8 @@ final _longAgo = DateTime(_today.year - 1, 1, 15, 12);
 
 final _purchases = [
   _purchase('a1', _thisMonth),
-  _purchase('a2', _thisMonth, status: 'livre', lot: 'Électricité'), // sans ligne
+  _purchase('a2', _thisMonth,
+      status: 'livre', lot: 'Électricité'), // sans ligne
   _purchase('a3', _thisMonth, status: 'brouillon'),
   _purchase('a4', _longAgo), // hors « ce mois »
 ];
@@ -115,17 +119,28 @@ Widget _app() {
       selectedProjectProvider.overrideWith((ref) async => _project),
       projectsProvider.overrideWith((ref) async => const [_project]),
       currentProfileProvider.overrideWith((ref) async => const AppUser(
-          id: 'u1', companyId: 'c1', email: '', fullName: 'Med', role: UserRole.directeur)),
+          id: 'u1',
+          companyId: 'c1',
+          email: '',
+          fullName: 'Med',
+          role: UserRole.directeur)),
       companyUsersProvider('c1').overrideWith((ref) async => const []),
-      reportPurchasesDataProvider('p1').overrideWith((ref) async => PurchasesData(_purchases, _items)),
-      reportPlanningDataProvider('p1').overrideWith((ref) async => PlanningData([
-            _task('avant-periode', _today.subtract(const Duration(days: 60)), _today.add(const Duration(days: 3))),
-            _task('pendant', _today, _today.add(const Duration(days: 5)), status: 'a_faire'),
-            _task('sans-date', null, null),
-          ], const [])),
+      reportPurchasesDataProvider('p1')
+          .overrideWith((ref) async => PurchasesData(_purchases, _items)),
+      reportPlanningDataProvider('p1')
+          .overrideWith((ref) async => PlanningData([
+                _task(
+                    'avant-periode',
+                    _today.subtract(const Duration(days: 60)),
+                    _today.add(const Duration(days: 3))),
+                _task('pendant', _today, _today.add(const Duration(days: 5)),
+                    status: 'a_faire'),
+                _task('sans-date', null, null),
+              ], const [])),
     ],
     child: MaterialApp(
-      theme: ThemeData(useMaterial3: true, extensions: [resolvePaletteColors(palette, 0)]),
+      theme: ThemeData(
+          useMaterial3: true, extensions: [resolvePaletteColors(palette, 0)]),
       home: const Scaffold(body: ReportAnalysisTab()),
     ),
   );
@@ -160,7 +175,9 @@ void main() {
     'paysage': const Size(844, 390),
     'tablette': const Size(1180, 820),
   }.entries) {
-    testWidgets('achats ${entry.key} : exhaustif, sans débordement, totaux cohérents', (tester) async {
+    testWidgets(
+        'achats ${entry.key} : exhaustif, sans débordement, totaux cohérents',
+        (tester) async {
       _screen(tester, entry.value);
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_app());
@@ -178,7 +195,8 @@ void main() {
       // Total = 3000 + 0 + 2500, a2 exclu et signalé.
       await _scrollTo(tester, find.text('Total général connu'));
       expect(find.text(formatAmount(5500)), findsWidgets);
-      expect(find.text('Achats sans montant (exclus du total)'), findsOneWidget);
+      expect(
+          find.text('Achats sans montant (exclus du total)'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -199,7 +217,9 @@ void main() {
   });
 
   for (final size in [const Size(390, 844), const Size(844, 390)]) {
-    testWidgets('planning ${size.width > size.height ? 'paysage' : 'portrait'} : Gantt, chevauchement, tâches sans date', (tester) async {
+    testWidgets(
+        'planning ${size.width > size.height ? 'paysage' : 'portrait'} : Gantt, chevauchement, tâches sans date',
+        (tester) async {
       _screen(tester, size);
       addTearDown(tester.view.reset);
       await tester.pumpWidget(_app());
@@ -210,17 +230,24 @@ void main() {
       expect(tester.takeException(), isNull);
       await _scrollTo(tester, find.text('Diagramme de Gantt'));
       expect(find.text('Diagramme de Gantt'), findsWidgets);
+      // Le Gantt complet est imprimable depuis le rapport.
+      await _scrollTo(tester, find.text('Imprimer le Gantt complet'));
+      expect(find.text('Imprimer le Gantt complet'), findsOneWidget);
       // La tâche commencée avant la période est incluse (chevauchement).
-      await _scrollTo(tester, find.text('Tâche avant-periode')); // Gantt + liste
+      await _scrollTo(
+          tester, find.text('Tâche avant-periode')); // Gantt + liste
       expect(find.text('Tâche avant-periode'), findsWidgets);
       await _scrollTo(tester, find.textContaining('Tâches sans dates prévues'));
+      await _scrollTo(tester, find.text('Tâche sans-date'));
       expect(find.text('Tâche sans-date'), findsWidgets);
+
       expect(tester.takeException(), isNull);
     });
   }
 
   group('Exports', () {
-    AnalysisReport purchasesReport(List<Purchase> purchases, Map<String, List<PurchaseItem>> items) =>
+    AnalysisReport purchasesReport(
+            List<Purchase> purchases, Map<String, List<PurchaseItem>> items) =>
         AnalysisReport(
           module: ReportModule.achats,
           projectName: 'Villa Hydra',
@@ -236,28 +263,34 @@ void main() {
 
     test('Excel : toutes les lignes et même total que le rapport', () {
       final report = purchasesReport(_purchases, _items);
-      final excel = Excel.decodeBytes(ReportAnalysisExport().buildExcel(report));
+      final excel =
+          Excel.decodeBytes(ReportAnalysisExport().buildExcel(report));
       final rows = excel['Détail'].rows.skip(1).toList();
       // 1 ligne par article + 1 ligne pour l'achat sans article.
-      expect(rows.length, report.purchases!.lineCount + report.purchases!.withoutAmount);
+      expect(rows.length,
+          report.purchases!.lineCount + report.purchases!.withoutAmount);
       double sum = 0;
       for (final r in rows) {
-        final v = r[13]?.value; // « Montant ligne » (après la colonne Fournisseur)
+        final v =
+            r[13]?.value; // « Montant ligne » (après la colonne Fournisseur)
         if (v is DoubleCellValue) sum += v.value;
         if (v is IntCellValue) sum += v.value;
       }
       expect(sum, report.purchases!.knownTotal);
-      final purchaseIds = rows.map((r) => (r[1]?.value as TextCellValue).value.text).toSet();
+      final purchaseIds =
+          rows.map((r) => (r[1]?.value as TextCellValue).value.text).toSet();
       expect(purchaseIds.length, report.purchases!.count);
     });
 
     test('PDF : rapport long sur plusieurs pages, sans troncature', () async {
-      const fontPath = r'C:\src\flutter\bin\cache\artifacts\material_fonts\roboto-regular.ttf';
+      const fontPath =
+          r'C:\src\flutter\bin\cache\artifacts\material_fonts\roboto-regular.ttf';
       if (!File(fontPath).existsSync()) {
         markTestSkipped('police de test indisponible');
         return;
       }
-      final font = pw.Font.ttf(File(fontPath).readAsBytesSync().buffer.asByteData());
+      final font =
+          pw.Font.ttf(File(fontPath).readAsBytesSync().buffer.asByteData());
       final many = [
         for (var i = 0; i < 300; i++) _purchase('p$i', _thisMonth),
       ];
@@ -266,7 +299,9 @@ void main() {
       };
       final bytes = await ReportAnalysisExport()
           .buildPdf(purchasesReport(many, items), regular: font, bold: font);
-      final pages = RegExp(r'/Type\s*/Page[^s]').allMatches(String.fromCharCodes(bytes)).length;
+      final pages = RegExp(r'/Type\s*/Page[^s]')
+          .allMatches(String.fromCharCodes(bytes))
+          .length;
       expect(pages, greaterThan(5));
     });
   });

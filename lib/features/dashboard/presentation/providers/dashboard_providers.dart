@@ -6,6 +6,7 @@ import '../../../../core/models/dashboard_metrics.dart';
 import '../../services/dashboard_metrics_service.dart';
 import '../../../projects/presentation/providers/current_profile_provider.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
+import '../../../projects/presentation/providers/project_scope_provider.dart';
 
 final dashboardMetricsServiceProvider =
     Provider<DashboardMetricsService>((ref) {
@@ -23,6 +24,6 @@ final dashboardMetricsProvider = FutureProvider<DashboardMetrics>((ref) async {
 
   return ref.read(dashboardMetricsServiceProvider).fetch(
         companyId: profile.companyId,
-        projectId: project?.id,
+        projectId: ref.watch(projectScopeAllProvider) ? null : project?.id,
       );
 });

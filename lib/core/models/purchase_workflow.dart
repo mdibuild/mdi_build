@@ -49,6 +49,37 @@ class PurchaseWorkflow {
 
   /// Rang de l'étape (-1 pour annulé / archivé).
   static int rank(String status) => steps.indexOf(status);
+
+  /// Étape précédente (retour en arrière), ou null.
+  static String? previousStep(String status) {
+    final r = rank(status);
+    return r > 0 ? steps[r - 1] : null;
+  }
+
+  /// Vrai si passer de [from] à [to] revient en arrière.
+  static bool isBackward(String from, String to) {
+    final a = rank(from);
+    final b = rank(to);
+    return a >= 0 && b >= 0 && b < a;
+  }
+
+  /// Champs à effacer quand l'achat revient à [status] : dates et auteurs
+  /// des étapes annulées par ce retour (et de l'annulation / archivage).
+  static List<String> fieldsClearedBy(String status) {
+    final r = rank(status);
+    if (r < 0) {
+      return const [];
+    }
+    return [
+      if (r < rank('dg_valide')) ...['approved_at', 'approved_by'],
+      if (r < rank('commande')) ...['ordered_at', 'ordered_by'],
+      if (r < rank('livre')) ...['delivered_at', 'delivered_by'],
+      'cancelled_at',
+      'cancelled_by',
+      'archived_at',
+      'archived_by',
+    ];
+  }
 }
 
 /// Numéro de bon de commande suivant : BC-AAAA-NNN.

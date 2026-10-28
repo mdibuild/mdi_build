@@ -26,6 +26,7 @@ import 'package:mdi_build/features/settings/presentation/providers/suppliers_pro
 import 'package:mdi_build/features/technique/presentation/technique_page.dart';
 import 'package:mdi_build/shared/presentation/main_shell_page.dart';
 import 'package:mdi_build/shared/presentation/project_workspace_toolbar.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _project = Project(
   id: 'p1',
@@ -74,6 +75,9 @@ ChecklistItem _todo(String id, String title, {bool done = false}) =>
     });
 
 ProviderContainer _container() => ProviderContainer(overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       projectsProvider.overrideWith((ref) async => [_project]),
       currentProfileProvider.overrideWith((ref) async => null),
       spacesProvider.overrideWith((ref) async => const []),

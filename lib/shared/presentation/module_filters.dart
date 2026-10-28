@@ -10,6 +10,7 @@ class ModuleFilterBar extends StatefulWidget {
     this.filters = const [],
     this.onReset,
     this.resultLabel,
+    this.collapsibleOnPhone = false,
   });
 
   final String searchQuery;
@@ -19,6 +20,11 @@ class ModuleFilterBar extends StatefulWidget {
   final VoidCallback? onReset;
   final String? resultLabel;
 
+  /// Sur téléphone (< 600 px), les listes déroulantes sont repliées derrière
+  /// un bouton « Filtres » : la recherche reste visible et la liste
+  /// commence plus haut.
+  final bool collapsibleOnPhone;
+
   @override
   State<ModuleFilterBar> createState() => _ModuleFilterBarState();
 }
@@ -26,6 +32,7 @@ class ModuleFilterBar extends StatefulWidget {
 class _ModuleFilterBarState extends State<ModuleFilterBar> {
   late final TextEditingController _search =
       TextEditingController(text: widget.searchQuery);
+  bool _expanded = false;
 
   @override
   void didUpdateWidget(covariant ModuleFilterBar oldWidget) {
@@ -47,8 +54,16 @@ class _ModuleFilterBarState extends State<ModuleFilterBar> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final searchWidth =
-          constraints.maxWidth < 600 ? constraints.maxWidth : 320.0;
+      final phone = constraints.maxWidth < 600;
+      final folded = widget.collapsibleOnPhone &&
+          phone &&
+          widget.filters.isNotEmpty &&
+          !_expanded;
+      final searchWidth = phone
+          ? (widget.collapsibleOnPhone && widget.filters.isNotEmpty
+              ? constraints.maxWidth - 124
+              : constraints.maxWidth)
+          : 320.0;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -79,12 +94,21 @@ class _ModuleFilterBarState extends State<ModuleFilterBar> {
                   ),
                 ),
               ),
-              for (final filter in widget.filters)
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                  child: filter,
+              if (widget.collapsibleOnPhone &&
+                  phone &&
+                  widget.filters.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(_expanded ? Icons.expand_less : Icons.tune),
+                  label: const Text('Filtres'),
                 ),
-              if (widget.onReset != null)
+              if (!folded)
+                for (final filter in widget.filters)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                    child: filter,
+                  ),
+              if (widget.onReset != null && !folded)
                 TextButton.icon(
                   onPressed: widget.onReset,
                   icon: const Icon(Icons.filter_alt_off_outlined),

@@ -13,6 +13,8 @@ String routeForPushData(Map<String, dynamic> data) {
     case 'planning':
     case 'task_deadline':
       return '/planning';
+    case 'checklist':
+      return '/checklist';
     default:
       return '/dashboard';
   }
@@ -28,6 +30,8 @@ String moduleForPushData(Map<String, dynamic> data) {
     case 'planning':
     case 'task_deadline':
       return 'planning';
+    case 'checklist':
+      return 'checklist';
     default:
       return 'autre';
   }

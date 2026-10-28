@@ -243,8 +243,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ],
                       ),
                     ),
-                  if (showIndicators)
-                    FinanceChecklistCard(project: project),
+                  if (showIndicators) FinanceChecklistCard(project: project),
                   const SizedBox(height: 16),
                   if (statusCount > 0 || showProgress)
                     PremiumSurfaceCard(

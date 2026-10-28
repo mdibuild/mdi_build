@@ -23,6 +23,12 @@ class FirebasePushService {
 
   static bool _ready = false;
 
+  /// Plugin de notifications locales (partagé avec les rappels).
+  static FlutterLocalNotificationsPlugin get plugin => _plugin;
+
+  /// Notifications locales initialisées (Android / iPhone).
+  static bool get ready => _ready;
+
   static Future<void> initialize() async {
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission();
@@ -135,6 +141,8 @@ class FirebasePushService {
         return 'Achats';
       case 'planning':
         return 'Planning';
+      case 'checklist':
+        return 'Check-list';
       default:
         return 'MDI Build';
     }

@@ -3,6 +3,8 @@ import 'package:mdi_build/shared/presentation/project_module_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/theme/app_palette_colors.dart';
+
 import '../../../core/models/purchase.dart';
 import '../../../core/models/purchase_item.dart';
 import '../../../core/services/notify_event_service.dart';
@@ -21,7 +23,10 @@ import 'providers/purchases_providers.dart';
 import 'widgets/purchase_form.dart';
 import '../../../shared/presentation/party_pickers.dart';
 import '../../../core/models/purchase_workflow.dart';
+import 'purchase_documents_section.dart';
+import '../../../shared/presentation/signature_icon.dart';
 import 'purchase_tracking.dart';
+import '../../projects/presentation/providers/project_scope_provider.dart';
 
 class AchatsPage extends ConsumerStatefulWidget {
   const AchatsPage({super.key});
@@ -232,6 +237,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
             purchaseId: purchase.id,
             status: status,
             actorId: authUser?.id,
+            previousStatus: purchase.status,
           );
     } catch (error) {
       if (context.mounted) {
@@ -263,7 +269,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
     }
   }
 
-  Future<void> _deletePurchase(
+  Future<bool> _deletePurchase(
     BuildContext context, {
     required Purchase purchase,
   }) async {
@@ -287,7 +293,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
     );
 
     if (confirmed != true) {
-      return;
+      return false;
     }
 
     await ref.read(purchasesRepositoryProvider).deletePurchase(purchase.id);
@@ -300,6 +306,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
         const SnackBar(content: Text('Achat supprimé.')),
       );
     }
+    return true;
   }
 
   List<Purchase> _applyFilters(
@@ -327,8 +334,10 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
               .contains(query);
       final projectId =
           projectFilter == 'current' ? currentProjectId : projectFilter;
-      final matchesProject =
-          projectFilter == 'all' || purchase.projectId == projectId;
+      // « Projet courant » en vue « Tous les projets » : tous les achats.
+      final matchesProject = projectFilter == 'all' ||
+          (projectFilter == 'current' && projectId == null) ||
+          purchase.projectId == projectId;
       final matchesLot = lotFilter == 'tous' || purchase.lot == lotFilter;
       final matchesSupplier = supplierFilter == 'tous' ||
           (supplierFilter == 'sans'
@@ -361,6 +370,7 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
     final archivedPurchasesAsync = ref.watch(archivedPurchasesProvider);
     final projectsAsync = ref.watch(projectsProvider);
     final selectedProject = ref.watch(selectedProjectProvider).value;
+    final scopeAll = ref.watch(projectScopeAllProvider);
     final suppliers = ref.watch(activeSuppliersProvider).value ?? const [];
     final supplierNames = <String, String>{
       for (final supplier in suppliers) supplier.id: supplier.name
@@ -386,8 +396,128 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
       if (supplierFilter != 'tous' && supplierFilter != 'sans') supplierFilter,
     };
     final filtered = _applyFilters(allPurchases, projectNames,
-        currentProjectId: selectedProject?.id,
+        currentProjectId: scopeAll ? null : selectedProject?.id,
         supplierNamesById: supplierNames);
+
+    // En-tête (titre + filtres) placé en tête de la liste : toute la page
+    // défile d'un seul bloc.
+    final header = <Widget>[
+      AppScaffoldTitle(
+        title: 'Achats',
+        subtitle: 'Achats libres ou reliés au quantitatif et au devis.',
+        action: ElevatedButton.icon(
+          onPressed: () => _openCreateDialog(context),
+          icon: const Icon(Icons.add),
+          label: const Text('Nouvel achat'),
+        ),
+      ),
+      const SizedBox(height: 16),
+      ModuleFilterBar(
+        collapsibleOnPhone: true,
+        searchQuery: searchController.text,
+        onSearchChanged: (value) =>
+            setState(() => searchController.text = value),
+        searchHint: 'Titre, lot, projet, fournisseur, remarque',
+        onReset: _resetFilters,
+        resultLabel:
+            '${filtered.length} achat(s) sur ${allPurchases.length} · en cours et archives',
+        filters: [
+          ModuleFilterDropdown<String>(
+            label: 'Projet',
+            value: projectFilter,
+            items: [
+              DropdownMenuItem(
+                  value: 'current',
+                  child: Text(scopeAll
+                      ? 'Projet de la barre : tous les projets'
+                      : 'Projet courant : ${selectedProject?.name ?? "aucun"}')),
+              const DropdownMenuItem(
+                  value: 'all', child: Text('Tous les projets')),
+              for (final project in projectsAsync.value ?? const [])
+                DropdownMenuItem(value: project.id, child: Text(project.name)),
+              if (projectFilter != 'current' &&
+                  projectFilter != 'all' &&
+                  !projectNames.containsKey(projectFilter))
+                DropdownMenuItem(
+                    value: projectFilter,
+                    child: const Text('Projet indisponible')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => projectFilter = value);
+              }
+            },
+          ),
+          ModuleFilterDropdown<String>(
+            label: 'Statut',
+            value: statusFilter,
+            items: [
+              const DropdownMenuItem(value: 'tous', child: Text('Tous')),
+              for (final status in PurchaseWorkflow.statuses)
+                DropdownMenuItem(
+                    value: status, child: Text(PurchaseWorkflow.label(status))),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => statusFilter = value);
+              }
+            },
+          ),
+          ModuleFilterDropdown<String>(
+            label: 'Lot',
+            value: lotFilter,
+            items: [
+              const DropdownMenuItem(
+                  value: 'tous', child: Text('Tous les lots')),
+              for (final lot in lots)
+                DropdownMenuItem(value: lot, child: Text(lot)),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => lotFilter = value);
+              }
+            },
+          ),
+          ModuleFilterDropdown<String>(
+            label: 'Fournisseur',
+            value: supplierFilter,
+            items: [
+              const DropdownMenuItem(
+                  value: 'tous', child: Text('Tous les fournisseurs')),
+              const DropdownMenuItem(
+                  value: 'sans', child: Text('Sans fournisseur')),
+              for (final id in supplierIds)
+                DropdownMenuItem(
+                    value: id,
+                    child:
+                        Text(supplierNames[id] ?? 'Fournisseur indisponible')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => supplierFilter = value);
+              }
+            },
+          ),
+          ModuleFilterDropdown<String>(
+            label: 'Création',
+            value: periodFilter,
+            items: const [
+              DropdownMenuItem(
+                  value: 'toutes', child: Text('Toutes les dates')),
+              DropdownMenuItem(
+                  value: 'semaine', child: Text('7 derniers jours')),
+              DropdownMenuItem(value: 'mois', child: Text('30 derniers jours')),
+              DropdownMenuItem(value: 'mois_courant', child: Text('Ce mois')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => periodFilter = value);
+              }
+            },
+          ),
+        ],
+      ),
+    ];
 
     return DefaultTabController(
       length: 2,
@@ -401,211 +531,89 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
             ],
           ),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: AdaptiveHeaderColumn(
-            children: [
-              AppScaffoldTitle(
-                title: 'Achats',
-                subtitle: 'Achats libres ou reliés au quantitatif et au devis.',
-                action: ElevatedButton.icon(
-                  onPressed: () => _openCreateDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nouvel achat'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ModuleFilterBar(
-                searchQuery: searchController.text,
-                onSearchChanged: (value) =>
-                    setState(() => searchController.text = value),
-                searchHint: 'Titre, lot, projet, fournisseur, remarque',
-                onReset: _resetFilters,
-                resultLabel:
-                    '${filtered.length} achat(s) sur ${allPurchases.length} · en cours et archives',
-                filters: [
-                  ModuleFilterDropdown<String>(
-                    label: 'Projet',
-                    value: projectFilter,
-                    items: [
-                      DropdownMenuItem(
-                          value: 'current',
-                          child: Text(
-                              'Projet courant : ${selectedProject?.name ?? "aucun"}')),
-                      const DropdownMenuItem(
-                          value: 'all', child: Text('Tous les projets')),
-                      for (final project in projectsAsync.value ?? const [])
-                        DropdownMenuItem(
-                            value: project.id, child: Text(project.name)),
-                      if (projectFilter != 'current' &&
-                          projectFilter != 'all' &&
-                          !projectNames.containsKey(projectFilter))
-                        DropdownMenuItem(
-                            value: projectFilter,
-                            child: const Text('Projet indisponible')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => projectFilter = value);
-                      }
-                    },
-                  ),
-                  ModuleFilterDropdown<String>(
-                    label: 'Statut',
-                    value: statusFilter,
-                    items: [
-                      const DropdownMenuItem(
-                          value: 'tous', child: Text('Tous')),
-                      for (final status in PurchaseWorkflow.statuses)
-                        DropdownMenuItem(
-                            value: status,
-                            child: Text(PurchaseWorkflow.label(status))),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => statusFilter = value);
-                      }
-                    },
-                  ),
-                  ModuleFilterDropdown<String>(
-                    label: 'Lot',
-                    value: lotFilter,
-                    items: [
-                      const DropdownMenuItem(
-                          value: 'tous', child: Text('Tous les lots')),
-                      for (final lot in lots)
-                        DropdownMenuItem(value: lot, child: Text(lot)),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => lotFilter = value);
-                      }
-                    },
-                  ),
-                  ModuleFilterDropdown<String>(
-                    label: 'Fournisseur',
-                    value: supplierFilter,
-                    items: [
-                      const DropdownMenuItem(
-                          value: 'tous', child: Text('Tous les fournisseurs')),
-                      const DropdownMenuItem(
-                          value: 'sans', child: Text('Sans fournisseur')),
-                      for (final id in supplierIds)
-                        DropdownMenuItem(
-                            value: id,
-                            child: Text(supplierNames[id] ??
-                                'Fournisseur indisponible')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => supplierFilter = value);
-                      }
-                    },
-                  ),
-                  ModuleFilterDropdown<String>(
-                    label: 'Création',
-                    value: periodFilter,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'toutes', child: Text('Toutes les dates')),
-                      DropdownMenuItem(
-                          value: 'semaine', child: Text('7 derniers jours')),
-                      DropdownMenuItem(
-                          value: 'mois', child: Text('30 derniers jours')),
-                      DropdownMenuItem(
-                          value: 'mois_courant', child: Text('Ce mois')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => periodFilter = value);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: projectsAsync.when(
-                  data: (projects) {
-                    final projectNamesById = {
-                      for (final project in projects) project.id: project.name,
-                    };
+        body: projectsAsync.when(
+          skipError: true,
+          data: (projects) {
+            final projectNamesById = {
+              for (final project in projects) project.id: project.name,
+            };
 
-                    return TabBarView(
-                      children: [
-                        activePurchasesAsync.when(
-                          data: (purchases) => _PurchasesList(
-                            purchases: _applyFilters(
-                                purchases, projectNamesById,
-                                currentProjectId: selectedProject?.id,
-                                supplierNamesById: supplierNames),
-                            projectNamesById: projectNamesById,
-                            onEdit: (purchase) => _openEditDialog(
-                              context,
-                              purchase: purchase,
-                            ),
-                            onDelete: (purchase) => _deletePurchase(
-                              context,
-                              purchase: purchase,
-                            ),
-                            onPrint: (purchase, projectName) => _printPurchase(
-                              context,
-                              purchase: purchase,
-                              projectName: projectName,
-                            ),
-                            onChangeStatus: (purchase, status) => _changeStatus(
-                              context,
-                              purchase: purchase,
-                              status: status,
-                            ),
-                          ),
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (error, _) =>
-                              Center(child: Text('Erreur: $error')),
-                        ),
-                        archivedPurchasesAsync.when(
-                          data: (purchases) => _PurchasesList(
-                            purchases: _applyFilters(
-                                purchases, projectNamesById,
-                                currentProjectId: selectedProject?.id,
-                                supplierNamesById: supplierNames),
-                            projectNamesById: projectNamesById,
-                            onEdit: (purchase) => _openEditDialog(
-                              context,
-                              purchase: purchase,
-                            ),
-                            onDelete: (purchase) => _deletePurchase(
-                              context,
-                              purchase: purchase,
-                            ),
-                            onPrint: (purchase, projectName) => _printPurchase(
-                              context,
-                              purchase: purchase,
-                              projectName: projectName,
-                            ),
-                            onChangeStatus: (purchase, status) => _changeStatus(
-                              context,
-                              purchase: purchase,
-                              status: status,
-                            ),
-                          ),
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (error, _) =>
-                              Center(child: Text('Erreur: $error')),
-                        ),
-                      ],
-                    );
-                  },
+            return TabBarView(
+              // Changement d'onglet par les onglets seulement : un geste un
+              // peu oblique ne fait plus basculer la liste.
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                activePurchasesAsync.when(
+                  // Une erreur passagère pendant une actualisation garde la
+                  // liste affichée (et la position de défilement).
+                  skipError: true,
+                  data: (purchases) => _PurchasesList(
+                    storageKey: 'achats-en-cours',
+                    header: header,
+                    purchases: _applyFilters(purchases, projectNamesById,
+                        currentProjectId: scopeAll ? null : selectedProject?.id,
+                        supplierNamesById: supplierNames),
+                    projectNamesById: projectNamesById,
+                    onEdit: (purchase) => _openEditDialog(
+                      context,
+                      purchase: purchase,
+                    ),
+                    onDelete: (purchase) => _deletePurchase(
+                      context,
+                      purchase: purchase,
+                    ),
+                    onPrint: (purchase, projectName) => _printPurchase(
+                      context,
+                      purchase: purchase,
+                      projectName: projectName,
+                    ),
+                    onChangeStatus: (purchase, status) => _changeStatus(
+                      context,
+                      purchase: purchase,
+                      status: status,
+                    ),
+                  ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (error, _) =>
-                      Center(child: Text('Erreur projets: $error')),
+                  error: (error, _) => Center(child: Text('Erreur: $error')),
                 ),
-              ),
-            ],
-          ),
+                archivedPurchasesAsync.when(
+                  skipError: true,
+                  data: (purchases) => _PurchasesList(
+                    storageKey: 'achats-archives',
+                    header: header,
+                    purchases: _applyFilters(purchases, projectNamesById,
+                        currentProjectId: scopeAll ? null : selectedProject?.id,
+                        supplierNamesById: supplierNames),
+                    projectNamesById: projectNamesById,
+                    onEdit: (purchase) => _openEditDialog(
+                      context,
+                      purchase: purchase,
+                    ),
+                    onDelete: (purchase) => _deletePurchase(
+                      context,
+                      purchase: purchase,
+                    ),
+                    onPrint: (purchase, projectName) => _printPurchase(
+                      context,
+                      purchase: purchase,
+                      projectName: projectName,
+                    ),
+                    onChangeStatus: (purchase, status) => _changeStatus(
+                      context,
+                      purchase: purchase,
+                      status: status,
+                    ),
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Center(child: Text('Erreur: $error')),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erreur projets: $error')),
         ),
       ),
     );
@@ -614,6 +622,8 @@ class _AchatsPageState extends ConsumerState<AchatsPage> {
 
 class _PurchasesList extends ConsumerWidget {
   const _PurchasesList({
+    required this.storageKey,
+    required this.header,
     required this.purchases,
     required this.projectNamesById,
     required this.onEdit,
@@ -622,65 +632,76 @@ class _PurchasesList extends ConsumerWidget {
     required this.onChangeStatus,
   });
 
+  /// Position de défilement mémorisée (retour de fiche, actualisation).
+  final String storageKey;
+  final List<Widget> header;
   final List<Purchase> purchases;
   final Map<String, String> projectNamesById;
   final Future<void> Function(Purchase purchase) onEdit;
-  final Future<void> Function(Purchase purchase) onDelete;
+  final Future<bool> Function(Purchase purchase) onDelete;
   final Future<void> Function(Purchase purchase, String projectName) onPrint;
   final Future<void> Function(Purchase purchase, String status) onChangeStatus;
 
+  void _open(BuildContext context, Purchase purchase) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => _PurchaseDetailPage(
+        purchaseId: purchase.id,
+        initial: purchase,
+        projectNamesById: projectNamesById,
+        onEdit: onEdit,
+        onDelete: onDelete,
+        onPrint: onPrint,
+        onChangeStatus: onChangeStatus,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (purchases.isEmpty) {
-      return const PremiumSurfaceCard(
-        child: Center(
-          child: Text(
-              'Aucun achat ne correspond aux filtres. Réinitialisez-les ou changez de projet.'),
-        ),
-      );
-    }
-
-    return PremiumSurfaceCard(
-      padding: EdgeInsets.zero,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: purchases.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final purchase = purchases[index];
-          final projectName =
-              projectNamesById[purchase.projectId] ?? purchase.projectId;
-
-          return _PurchaseTile(
-            purchase: purchase,
-            projectName: projectName,
-            onEdit: () => onEdit(purchase),
-            onDelete: () => onDelete(purchase),
-            onPrint: () => onPrint(purchase, projectName),
-            onChangeStatus: (status) => onChangeStatus(purchase, status),
-          );
-        },
-      ),
+    return ListView(
+      key: PageStorageKey<String>(storageKey),
+      padding: const EdgeInsets.all(20),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      children: [
+        ...header,
+        const SizedBox(height: 16),
+        if (purchases.isEmpty)
+          const PremiumSurfaceCard(
+            child: Center(
+              child: Text(
+                  'Aucun achat ne correspond aux filtres. Réinitialisez-les ou changez de projet.'),
+            ),
+          )
+        else
+          for (final purchase in purchases)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _PurchaseCard(
+                key: ValueKey(purchase.id),
+                purchase: purchase,
+                projectName:
+                    projectNamesById[purchase.projectId] ?? purchase.projectId,
+                onOpen: () => _open(context, purchase),
+              ),
+            ),
+      ],
     );
   }
 }
 
-class _PurchaseTile extends ConsumerWidget {
-  const _PurchaseTile({
+/// Résumé d'un achat dans la liste. Un appui ouvre la fiche en plein écran ;
+/// la couleur de l'étape n'apparaît que sur le cadre.
+class _PurchaseCard extends ConsumerWidget {
+  const _PurchaseCard({
+    super.key,
     required this.purchase,
     required this.projectName,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onPrint,
-    required this.onChangeStatus,
+    required this.onOpen,
   });
 
   final Purchase purchase;
   final String projectName;
-  final Future<void> Function() onEdit;
-  final Future<void> Function() onDelete;
-  final Future<void> Function() onPrint;
-  final Future<void> Function(String status) onChangeStatus;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -688,79 +709,222 @@ class _PurchaseTile extends ConsumerWidget {
         .where((s) => s.id == purchase.supplierId)
         .map((s) => s.name)
         .firstOrNull;
-    return FutureBuilder<List<PurchaseItem>>(
-      future:
-          ref.read(purchasesRepositoryProvider).fetchPurchaseItems(purchase.id),
-      builder: (context, snapshot) {
-        final items = snapshot.data ?? [];
-        final total = items.fold<double>(0, (sum, item) => sum + item.total);
-        final dateText = DateFormat('dd/MM/yyyy').format(purchase.createdAt);
+    final items = ref.watch(purchaseItemsProvider(purchase.id)).value;
+    final total = items?.fold<double>(0, (sum, item) => sum + item.total);
+    final color = _statusColor(purchase.status);
+    final dateText = DateFormat('dd/MM/yyyy').format(purchase.createdAt);
 
-        return Card(
-          child: ExpansionTile(
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    purchase.title,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  total.toStringAsFixed(2),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+    return Material(
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color, width: 2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                          purchase.title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 15.5),
+                        ),
                       ),
+                      Text(
+                        total == null
+                            ? '… DA'
+                            : '${total.toStringAsFixed(2)} DA',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _StatusChip(status: purchase.status),
+                        if (purchase.orderNumber != null)
+                          _InfoBadge(
+                            icon: Icons.receipt_outlined,
+                            label: purchase.orderNumber!,
+                          ),
+                        _InfoBadge(
+                            icon: Icons.apartment_outlined, label: projectName),
+                        if (supplierName != null)
+                          _InfoBadge(
+                            icon: Icons.local_shipping_outlined,
+                            label: supplierName,
+                          ),
+                        _InfoBadge(
+                            icon: Icons.calendar_today_outlined,
+                            label: dateText),
+                        PurchaseAttachButton(purchase: purchase),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fiche d'un achat en plein écran, défilable d'un seul bloc. Elle suit
+/// les mises à jour (étape, pièces jointes, historique) et se ferme si
+/// l'achat est supprimé.
+class _PurchaseDetailPage extends ConsumerWidget {
+  const _PurchaseDetailPage({
+    required this.purchaseId,
+    required this.initial,
+    required this.projectNamesById,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onPrint,
+    required this.onChangeStatus,
+  });
+
+  final String purchaseId;
+  final Purchase initial;
+  final Map<String, String> projectNamesById;
+  final Future<void> Function(Purchase purchase) onEdit;
+  final Future<bool> Function(Purchase purchase) onDelete;
+  final Future<void> Function(Purchase purchase, String projectName) onPrint;
+  final Future<void> Function(Purchase purchase, String status) onChangeStatus;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = [
+      ...?ref.watch(activePurchasesProvider).value,
+      ...?ref.watch(archivedPurchasesProvider).value,
+    ];
+    final purchase =
+        all.where((p) => p.id == purchaseId).firstOrNull ?? initial;
+    final projectName =
+        projectNamesById[purchase.projectId] ?? purchase.projectId;
+    final itemsAsync = ref.watch(purchaseItemsProvider(purchase.id));
+    final items = itemsAsync.value ?? const <PurchaseItem>[];
+    final total = items.fold<double>(0, (sum, item) => sum + item.total);
+    final dateText = DateFormat('dd/MM/yyyy').format(purchase.createdAt);
+    final snapshot = (hasData: itemsAsync.hasValue);
+    final color = _statusColor(purchase.status);
+
+    Future<void> onEditThis() => onEdit(purchase);
+    Future<void> onPrintThis() => onPrint(purchase, projectName);
+    Future<void> onChangeStatusThis(String status) =>
+        onChangeStatus(purchase, status);
+    Future<void> onDeleteThis() async {
+      final deleted = await onDelete(purchase);
+      if (deleted && context.mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(purchase.title),
+        actions: [
+          IconButton(
+            tooltip: 'Fermer',
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color, width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  _StatusChip(status: purchase.status),
+                  if (purchase.orderNumber != null)
+                    _InfoBadge(
+                      icon: Icons.receipt_outlined,
+                      label: purchase.orderNumber!,
+                    ),
+                  PurchaseAttachButton(purchase: purchase),
+                ]),
+                const SizedBox(height: 10),
+                Text(
+                  'Total : ${total.toStringAsFixed(2)} DA',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ],
             ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      _InfoBadge(icon: Icons.work_outline, label: purchase.lot),
-                      _InfoBadge(
-                          icon: Icons.apartment_outlined, label: projectName),
-                      if (supplierName != null)
-                        _InfoBadge(
-                          icon: Icons.local_shipping_outlined,
-                          label: supplierName,
-                        ),
-                      _InfoBadge(
-                          icon: Icons.calendar_today_outlined, label: dateText),
-                      _StatusChip(status: purchase.status),
-                      if (purchase.orderNumber != null)
-                        _InfoBadge(
-                          icon: Icons.receipt_outlined,
-                          label: purchase.orderNumber!,
-                        ),
-                      PurchaseAttachButton(purchase: purchase),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: PurchaseStepper(
+              status: purchase.status,
+              // Appui sur une étape : avancer ou revenir en arrière.
+              onSelect: (step) async {
+                if (step == purchase.status) {
+                  return;
+                }
+                final back = PurchaseWorkflow.isBackward(purchase.status, step);
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text(back
+                        ? 'Revenir à « ${PurchaseWorkflow.label(step)} » ?'
+                        : 'Passer à « ${PurchaseWorkflow.label(step)} » ?'),
+                    content: Text(back
+                        ? 'Les dates des étapes suivantes seront effacées. '
+                            'Le n° de commande est conservé et le retour est '
+                            'noté dans le suivi.'
+                        : 'Le changement est noté dans le suivi de l’achat.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('Annuler'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('Confirmer'),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Total : ${total.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
+                );
+                if (ok == true) {
+                  await onChangeStatusThis(step);
+                }
+              },
             ),
+          ),
+          const SizedBox(height: 12),
+          _FramedSection(
+            title: 'Informations',
+            icon: Icons.info_outline,
+            color: context.palette.petrol,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: PurchaseStepper(status: purchase.status),
-              ),
-              const SizedBox(height: 12),
               _PurchaseMetaSection(
                 purchase: purchase,
                 projectName: projectName,
@@ -768,88 +932,167 @@ class _PurchaseTile extends ConsumerWidget {
               ),
               if (purchase.supplierId != null) ...[
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: PartyContactChips.supplier(purchase.supplierId),
-                ),
+                PartyContactChips.supplier(purchase.supplierId),
               ],
-              const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _FramedSection(
+            title: 'Articles',
+            icon: Icons.inventory_2_outlined,
+            color: context.palette.info,
+            children: [
               if (!snapshot.hasData)
                 const Padding(
                   padding: EdgeInsets.all(12),
-                  child: CircularProgressIndicator(),
+                  child: Center(child: CircularProgressIndicator()),
                 )
               else ...[
                 _PurchaseItemsSection(items: items),
                 const SizedBox(height: 12),
                 _PurchaseTotalCard(total: total),
               ],
-              const SizedBox(height: 16),
-              PurchaseTimeline(purchase: purchase),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Modifier'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: onPrint,
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('PDF'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => printPurchaseState(
-                      context,
-                      ref,
-                      purchase: purchase,
-                      projectName: projectName,
-                    ),
-                    icon: const Icon(Icons.summarize_outlined),
-                    label: const Text('État + pièces jointes'),
-                  ),
-                  for (final next
-                      in PurchaseWorkflow.nextSteps(purchase.status))
-                    FilledButton.icon(
-                      onPressed: () => onChangeStatus(next),
-                      icon: Icon(switch (next) {
-                        'dg_valide' => Icons.verified_outlined,
-                        'en_traitement' => Icons.manage_accounts_outlined,
-                        'commande' => Icons.shopping_cart_checkout_outlined,
-                        _ => Icons.inventory_2_outlined,
-                      }),
-                      label: Text(PurchaseWorkflow.actionLabel(next)),
-                    ),
-                  if (purchase.status != 'annule' &&
-                      purchase.status != 'archive')
-                    TextButton.icon(
-                      onPressed: () => onChangeStatus('annule'),
-                      icon: const Icon(Icons.cancel_outlined),
-                      label: const Text('Annuler'),
-                    ),
-                  if (purchase.status == 'livre' || purchase.status == 'annule')
-                    TextButton.icon(
-                      onPressed: () => onChangeStatus('archive'),
-                      icon: const Icon(Icons.archive_outlined),
-                      label: const Text('Archiver'),
-                    ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Supprimer'),
-                  ),
-                ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          _FramedSection(
+            title: 'Suivi',
+            icon: Icons.timeline,
+            color: Colors.teal,
+            children: [PurchaseTimeline(purchase: purchase, showTitle: false)],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onEditThis,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Modifier'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onPrintThis,
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => printPurchaseState(
+                  context,
+                  ref,
+                  purchase: purchase,
+                  projectName: projectName,
+                ),
+                icon: const Icon(Icons.summarize_outlined),
+                label: const Text('État + pièces jointes'),
+              ),
+              if (PurchaseWorkflow.previousStep(purchase.status) != null)
+                OutlinedButton.icon(
+                  onPressed: () => onChangeStatusThis(
+                      PurchaseWorkflow.previousStep(purchase.status)!),
+                  icon: const Icon(Icons.undo),
+                  label: Text(
+                      'Revenir à « ${PurchaseWorkflow.label(PurchaseWorkflow.previousStep(purchase.status)!)} »'),
+                ),
+              if (purchase.status == 'annule' || purchase.status == 'archive')
+                OutlinedButton.icon(
+                  onPressed: () => onChangeStatusThis('brouillon'),
+                  icon: const Icon(Icons.restore),
+                  label: const Text('Rétablir (besoin émis)'),
+                ),
+              for (final next in PurchaseWorkflow.nextSteps(purchase.status))
+                FilledButton.icon(
+                  onPressed: () => onChangeStatusThis(next),
+                  icon: Icon(switch (next) {
+                    'dg_valide' => Icons.verified_outlined,
+                    'en_traitement' => Icons.manage_accounts_outlined,
+                    'commande' => Icons.shopping_cart_checkout_outlined,
+                    _ => Icons.inventory_2_outlined,
+                  }),
+                  label: Text(PurchaseWorkflow.actionLabel(next)),
+                ),
+              if (purchase.status != 'annule' && purchase.status != 'archive')
+                TextButton.icon(
+                  onPressed: () => onChangeStatusThis('annule'),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Annuler'),
+                ),
+              if (purchase.status == 'livre' || purchase.status == 'annule')
+                TextButton.icon(
+                  onPressed: () => onChangeStatusThis('archive'),
+                  icon: const Icon(Icons.archive_outlined),
+                  label: const Text('Archiver'),
+                ),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                onPressed: onDeleteThis,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Supprimer'),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          _FramedSection(
+            title: 'Pièces jointes (devis, proforma, photos)',
+            icon: Icons.attach_file,
+            color: Colors.indigo,
+            children: [
+              PurchaseDocumentsSection(
+                  purchaseId: purchase.id, projectId: purchase.projectId)
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sous-module de la fiche : seul son cadre porte la couleur qui le
+/// distingue des autres.
+class _FramedSection extends StatelessWidget {
+  const _FramedSection({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            SignatureIcon(icon, size: 28),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
     );
   }
 }
@@ -1113,7 +1356,7 @@ class _StatusChip extends StatelessWidget {
 
     return Chip(
       label: Text(_statusLabel(status)),
-      backgroundColor: color.withValues(alpha: 0.14),
+      backgroundColor: Colors.transparent,
       side: BorderSide(color: color, width: 1.8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       labelStyle: TextStyle(

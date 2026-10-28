@@ -19,21 +19,19 @@ import 'providers/purchases_providers.dart';
 /// Barre d'étapes : Besoin émis → Validé DG → En traitement → Commandé →
 /// Livré.
 class PurchaseStepper extends StatelessWidget {
-  const PurchaseStepper({super.key, required this.status});
+  const PurchaseStepper({super.key, required this.status, this.onSelect});
 
   final String status;
+
+  /// Appui sur une étape (avancer ou revenir en arrière) ; null = lecture
+  /// seule.
+  final ValueChanged<String>? onSelect;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.palette;
     final rank = PurchaseWorkflow.rank(status);
-    if (rank < 0) {
-      return Text(
-        PurchaseWorkflow.label(status),
-        style: TextStyle(color: colors.danger, fontWeight: FontWeight.w800),
-      );
-    }
-    return Wrap(
+    final steps = Wrap(
       spacing: 4,
       runSpacing: 6,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -42,34 +40,65 @@ class PurchaseStepper extends StatelessWidget {
           if (i > 0)
             Icon(Icons.chevron_right,
                 size: 16, color: i <= rank ? colors.success : colors.border),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: i < rank
-                  ? colors.success.withValues(alpha: 0.14)
-                  : i == rank
-                      ? colors.petrol.withValues(alpha: 0.16)
-                      : Colors.transparent,
+          Material(
+            color: Colors.transparent,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
+              side: BorderSide(
+                width: i == rank ? 2 : 1,
                 color: i <= rank
                     ? (i == rank ? colors.petrol : colors.success)
                     : colors.border,
               ),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (i < rank) Icon(Icons.check, size: 14, color: colors.success),
-              if (i < rank) const SizedBox(width: 4),
-              Text(
-                PurchaseWorkflow.label(PurchaseWorkflow.steps[i]),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: i == rank ? FontWeight.w900 : FontWeight.w600,
-                ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onSelect == null
+                  ? null
+                  : () => onSelect!(PurchaseWorkflow.steps[i]),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (i < rank)
+                    Icon(Icons.check, size: 14, color: colors.success),
+                  if (i < rank) const SizedBox(width: 4),
+                  Text(
+                    PurchaseWorkflow.label(PurchaseWorkflow.steps[i]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: i == rank ? FontWeight.w900 : FontWeight.w600,
+                    ),
+                  ),
+                ]),
               ),
-            ]),
+            ),
           ),
         ],
+      ],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (rank < 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              PurchaseWorkflow.label(status),
+              style:
+                  TextStyle(color: colors.danger, fontWeight: FontWeight.w800),
+            ),
+          ),
+        steps,
+        if (onSelect != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Touchez une étape pour avancer ou revenir en arrière.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
       ],
     );
   }
@@ -144,9 +173,16 @@ class PurchaseAttachButton extends ConsumerWidget {
 /// Historique du suivi et ajout d'un commentaire (ex. « fournisseur
 /// relancé », « prix revu à la baisse »).
 class PurchaseTimeline extends ConsumerStatefulWidget {
-  const PurchaseTimeline({super.key, required this.purchase});
+  const PurchaseTimeline({
+    super.key,
+    required this.purchase,
+    this.showTitle = true,
+  });
 
   final Purchase purchase;
+
+  /// Titre masqué quand la section a déjà son propre cadre titré.
+  final bool showTitle;
 
   @override
   ConsumerState<PurchaseTimeline> createState() => _PurchaseTimelineState();
@@ -189,12 +225,14 @@ class _PurchaseTimelineState extends ConsumerState<PurchaseTimeline> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Suivi de l’achat',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
+        if (widget.showTitle) ...[
+          Text('Suivi de l’achat',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+        ],
         events.when(
           loading: () => const LinearProgressIndicator(),
           error: (error, _) => Text(

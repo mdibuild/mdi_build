@@ -114,8 +114,7 @@ class ChatRepository {
     final safeFileName = _sanitizeFileName(fileName);
     final folder =
         projectId == null ? 'chat/general/$companyId' : 'chat/$projectId';
-    final filePath =
-        '$folder/${now.microsecondsSinceEpoch}_$safeFileName';
+    final filePath = '$folder/${now.microsecondsSinceEpoch}_$safeFileName';
 
     await _client.storage.from(_storageBucket).uploadBinary(
           filePath,
@@ -181,6 +180,31 @@ class ChatRepository {
             .remove([message.filePath!]);
       } catch (_) {
         // Le message est supprimé ; la pièce jointe orpheline n'est pas bloquante.
+      }
+    }
+  }
+
+  /// Signale en une fois des messages comme reçus sur ce téléphone.
+  Future<void> markDelivered(List<String> ids) async {
+    if (ids.isEmpty) {
+      return;
+    }
+    await _client.rpc('chat_mark_delivered', params: {'message_ids': ids});
+  }
+
+  /// Signale en une fois des messages comme lus (groupe et privés). Si la
+  /// base n'a pas encore la fonction (script SQL v2.4), repli sur l'ancien
+  /// accusé des seuls messages privés.
+  Future<void> markReadMany(List<String> ids,
+      {List<String> privateIds = const []}) async {
+    if (ids.isEmpty) {
+      return;
+    }
+    try {
+      await _client.rpc('chat_mark_read', params: {'message_ids': ids});
+    } catch (_) {
+      for (final id in privateIds) {
+        await markRead(id);
       }
     }
   }

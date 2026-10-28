@@ -18,6 +18,7 @@ import 'package:mdi_build/features/documents/presentation/providers/documents_pr
 import 'package:mdi_build/features/projects/presentation/providers/projects_providers.dart';
 import 'package:mdi_build/features/projects/presentation/providers/selected_project_provider.dart';
 import 'package:mdi_build/features/settings/presentation/providers/suppliers_providers.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _alpha = Project(
   id: 'alpha',
@@ -127,6 +128,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     var selected = _alpha;
     final container = ProviderContainer(overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       projectsProvider.overrideWith((ref) async => [_alpha, _beta]),
       selectedProjectProvider.overrideWith((ref) async => selected),
       activePurchasesProvider.overrideWith((ref) async => [
@@ -185,6 +189,9 @@ void main() {
       _document('Plan ancien', ageDays: 60),
     ];
     final container = ProviderContainer(overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       selectedProjectProvider.overrideWith((ref) async => _alpha),
       activeDocumentsProvider.overrideWith((ref) async => documents),
       archivedDocumentsProvider.overrideWith((ref) async => []),
@@ -230,6 +237,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final container = ProviderContainer(overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       projectsProvider.overrideWith((ref) async => [_alpha, _beta]),
       selectedProjectProvider.overrideWith((ref) async => _alpha),
       activePurchasesProvider.overrideWith((ref) async => []),
@@ -243,6 +253,11 @@ void main() {
       container: container,
       child: _app(const AchatsPage()),
     ));
+    await tester.pumpAndSettle();
+    // Sur téléphone, les filtres des achats sont repliés derrière « Filtres ».
+    await tester.tap(find.text('Filtres'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
     await _choose(tester, 'Création', '7 derniers jours');
     expect(tester.takeException(), isNull);

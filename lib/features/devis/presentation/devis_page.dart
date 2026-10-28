@@ -310,7 +310,8 @@ class _DevisPageState extends ConsumerState<DevisPage> {
           label: line.label,
           quantity: formatDecimal(line.quantity),
           unit: line.unit,
-          unitPrice: formatDecimal(line.effectiveUnitPrice ?? 0, maxDecimals: 2),
+          unitPrice:
+              formatDecimal(line.effectiveUnitPrice ?? 0, maxDecimals: 2),
         ));
       }
     });
@@ -1714,8 +1715,7 @@ class _EstimateItemsCard extends StatelessWidget {
             ],
           const Divider(height: 28),
           for (final line in totalsLines(totals))
-            _QuoteTotalLine(
-                label: line.$1, value: line.$2, important: line.$3),
+            _QuoteTotalLine(label: line.$1, value: line.$2, important: line.$3),
         ],
       ),
     );

@@ -17,6 +17,7 @@ import '../../../settings/presentation/providers/suppliers_providers.dart';
 import '../../analysis/report_analysis.dart';
 import '../../analysis/report_analysis_export.dart';
 import 'report_analysis_providers.dart';
+import '../../../planning/presentation/gantt_print.dart';
 
 /// Onglet « Analyse » du module Rapports : parcours Module → Projet →
 /// Période → Filtres, puis synthèse, graphiques et détail exhaustif.
@@ -592,6 +593,27 @@ class _ReportAnalysisTabState extends ConsumerState<ReportAnalysisTab> {
                   ),
                 const SizedBox(height: 8),
                 _Legend(colors: colors),
+                if (r.rows.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final company =
+                          await ref.read(currentCompanyProvider.future);
+                      if (!context.mounted) {
+                        return;
+                      }
+                      await printFullGantt(
+                        context,
+                        rows: ganttRowsFromReport(r),
+                        title: 'Gantt — ${project.name}',
+                        subtitle: _period.label,
+                        companyName: PdfLetterhead.companyName(company),
+                      );
+                    },
+                    icon: const Icon(Icons.print_outlined),
+                    label: const Text('Imprimer le Gantt complet'),
+                  ),
+                ],
               ],
             ),
           ),

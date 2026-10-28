@@ -12,6 +12,8 @@ import '../../../shared/presentation/premium_ui.dart';
 import '../../settings/presentation/providers/clients_providers.dart';
 import 'providers/invoices_providers.dart';
 import '../../../shared/presentation/signature_icon.dart';
+import '../../projects/presentation/providers/project_scope_provider.dart';
+import '../../projects/presentation/providers/projects_providers.dart';
 
 /// Onglet « Factures » du module Devis & Factures : suivi des montants
 /// facturés, réglés et restant dus du chantier.
@@ -31,7 +33,12 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
   @override
   Widget build(BuildContext context) {
     final project = widget.project;
-    final dataAsync = ref.watch(projectInvoicesProvider(project.id));
+    final all = ref.watch(projectScopeAllProvider);
+    final dataAsync = ref.watch(scopedInvoicesProvider);
+    final projectNames = {
+      for (final p in ref.watch(projectsProvider).value ?? const [])
+        p.id: p.name,
+    };
     final clients = <String, Client>{
       for (final c in [
         ...?ref.watch(archivedClientsProvider).value,
@@ -76,7 +83,9 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
           children: [
             PremiumHeroHeader(
               title: 'Factures',
-              subtitle: 'Chantier : ${project.name}',
+              subtitle: all
+                  ? 'Tous les projets · nouvelle facture sur ${project.name}'
+                  : 'Chantier : ${project.name}',
               trailing: FilledButton.icon(
                 onPressed: () => context.push('/factures/new'),
                 icon: const Icon(Icons.add),
@@ -158,6 +167,7 @@ class _InvoicesTabState extends ConsumerState<InvoicesTab> {
                     invoice: invoice,
                     totals: data.totalsOf(invoice),
                     clientName: clientOf(invoice),
+                    projectName: all ? projectNames[invoice.projectId] : null,
                   ),
                 ),
           ],
@@ -210,9 +220,11 @@ class _InvoiceCard extends StatelessWidget {
     required this.invoice,
     required this.totals,
     required this.clientName,
+    this.projectName,
   });
 
   final ProjectInvoice invoice;
+  final String? projectName;
   final InvoiceTotals totals;
   final String clientName;
 
@@ -262,6 +274,7 @@ class _InvoiceCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             [
+              if (projectName != null) projectName!,
               if (clientName.trim().isNotEmpty) clientName,
               'émise le ${day.format(invoice.issueDate)}',
               invoice.dueDate == null

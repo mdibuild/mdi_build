@@ -6,9 +6,11 @@ import '../../app/theme/app_palette_colors.dart';
 import '../../core/services/live_refresh.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/providers/module_refresh_provider.dart';
+import '../../core/providers/navigation_history.dart';
 import '../../features/chat/presentation/providers/chat_providers.dart';
 import 'premium_ui.dart';
 import 'signature_icon.dart';
+import '../../features/checklist/services/checklist_reminders.dart';
 
 /// Clé stable du contenu de la coque : quand la largeur change (rotation
 /// portrait/paysage), la coque passe du tiroir à la barre latérale, mais
@@ -122,110 +124,137 @@ class MainShellPage extends StatelessWidget {
     final colors = context.palette;
     final selectedIndex = _currentIndex(location);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < _compactBreakpoint;
-        final content = KeyedSubtree(
-          key: _shellContentKey,
-          child: LiveRefreshScope(
-            child: PremiumWatermarkBackground(child: child),
-          ),
+    // Bouton retour d'Android : revient au module précédent au lieu de
+    // quitter l'application (les écrans ouverts par-dessus se ferment
+    // d'abord normalement).
+    return Consumer(
+      builder: (context, ref, child) {
+        // Rappels de la check-list reprogrammés sur ce téléphone.
+        ref.watch(checklistRemindersSyncProvider);
+        // Accusés « reçu » des messages du chat arrivés sur ce téléphone.
+        ref.watch(chatDeliverySyncProvider);
+        final canGoBack = ref.watch(navigationHistoryProvider).length >= 2 ||
+            !location.startsWith('/dashboard');
+        return PopScope(
+          canPop: !canGoBack,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) {
+              ref
+                  .read(navigationHistoryProvider.notifier)
+                  .back(GoRouter.of(context));
+            }
+          },
+          child: child!,
         );
-
-        if (isCompact) {
-          return Scaffold(
-            drawer: Drawer(
-              width: 236,
-              backgroundColor: colors.surfaceAlt,
-              child: SafeArea(
-                child: _NavRailContent(
-                  colors: colors,
-                  selectedIndex: selectedIndex,
-                  onSelect: (path) {
-                    Navigator.of(context).pop();
-                    context.go(path);
-                  },
-                  onLogout: () => _confirmLogout(context),
-                ),
-              ),
-            ),
-            body: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  Builder(
-                    builder: (context) => Container(
-                      color: colors.surfaceAlt,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        children: [
-                          Consumer(
-                            builder: (context, ref, _) {
-                              final unread = ref.watch(chatUnreadTotalProvider);
-                              return IconButton(
-                                icon: Badge(
-                                  isLabelVisible: unread > 0,
-                                  backgroundColor: const Color(0xFFE53935),
-                                  label: Text(unread > 99 ? '99+' : '$unread'),
-                                  child: Icon(Icons.menu, color: colors.petrol),
-                                ),
-                                tooltip: unread > 0
-                                    ? 'Menu ($unread message(s) non lu(s))'
-                                    : 'Menu',
-                                onPressed: () =>
-                                    Scaffold.of(context).openDrawer(),
-                              );
-                            },
-                          ),
-                          Text(
-                            items[selectedIndex].$3,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: colors.petrol,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(child: content),
-                ],
-              ),
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < _compactBreakpoint;
+          final content = KeyedSubtree(
+            key: _shellContentKey,
+            child: LiveRefreshScope(
+              child: PremiumWatermarkBackground(child: child),
             ),
           );
-        }
 
-        return Scaffold(
-          body: Row(
-            children: [
-              Container(
-                width: constraints.maxWidth < 1000 ? 212 : 236,
-                color: colors.surfaceAlt,
-                // Protège la barre des encoches / barres système en paysage.
+          if (isCompact) {
+            return Scaffold(
+              drawer: Drawer(
+                width: 236,
+                backgroundColor: colors.surfaceAlt,
                 child: SafeArea(
-                  right: false,
                   child: _NavRailContent(
                     colors: colors,
                     selectedIndex: selectedIndex,
-                    onSelect: context.go,
+                    onSelect: (path) {
+                      Navigator.of(context).pop();
+                      context.go(path);
+                    },
                     onLogout: () => _confirmLogout(context),
                   ),
                 ),
               ),
-              const VerticalDivider(width: 1),
-              Expanded(
-                child: SafeArea(
-                  left: false,
-                  top: false,
-                  bottom: false,
-                  child: content,
+              body: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    Builder(
+                      builder: (context) => Container(
+                        color: colors.surfaceAlt,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          children: [
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final unread =
+                                    ref.watch(chatUnreadTotalProvider);
+                                return IconButton(
+                                  icon: Badge(
+                                    isLabelVisible: unread > 0,
+                                    backgroundColor: const Color(0xFFE53935),
+                                    label:
+                                        Text(unread > 99 ? '99+' : '$unread'),
+                                    child:
+                                        Icon(Icons.menu, color: colors.petrol),
+                                  ),
+                                  tooltip: unread > 0
+                                      ? 'Menu ($unread message(s) non lu(s))'
+                                      : 'Menu',
+                                  onPressed: () =>
+                                      Scaffold.of(context).openDrawer(),
+                                );
+                              },
+                            ),
+                            Text(
+                              items[selectedIndex].$3,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: colors.petrol,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(child: content),
+                  ],
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            );
+          }
+
+          return Scaffold(
+            body: Row(
+              children: [
+                Container(
+                  width: constraints.maxWidth < 1000 ? 212 : 236,
+                  color: colors.surfaceAlt,
+                  // Protège la barre des encoches / barres système en paysage.
+                  child: SafeArea(
+                    right: false,
+                    child: _NavRailContent(
+                      colors: colors,
+                      selectedIndex: selectedIndex,
+                      onSelect: context.go,
+                      onLogout: () => _confirmLogout(context),
+                    ),
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: SafeArea(
+                    left: false,
+                    top: false,
+                    bottom: false,
+                    child: content,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -283,9 +312,14 @@ class _NavRailContent extends ConsumerWidget {
                         selected:
                             MainShellPage.items.indexOf(item) == selectedIndex,
                         // Pastille rouge : messages non lus du chat.
-                        badge: item.$1 == '/chat'
-                            ? ref.watch(chatUnreadTotalProvider)
-                            : 0,
+                        badge: switch (item.$1) {
+                          '/chat' => ref.watch(chatUnreadTotalProvider),
+                          // Tâches non faites qui me sont destinées.
+                          '/checklist' =>
+                            ref.watch(checklistRemindersSyncProvider).value ??
+                                0,
+                          _ => 0,
+                        },
                         onTap: () => onSelect(item.$1),
                       ),
                     ),

@@ -11,6 +11,8 @@ import '../../../shared/presentation/project_selector_card.dart';
 import '../../factures/presentation/invoices_tab.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
 import 'providers/devis_providers.dart';
+import '../../projects/presentation/providers/project_scope_provider.dart';
+import '../../projects/presentation/providers/projects_providers.dart';
 
 class DevisListPage extends ConsumerStatefulWidget {
   const DevisListPage({super.key, this.initialTab = 0});
@@ -67,6 +69,7 @@ class _DevisListPageState extends ConsumerState<DevisListPage> {
         items,
       );
       ref.invalidate(projectQuotesProvider(quote.projectId));
+      ref.invalidate(scopedQuotesProvider);
 
       if (!context.mounted) {
         return;
@@ -137,7 +140,12 @@ class _DevisListPageState extends ConsumerState<DevisListPage> {
               );
             }
 
-            final quotesAsync = ref.watch(projectQuotesProvider(project.id));
+            final all = ref.watch(projectScopeAllProvider);
+            final projectNames = {
+              for (final p in ref.watch(projectsProvider).value ?? const [])
+                p.id: p.name,
+            };
+            final quotesAsync = ref.watch(scopedQuotesProvider);
 
             return TabBarView(children: [
               quotesAsync.when(
@@ -148,7 +156,9 @@ class _DevisListPageState extends ConsumerState<DevisListPage> {
                     children: [
                       PremiumHeroHeader(
                         title: 'Devis',
-                        subtitle: 'Projet courant : ${project.name}',
+                        subtitle: all
+                            ? 'Tous les projets · nouveau devis sur ${project.name}'
+                            : 'Projet courant : ${project.name}',
                         trailing: FilledButton.icon(
                           onPressed: () => _openQuote(context),
                           icon: const Icon(Icons.add),
@@ -233,6 +243,8 @@ class _DevisListPageState extends ConsumerState<DevisListPage> {
                             child: _QuoteCard(
                               key: ValueKey(quote.id),
                               quote: quote,
+                              projectName:
+                                  all ? projectNames[quote.projectId] : null,
                               onOpen: () => _openQuote(context, quote: quote),
                               onChangeStatus: (status) =>
                                   _changeStatus(context, ref, quote, status),
@@ -263,12 +275,16 @@ class _QuoteCard extends StatefulWidget {
   const _QuoteCard({
     super.key,
     required this.quote,
+    this.projectName,
     required this.onOpen,
     required this.onChangeStatus,
     required this.onDelete,
   });
 
   final ProjectQuote quote;
+
+  /// Chantier du devis, affiché en vue « Tous les projets ».
+  final String? projectName;
   final VoidCallback onOpen;
   final ValueChanged<String> onChangeStatus;
   final Future<void> Function() onDelete;
@@ -322,7 +338,10 @@ class _QuoteCardState extends State<_QuoteCard> {
           ),
           const SizedBox(height: 6),
           Text(
-            _modeLabel(quote.mode),
+            [
+              if (widget.projectName != null) widget.projectName!,
+              _modeLabel(quote.mode),
+            ].join(' · '),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 14),

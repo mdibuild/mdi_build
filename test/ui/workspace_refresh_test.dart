@@ -19,6 +19,7 @@ import 'package:mdi_build/features/projects/presentation/providers/projects_prov
 import 'package:mdi_build/features/projects/presentation/providers/selected_project_provider.dart';
 import 'package:mdi_build/shared/presentation/main_shell_page.dart';
 import 'package:mdi_build/shared/presentation/project_workspace_toolbar.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _projectA = Project(
   id: 'pA',
@@ -123,6 +124,9 @@ Future<void> _pumpWorkspace(
 ) async {
   await tester.pumpWidget(ProviderScope(
     overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       projectsRepositoryProvider.overrideWithValue(projects),
       spacesRepositoryProvider.overrideWithValue(spaces),
       chatUnreadTotalProvider.overrideWithValue(0),

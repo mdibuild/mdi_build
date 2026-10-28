@@ -7,6 +7,7 @@ import '../../features/chat/presentation/providers/chat_providers.dart';
 import '../../features/projects/presentation/providers/projects_providers.dart';
 import '../../features/projects/presentation/providers/selected_project_provider.dart';
 import 'signature_icon.dart';
+import '../../features/projects/presentation/providers/project_scope_provider.dart';
 
 /// Allows standalone pages to retain their selector without duplicating it
 /// when they are displayed inside the application workspace.
@@ -26,6 +27,9 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
   const ProjectWorkspaceToolbar({super.key, this.dense = false});
 
   final bool dense;
+
+  /// Valeur du choix « Tous les projets ».
+  static const _allProjects = '__all__';
 
   static const _destinations = [
     ('/dashboard', 'Tableau de bord', Icons.dashboard_outlined),
@@ -48,8 +52,12 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
     final project = ref.watch(selectedProjectProvider).value;
     final theme = Theme.of(context);
     final options = projects.value ?? const [];
-    final selectedId =
-        options.any((p) => p.id == project?.id) ? project?.id : null;
+    final scopeAll = ref.watch(projectScopeAllProvider);
+    final selectedId = scopeAll
+        ? _allProjects
+        : options.any((p) => p.id == project?.id)
+            ? project?.id
+            : null;
     final refreshing = projects.isRefreshing;
     final refreshIcon = refreshing
         ? const SizedBox(
@@ -96,6 +104,12 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
                       ? 'Chantiers indisponibles'
                       : 'Choisir un chantier'),
               items: [
+                if (options.isNotEmpty)
+                  const DropdownMenuItem(
+                    value: _allProjects,
+                    child: Text('Tous les projets',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
                 for (final option in options)
                   DropdownMenuItem(
                     value: option.id,
@@ -105,7 +119,14 @@ class ProjectWorkspaceToolbar extends ConsumerWidget {
               onChanged: options.isEmpty
                   ? null
                   : (id) async {
-                      if (id == null || id == project?.id) return;
+                      if (id == null) return;
+                      final scope = ref.read(projectScopeAllProvider.notifier);
+                      if (id == _allProjects) {
+                        scope.set(true);
+                        return;
+                      }
+                      scope.set(false);
+                      if (id == project?.id) return;
                       try {
                         await ref
                             .read(selectedProjectIdProvider.notifier)

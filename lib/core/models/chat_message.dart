@@ -21,6 +21,9 @@ class ChatMessage extends Equatable {
     this.recipientName,
     this.readAt,
     this.editedAt,
+    this.deliveredAt,
+    this.deliveredTo = const [],
+    this.readBy = const [],
   });
 
   final String id;
@@ -48,6 +51,15 @@ class ChatMessage extends Equatable {
 
   /// Date de dernière modification du texte (null = jamais modifié).
   final DateTime? editedAt;
+
+  /// Message privé arrivé sur le téléphone du destinataire.
+  final DateTime? deliveredAt;
+
+  /// Membres chez qui le message est arrivé (messages de groupe).
+  final List<String> deliveredTo;
+
+  /// Membres qui ont lu le message.
+  final List<String> readBy;
 
   bool get isGeneral => projectId == null;
   bool get isRead => readAt != null;
@@ -87,6 +99,11 @@ class ChatMessage extends Equatable {
       editedAt: map['edited_at'] == null
           ? null
           : DateTime.tryParse(map['edited_at'].toString()),
+      deliveredAt: map['delivered_at'] == null
+          ? null
+          : DateTime.tryParse(map['delivered_at'].toString()),
+      deliveredTo: _ids(map['delivered_to']),
+      readBy: _ids(map['read_by']),
     );
   }
 
@@ -111,6 +128,10 @@ class ChatMessage extends Equatable {
     };
   }
 
+  static List<String> _ids(dynamic value) => value is List
+      ? [for (final v in value) v.toString()]
+      : const <String>[];
+
   static int _toInt(dynamic value) {
     if (value == null) {
       return 0;
@@ -123,6 +144,9 @@ class ChatMessage extends Equatable {
 
   @override
   List<Object?> get props => [
+        deliveredAt,
+        deliveredTo,
+        readBy,
         id,
         companyId,
         projectId,

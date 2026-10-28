@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:mdi_build/core/providers/module_refresh_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/models/chat_message.dart';
 import '../../data/chat_repository.dart';
+import '../../domain/chat_receipts.dart';
 import '../../domain/chat_unread.dart';
 import '../../../projects/presentation/providers/current_profile_provider.dart';
 import '../../../projects/presentation/providers/selected_project_provider.dart';
@@ -32,32 +32,38 @@ final chatConversationProvider =
   ChatConversationNotifier.new,
 );
 
-/// Messages du projet sélectionné uniquement.
+/// Identifiant du projet sélectionné : le flux ne redémarre que si le
+/// projet change (pas à chaque actualisation des autres modules).
+final _selectedProjectIdForChat = Provider<String?>(
+    (ref) => ref.watch(selectedProjectProvider.select((p) => p.value?.id)));
+
+/// Entreprise de l'utilisateur, même principe.
+final _companyIdForChat = Provider<String?>((ref) =>
+    ref.watch(currentProfileProvider.select((p) => p.value?.companyId)));
+
+/// Messages du projet sélectionné uniquement. Le temps réel suffit à les
+/// tenir à jour : pas de reconnexion à chaque actualisation de l'appli.
 final currentProjectMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
-  ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
+  final projectId = ref.watch(_selectedProjectIdForChat);
+  if (projectId == null) {
     yield const <ChatMessage>[];
     return;
   }
 
-  yield* ref.read(chatRepositoryProvider).streamProjectMessages(project.id);
+  yield* ref.read(chatRepositoryProvider).streamProjectMessages(projectId);
 });
 
 /// Messages du chat général (sans projet) de l'entreprise de l'utilisateur.
 final generalChatMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
-  ref.watch(moduleRefreshRevisionProvider);
-  final profile = await ref.watch(currentProfileProvider.future);
-  if (profile == null) {
+  final companyId = ref.watch(_companyIdForChat);
+  if (companyId == null) {
     yield const <ChatMessage>[];
     return;
   }
 
-  yield* ref
-      .read(chatRepositoryProvider)
-      .streamGeneralMessages(profile.companyId);
+  yield* ref.read(chatRepositoryProvider).streamGeneralMessages(companyId);
 });
 
 // ---------------------------------------------------------------------------
@@ -67,16 +73,86 @@ final generalChatMessagesProvider =
 /// Tous les messages de l'entreprise, en temps réel (compteurs de non-lus).
 final companyChatMessagesProvider =
     StreamProvider<List<ChatMessage>>((ref) async* {
-  ref.watch(moduleRefreshRevisionProvider);
-  final profile = await ref.watch(currentProfileProvider.future);
-  if (profile == null) {
+  final companyId = ref.watch(_companyIdForChat);
+  if (companyId == null) {
     yield const <ChatMessage>[];
     return;
   }
-  yield* ref
-      .read(chatRepositoryProvider)
-      .streamCompanyMessages(profile.companyId);
+  yield* ref.read(chatRepositoryProvider).streamCompanyMessages(companyId);
 });
+
+/// Vue « Tous les projets » : conversation avec une personne (null = tous
+/// les messages, tous projets et chat général confondus).
+class ChatPeerNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? peerId) => state = peerId;
+}
+
+final chatPeerProvider =
+    NotifierProvider<ChatPeerNotifier, String?>(ChatPeerNotifier.new);
+
+/// Messages de la vue « Tous les projets », triés : tous ceux qui me sont
+/// visibles, ou ceux échangés avec [peerId] (ses messages de groupe, nos
+/// messages privés dans les deux sens).
+List<ChatMessage> messagesForPeer(
+  List<ChatMessage> all, {
+  required String? myId,
+  required String? peerId,
+}) {
+  bool visible(ChatMessage m) =>
+      m.recipientId == null || m.recipientId == myId || m.senderId == myId;
+  final list = all.where((m) {
+    if (!visible(m)) {
+      return false;
+    }
+    if (peerId == null) {
+      return true;
+    }
+    final privateBetweenUs = (m.senderId == myId && m.recipientId == peerId) ||
+        (m.senderId == peerId && m.recipientId == myId);
+    final peerPublic = m.senderId == peerId && m.recipientId == null;
+    return privateBetweenUs || peerPublic;
+  }).toList()
+    ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  return list;
+}
+
+/// Messages « Tous les projets » (filtrés selon la personne choisie).
+final peerChatMessagesProvider = Provider<AsyncValue<List<ChatMessage>>>((ref) {
+  final myId = ref.watch(currentProfileProvider.select((p) => p.value?.id));
+  final peerId = ref.watch(chatPeerProvider);
+  return ref.watch(companyChatMessagesProvider).whenData(
+        (all) => messagesForPeer(all, myId: myId, peerId: peerId),
+      );
+});
+
+/// Accusés « reçu » : dès qu'un message arrive sur ce téléphone (appli
+/// ouverte, quel que soit l'écran), il est signalé à l'expéditeur.
+final chatDeliverySyncProvider = Provider<void>((ref) {
+  final myId = ref.watch(currentProfileProvider.select((p) => p.value?.id));
+  final messages = ref.watch(companyChatMessagesProvider).value;
+  if (myId == null || messages == null) {
+    return;
+  }
+  final ids = toMarkDelivered(messages, myId)
+      .where(_deliveredSent.add) // une seule fois par message
+      .toList();
+  if (ids.isEmpty) {
+    return;
+  }
+  Future(() async {
+    try {
+      await ref.read(chatRepositoryProvider).markDelivered(ids);
+    } catch (_) {
+      // Base sans accusés (script SQL v2.4) : nouvel essai plus tard.
+      _deliveredSent.removeAll(ids);
+    }
+  });
+});
+
+final Set<String> _deliveredSent = <String>{};
 
 /// Dernier passage de l'utilisateur dans chaque conversation, conservé sur
 /// l'appareil. [baseline] : date de première utilisation (l'historique

@@ -12,6 +12,7 @@ import '../features/settings/presentation/providers/palette_providers.dart';
 import 'router/app_router.dart';
 import 'theme/app_palette.dart';
 import 'theme/app_theme.dart';
+import '../core/providers/navigation_history.dart';
 
 class MdiBuildApp extends ConsumerStatefulWidget {
   const MdiBuildApp({super.key});
@@ -68,9 +69,16 @@ class _MdiBuildAppState extends ConsumerState<MdiBuildApp> {
     if (router == null) {
       return;
     }
-    final location =
-        router.routerDelegate.currentConfiguration.uri.path;
+    final location = router.routerDelegate.currentConfiguration.uri.path;
     FirebasePushService.currentLocation = location;
+    // Hors de la phase de construction (modification de provider
+    // interdite pendant un build).
+    final visited = router.routerDelegate.currentConfiguration.uri.toString();
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(navigationHistoryProvider.notifier).visit(visited);
+      }
+    });
     if (kIsWeb) {
       return;
     }
@@ -78,6 +86,7 @@ class _MdiBuildAppState extends ConsumerState<MdiBuildApp> {
       '/chat': 'chat',
       '/achats': 'achats',
       '/planning': 'planning',
+      '/checklist': 'checklist',
     }.entries) {
       if (location.startsWith(entry.key)) {
         FirebasePushService.clearModule(entry.value);
@@ -108,8 +117,9 @@ class _MdiBuildAppState extends ConsumerState<MdiBuildApp> {
       title: 'MDI Build',
       theme: theme,
       darkTheme: theme,
-      themeMode:
-          palette.brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+      themeMode: palette.brightness == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light,
       routerConfig: router,
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],

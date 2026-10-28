@@ -188,11 +188,14 @@ class PurchasesRepository {
     required String status,
     String? actorId,
     String comment = '',
+    String? previousStatus,
   }) async {
     final now = DateTime.now().toIso8601String();
 
     final payload = <String, dynamic>{
       'status': status,
+      // Retour à une étape : les étapes suivantes sont défaites.
+      for (final field in PurchaseWorkflow.fieldsClearedBy(status)) field: null,
     };
 
     if (status == 'dg_valide') {
@@ -250,6 +253,11 @@ class PurchasesRepository {
       kind: 'statut',
       status: status,
       comment: [
+        if (previousStatus != null &&
+            PurchaseWorkflow.isBackward(previousStatus, status))
+          'Retour en arrière depuis « ${PurchaseWorkflow.label(previousStatus)} »'
+        else if (previousStatus == 'annule' || previousStatus == 'archive')
+          'Rétabli depuis « ${PurchaseWorkflow.label(previousStatus!)} »',
         if (orderNumber != null && status == 'commande')
           'Bon de commande $orderNumber',
         if (comment.trim().isNotEmpty) comment.trim(),

@@ -7,6 +7,7 @@ import '../../../../core/models/project.dart';
 import '../../../../shared/presentation/premium_ui.dart';
 import '../../../checklist/presentation/checklist_page.dart';
 import '../../../factures/presentation/providers/invoices_providers.dart';
+import '../../../projects/presentation/providers/project_scope_provider.dart';
 
 /// Tableau de bord : encaissements du chantier et choses à faire. Les
 /// chiffres se mettent à jour à chaque nouvelle facture, paiement ou
@@ -19,9 +20,13 @@ class FinanceChecklistCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final money = NumberFormat.compact(locale: 'fr_FR');
-    final project = this.project;
-    final invoices =
-        project == null ? null : ref.watch(projectInvoicesProvider(project.id));
+    final all = ref.watch(projectScopeAllProvider);
+    final project = all ? null : this.project;
+    final invoices = all
+        ? ref.watch(scopedInvoicesProvider)
+        : project == null
+            ? null
+            : ref.watch(projectInvoicesProvider(project.id));
     final checklist = ref.watch(checklistItemsProvider(project?.id)).value;
 
     final tiles = <Widget>[];

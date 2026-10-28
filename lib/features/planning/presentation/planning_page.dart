@@ -10,10 +10,13 @@ import '../../../shared/presentation/premium_ui.dart';
 import '../../../shared/presentation/module_filters.dart';
 import '../../projects/presentation/providers/current_profile_provider.dart';
 import '../../projects/presentation/providers/selected_project_provider.dart';
+import '../../projects/presentation/providers/projects_providers.dart';
+import '../../projects/presentation/providers/project_scope_provider.dart';
 import 'providers/planning_providers.dart';
 import 'gantt_view.dart';
 import 'task_dependencies_panel.dart';
 import 'task_form_page.dart';
+import 'gantt_print.dart';
 
 enum _PlanningViewMode {
   list,
@@ -26,8 +29,10 @@ final _planningTasksProvider =
   ref.watch(moduleRefreshRevisionProvider);
   final profile = await ref.watch(currentProfileProvider.future);
   final project = await ref.watch(selectedProjectProvider.future);
+  // « Tous les projets » : toutes les tâches de l'entreprise.
+  final all = ref.watch(projectScopeAllProvider);
 
-  if (profile == null || project == null) {
+  if (profile == null || (project == null && !all)) {
     return const <_PlanningTask>[];
   }
 
@@ -35,20 +40,15 @@ final _planningTasksProvider =
 
   Future<List<dynamic>> loadRows(String table,
       {required bool withOrder}) async {
-    if (withOrder) {
-      return await client
-          .from(table)
-          .select()
-          .eq('company_id', profile.companyId)
-          .eq('project_id', project.id)
-          .order('planned_start_date', ascending: true) as List<dynamic>;
+    var query = client.from(table).select().eq('company_id', profile.companyId);
+    if (!all) {
+      query = query.eq('project_id', project!.id);
     }
-
-    return await client
-        .from(table)
-        .select()
-        .eq('company_id', profile.companyId)
-        .eq('project_id', project.id) as List<dynamic>;
+    if (withOrder) {
+      return await query.order('planned_start_date', ascending: true)
+          as List<dynamic>;
+    }
+    return await query as List<dynamic>;
   }
 
   List<dynamic> rows;
@@ -548,13 +548,32 @@ class _PlanningTabContent extends StatelessWidget {
                   );
                 }
                 final ids = shown.map((task) => task.id).toSet();
-                return GanttView(
-                  tasks: shown,
-                  dependencies: deps
-                      .where((dependency) =>
-                          ids.contains(dependency.predecessorTaskId) &&
-                          ids.contains(dependency.successorTaskId))
-                      .toList(),
+                final project = ref.watch(selectedProjectProvider).value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: () => printFullGantt(
+                          context,
+                          rows: ganttRowsFromTasks(shown),
+                          title: 'Gantt — ${project?.name ?? 'Planning'}',
+                        ),
+                        icon: const Icon(Icons.print_outlined),
+                        label: const Text('Imprimer le Gantt complet'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    GanttView(
+                      tasks: shown,
+                      dependencies: deps
+                          .where((dependency) =>
+                              ids.contains(dependency.predecessorTaskId) &&
+                              ids.contains(dependency.successorTaskId))
+                          .toList(),
+                    ),
+                  ],
                 );
               },
             )
@@ -872,7 +891,7 @@ class _PlanningList extends StatelessWidget {
   }
 }
 
-class _TaskCard extends StatelessWidget {
+class _TaskCard extends ConsumerWidget {
   const _TaskCard({
     required this.task,
     required this.onEdit,
@@ -886,8 +905,14 @@ class _TaskCard extends StatelessWidget {
   final VoidCallback onToggleArchive;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.palette;
+    final projectName = ref.watch(projectScopeAllProvider)
+        ? (ref.watch(projectsProvider).value ?? const [])
+            .where((p) => p.id == task.projectId)
+            .map((p) => p.name)
+            .firstOrNull
+        : null;
 
     return _PremiumBox(
       child: Column(
@@ -913,7 +938,10 @@ class _TaskCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            task.lot.isEmpty ? 'Lot non renseign\u00e9' : task.lot,
+            [
+              if (projectName != null) projectName,
+              task.lot.isEmpty ? 'Lot non renseign\u00e9' : task.lot,
+            ].join(' · '),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -1019,9 +1047,13 @@ class _PlanningTask {
     required this.startDate,
     required this.endDate,
     required this.isArchived,
+    this.projectId,
   });
 
   final String id;
+
+  /// Chantier de la tâche (affiché en vue « Tous les projets »).
+  final String? projectId;
   final String title;
   final String lot;
   final String status;
@@ -1037,6 +1069,7 @@ class _PlanningTask {
 
     return _PlanningTask(
       id: _stringValue(map['id'], fallback: ''),
+      projectId: map['project_id']?.toString(),
       title: _stringValue(
         map['title'] ?? map['name'] ?? map['task_name'],
         fallback: 'T\u00e2che',

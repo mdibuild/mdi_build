@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mdi_build/core/providers/module_refresh_provider.dart';
 
 import '../../../../core/models/project_document.dart';
-import '../../../projects/presentation/providers/selected_project_provider.dart';
 import '../../data/documents_repository.dart';
+import '../../../projects/presentation/providers/project_scope_provider.dart';
 
 final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
   return DocumentsRepository();
@@ -13,44 +13,38 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
 final activeDocumentsProvider =
     FutureProvider<List<ProjectDocument>>((ref) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return [];
-  }
-
-  return ref.watch(documentsRepositoryProvider).fetchDocuments(
-        projectId: project.id,
-        archived: false,
-      );
+  // Chantier sélectionné, ou tous les projets.
+  return forScopedProjects(
+      ref,
+      (projectId) => ref.watch(documentsRepositoryProvider).fetchDocuments(
+            projectId: projectId,
+            archived: false,
+          ));
 });
 
 final archivedDocumentsProvider =
     FutureProvider<List<ProjectDocument>>((ref) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return [];
-  }
-
-  return ref.watch(documentsRepositoryProvider).fetchDocuments(
-        projectId: project.id,
-        archived: true,
-      );
+  // Chantier sélectionné, ou tous les projets.
+  return forScopedProjects(
+      ref,
+      (projectId) => ref.watch(documentsRepositoryProvider).fetchDocuments(
+            projectId: projectId,
+            archived: true,
+          ));
 });
 
 final taskDocumentsProvider =
     FutureProvider.family<List<ProjectDocument>, String>((ref, taskId) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return [];
-  }
-
-  return ref.watch(documentsRepositoryProvider).fetchDocuments(
-        projectId: project.id,
-        archived: false,
-        taskId: taskId,
-      );
+  // Chantier sélectionné, ou tous les projets.
+  return forScopedProjects(
+      ref,
+      (projectId) => ref.watch(documentsRepositoryProvider).fetchDocuments(
+            projectId: projectId,
+            archived: false,
+            taskId: taskId,
+          ));
 });
 
 final purchaseDocumentsProvider =

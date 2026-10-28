@@ -23,6 +23,8 @@ import '../../projects/presentation/providers/selected_project_provider.dart';
 import '../../settings/presentation/providers/settings_providers.dart';
 import '../domain/chat_unread.dart';
 import 'providers/chat_providers.dart';
+import '../../projects/presentation/providers/project_scope_provider.dart';
+import '../domain/chat_receipts.dart';
 
 String _timeLabel(DateTime value) {
   String two(int v) => v.toString().padLeft(2, '0');
@@ -136,6 +138,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final AudioRecorder _recorder = AudioRecorder();
 
   bool _sending = false;
+
+  /// Messages déjà signalés « lus » (pas d'envoi en double).
+  final Set<String> _readSent = <String>{};
   bool _recording = false;
   bool _searching = false;
   bool _filtering = false;
@@ -205,7 +210,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   /// Destination de l'envoi selon la conversation ouverte :
   /// chat général (projectId null) ou projet sélectionné.
   Future<({bool ok, String? projectId})> _resolveTarget() async {
-    if (ref.read(chatConversationProvider) == ChatConversation.general) {
+    // « Tous les projets » : les messages partent dans le chat général (ou
+    // en privé à la personne choisie).
+    if (ref.read(projectScopeAllProvider) ||
+        ref.read(chatConversationProvider) == ChatConversation.general) {
       return (ok: true, projectId: null);
     }
     final project = await ref.read(selectedProjectProvider.future);
@@ -226,9 +234,31 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _jumpToBottom();
   }
 
+  /// Destinataire réel : en vue « Tous les projets », la personne de la
+  /// conversation ouverte ; sinon le destinataire choisi (ou tout le monde).
+  ({String? id, String? name}) get _effectiveRecipient {
+    if (ref.read(projectScopeAllProvider)) {
+      final peerId = ref.read(chatPeerProvider);
+      if (peerId != null) {
+        final profile = ref.read(currentProfileProvider).value;
+        final users = profile == null
+            ? const <SettingsUserEntry>[]
+            : ref.read(companyUsersProvider(profile.companyId)).value ??
+                const <SettingsUserEntry>[];
+        final name = users
+            .where((u) => u.id == peerId)
+            .map((u) => u.displayName)
+            .firstOrNull;
+        return (id: peerId, name: name);
+      }
+    }
+    return (id: _recipientId, name: _recipientName);
+  }
+
   void _refresh() {
     ref.invalidate(currentProjectMessagesProvider);
     ref.invalidate(generalChatMessagesProvider);
+    ref.invalidate(companyChatMessagesProvider);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Messages actualisés'),
@@ -355,8 +385,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             senderId: profile.id,
             senderName: '${profile.fullName} · ${profile.role.label}',
             text: text,
-            recipientId: _recipientId,
-            recipientName: _recipientName,
+            recipientId: _effectiveRecipient.id,
+            recipientName: _effectiveRecipient.name,
           );
 
       _messageController.clear();
@@ -521,8 +551,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             bytes: bytes,
             fileName: fileName,
             mimeType: mimeType,
-            recipientId: _recipientId,
-            recipientName: _recipientName,
+            recipientId: _effectiveRecipient.id,
+            recipientName: _effectiveRecipient.name,
           );
       _jumpToBottom();
     } catch (error) {
@@ -579,16 +609,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     if (myId == null) {
       return;
     }
-    final unread = messages
-        .where((m) => m.recipientId == myId && !m.isRead && m.id.isNotEmpty)
-        .toList();
-    if (unread.isEmpty) {
+    final ids = toMarkRead(messages, myId).where(_readSent.add).toList();
+    if (ids.isEmpty) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final repo = ref.read(chatRepositoryProvider);
-      for (final m in unread) {
-        repo.markRead(m.id);
+    final privateIds = [
+      for (final m in messages)
+        if (ids.contains(m.id) && m.recipientId == myId) m.id,
+    ];
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref
+            .read(chatRepositoryProvider)
+            .markReadMany(ids, privateIds: privateIds);
+      } catch (_) {
+        _readSent.removeAll(ids);
       }
     });
   }
@@ -841,11 +876,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final conversation = ref.watch(chatConversationProvider);
     final projectAsync = ref.watch(selectedProjectProvider);
     final project = projectAsync.value;
-    final isGeneral = conversation == ChatConversation.general;
-    final noProject = !isGeneral && projectAsync.hasValue && project == null;
-    final messagesAsync = isGeneral
-        ? ref.watch(generalChatMessagesProvider)
-        : ref.watch(currentProjectMessagesProvider);
+    final scopeAll = ref.watch(projectScopeAllProvider);
+    final isGeneral = scopeAll || conversation == ChatConversation.general;
+    final noProject =
+        !scopeAll && !isGeneral && projectAsync.hasValue && project == null;
+    final messagesAsync = scopeAll
+        ? ref.watch(peerChatMessagesProvider)
+        : isGeneral
+            ? ref.watch(generalChatMessagesProvider)
+            : ref.watch(currentProjectMessagesProvider);
+    final projectNames = scopeAll
+        ? <String, String>{
+            for (final p in ref.watch(projectsProvider).value ?? const [])
+              p.id: p.name,
+          }
+        : const <String, String>{};
     final profile = ref.watch(currentProfileProvider).value;
     final List<SettingsUserEntry> recipients = profile == null
         ? const []
@@ -878,6 +923,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ),
       body: Column(
         children: [
+          if (scopeAll)
+            _PeerBar(
+              people: recipients,
+              myId: profile?.id,
+              onSelect: (peerId) {
+                ref.read(chatPeerProvider.notifier).select(peerId);
+                _jumpToBottom();
+              },
+            ),
           if (!noProject &&
               _filtering &&
               MediaQuery.viewInsetsOf(context).bottom == 0)
@@ -923,6 +977,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     isGeneral: isGeneral,
                     projectName: project?.name,
                     conversationKey: conversationKey,
+                    otherMembers: recipients.length,
+                    projectNames: scopeAll ? projectNames : null,
                   ),
           ),
           if (!noProject) _buildComposer(wa, recipients),
@@ -994,9 +1050,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       );
     }
 
-    final title = isGeneral ? 'Chat général' : (projectName ?? 'Chat projet');
-    final subtitle =
-        isGeneral ? "Toute l'équipe · hors projet" : 'Conversation du projet';
+    final scopeAll = ref.watch(projectScopeAllProvider);
+    final title = scopeAll
+        ? 'Tous les projets'
+        : isGeneral
+            ? 'Chat général'
+            : (projectName ?? 'Chat projet');
+    final subtitle = scopeAll
+        ? 'Messages regroupés par personne'
+        : isGeneral
+            ? "Toute l'équipe · hors projet"
+            : 'Conversation du projet';
 
     return AppBar(
       toolbarHeight: shortViewport ? 44 : null,
@@ -1137,11 +1201,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     required bool isGeneral,
     required String? projectName,
     required String conversationKey,
+    int otherMembers = 0,
+    Map<String, String>? projectNames,
   }) {
     return messagesAsync.when(
       data: (all) {
         _scheduleMarkRead(all, myId);
-        _scheduleMarkSeen(all, conversationKey);
+        if (projectNames == null) {
+          _scheduleMarkSeen(all, conversationKey);
+        } else {
+          // Vue « Tous les projets » : chaque conversation affichée est vue.
+          final byKey = <String, List<ChatMessage>>{};
+          for (final m in all) {
+            byKey
+                .putIfAbsent(chatConversationKey(m.projectId), () => [])
+                .add(m);
+          }
+          byKey.forEach((key, list) => _scheduleMarkSeen(list, key));
+        }
 
         final messages = _filterMessages(all, myId);
 
@@ -1192,6 +1269,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         _MessageBubble(
                           key: ValueKey(message.id),
                           message: message,
+                          otherMembers: otherMembers,
+                          contextLabel: projectNames == null
+                              ? null
+                              : message.projectId == null
+                                  ? 'Chat général'
+                                  : projectNames[message.projectId] ?? 'Projet',
                           isMine: isMine,
                           myId: myId,
                           firstOfGroup: firstOfGroup,
@@ -1738,9 +1821,17 @@ class _MessageBubble extends ConsumerWidget {
     required this.showAuthor,
     required this.maxWidth,
     required this.wa,
+    this.otherMembers = 0,
+    this.contextLabel,
   });
 
   final ChatMessage message;
+
+  /// Membres de l'entreprise autres que moi (accusés des messages de groupe).
+  final int otherMembers;
+
+  /// Chantier du message (vue « Tous les projets »).
+  final String? contextLabel;
   final bool isMine;
   final String? myId;
   final bool firstOfGroup;
@@ -1869,8 +1960,10 @@ class _MessageBubble extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final background = isMine ? wa.outgoing : wa.incoming;
     final metaColor = isMine ? wa.metaOutgoing : wa.meta;
-    // Accusé réel uniquement : messages privés (lecture enregistrée en base).
-    final showReceipt = isMine && message.recipientId != null;
+    // Accusés sur tous mes messages (texte, photo, audio, fichier ; groupe
+    // ou privé) : ✓ envoyé, ✓✓ reçu, ✓✓ bleu lu.
+    final showReceipt = isMine;
+    final receipt = receiptFor(message, otherMembers: otherMembers);
     final metaWidth =
         38.0 + (message.isEdited ? 52 : 0) + (showReceipt ? 20 : 0);
 
@@ -1893,9 +1986,9 @@ class _MessageBubble extends ConsumerWidget {
         if (showReceipt) ...[
           const SizedBox(width: 3),
           Icon(
-            message.isRead ? Icons.done_all : Icons.done,
+            receipt == ReceiptState.sent ? Icons.done : Icons.done_all,
             size: 16,
-            color: message.isRead ? wa.readTick : metaColor,
+            color: receipt == ReceiptState.read ? wa.readTick : metaColor,
           ),
         ],
       ],
@@ -1906,14 +1999,18 @@ class _MessageBubble extends ConsumerWidget {
     final authorRole =
         nameParts.length > 1 ? nameParts.sublist(1).join(' · ') : null;
 
-    final String? privateLabel;
+    final String? basePrivateLabel;
     if (message.recipientId == null) {
-      privateLabel = null;
+      basePrivateLabel = null;
     } else if (!isMine && message.recipientId == myId) {
-      privateLabel = 'Privé · pour vous';
+      basePrivateLabel = 'Privé · pour vous';
     } else {
-      privateLabel = 'Privé · à ${message.recipientName ?? 'Utilisateur'}';
+      basePrivateLabel = 'Privé · à ${message.recipientName ?? 'Utilisateur'}';
     }
+    final privateLabel = [
+      if (contextLabel != null) contextLabel!,
+      if (basePrivateLabel != null) basePrivateLabel,
+    ].join(' · ');
 
     final Widget content;
     if (message.isText) {
@@ -2016,13 +2113,18 @@ class _MessageBubble extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              if (privateLabel != null)
+              if (privateLabel.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_outline, size: 12, color: metaColor),
+                      Icon(
+                          basePrivateLabel != null
+                              ? Icons.lock_outline
+                              : Icons.apartment_outlined,
+                          size: 12,
+                          color: metaColor),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -2282,6 +2384,77 @@ class _AudioAttachmentState extends State<_AudioAttachment> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Vue « Tous les projets » : choix de la conversation par personne. « Tous »
+/// réunit tous les messages (chantiers et chat général) ; une personne
+/// réunit ses messages et nos échanges privés, sans rien perdre.
+class _PeerBar extends ConsumerWidget {
+  const _PeerBar({
+    required this.people,
+    required this.myId,
+    required this.onSelect,
+  });
+
+  final List<SettingsUserEntry> people;
+  final String? myId;
+  final ValueChanged<String?> onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(chatPeerProvider);
+    final all = ref.watch(companyChatMessagesProvider).value ?? const [];
+    final readState = ref.watch(chatReadStateProvider).value;
+    int unreadFrom(String? peerId) {
+      if (myId == null) {
+        return 0;
+      }
+      var n = 0;
+      for (final m in messagesForPeer(all, myId: myId, peerId: peerId)) {
+        if (m.senderId == myId) {
+          continue;
+        }
+        final seen = readState?.lastSeen[chatConversationKey(m.projectId)] ??
+            readState?.baseline;
+        if (seen == null || m.createdAt.isAfter(seen)) {
+          n++;
+        }
+      }
+      return n;
+    }
+
+    Widget chip(String? id, String label, IconData icon) {
+      final unread = unreadFrom(id);
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          avatar: Icon(icon, size: 18),
+          label: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label),
+            if (unread > 0) ...[
+              const SizedBox(width: 6),
+              UnreadBubble(count: unread),
+            ],
+          ]),
+          selected: selected == id,
+          onSelected: (_) => onSelect(id),
+        ),
+      );
+    }
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(children: [
+          chip(null, 'Tous les messages', Icons.all_inbox_outlined),
+          for (final p in people)
+            chip(p.id, p.displayName, Icons.person_outline),
+        ]),
+      ),
     );
   }
 }

@@ -14,6 +14,7 @@ import 'package:mdi_build/core/enums/user_role.dart';
 import 'package:mdi_build/core/models/app_user.dart';
 import 'package:mdi_build/core/models/chat_message.dart';
 import 'package:mdi_build/core/models/project.dart';
+import 'package:mdi_build/core/models/settings_user_entry.dart';
 import 'package:mdi_build/features/auth/presentation/login_page.dart';
 import 'package:mdi_build/features/chat/data/chat_repository.dart';
 import 'package:mdi_build/features/chat/presentation/chat_page.dart';
@@ -23,6 +24,7 @@ import 'package:mdi_build/features/projects/presentation/providers/projects_prov
 import 'package:mdi_build/features/settings/presentation/providers/settings_providers.dart';
 import 'package:mdi_build/shared/presentation/main_shell_page.dart';
 import 'package:mdi_build/shared/presentation/premium_ui.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _portrait = Size(390, 844);
 const _landscape = Size(844, 390);
@@ -58,7 +60,8 @@ class _FakeChatRepository implements ChatRepository {
         companyId: 'c1',
         projectId: projectId,
         senderId: sender,
-        senderName: sender == 'u1' ? 'Med Grine · Directeur' : 'Karim · Chef de projet',
+        senderName:
+            sender == 'u1' ? 'Med Grine · Directeur' : 'Karim · Chef de projet',
         messageType: 'text',
         textContent: text,
         fileSize: 0,
@@ -124,6 +127,13 @@ class _FakeChatRepository implements ChatRepository {
   Future<void> markRead(String messageId) async {}
 
   @override
+  Future<void> markDelivered(List<String> ids) async {}
+
+  @override
+  Future<void> markReadMany(List<String> ids,
+      {List<String> privateIds = const []}) async {}
+
+  @override
   Future<void> editText({
     required String messageId,
     required String newText,
@@ -162,9 +172,15 @@ const _projectB = Project(
   status: RecordStatus.enCours,
 );
 
-Widget _chatApp(_FakeChatRepository repo, {AppPaletteId palette = AppPaletteId.blueprintClair}) {
+Widget _chatApp(_FakeChatRepository repo,
+    {AppPaletteId palette = AppPaletteId.blueprintClair,
+    bool allProjects = false,
+    List<SettingsUserEntry> users = const []}) {
   return ProviderScope(
     overrides: [
+      // Par défaut : vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: allProjects)),
       chatRepositoryProvider.overrideWithValue(repo),
       currentProfileProvider.overrideWith(
         (ref) async => const AppUser(
@@ -176,7 +192,7 @@ Widget _chatApp(_FakeChatRepository repo, {AppPaletteId palette = AppPaletteId.b
         ),
       ),
       projectsProvider.overrideWith((ref) async => [_projectA, _projectB]),
-      companyUsersProvider('c1').overrideWith((ref) async => const []),
+      companyUsersProvider('c1').overrideWith((ref) async => users),
     ],
     child: MaterialApp(theme: _theme(palette), home: const ChatPage()),
   );
@@ -314,6 +330,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // Tests écrits pour la vue « un chantier ».
+          projectScopeAllProvider
+              .overrideWith(() => ProjectScopeAll(initial: false)),
           currentProfileProvider.overrideWith((ref) async => null),
         ],
         child: MaterialApp.router(
@@ -337,6 +356,60 @@ void main() {
   });
 
   group('Chat', () {
+    testWidgets('Tous les projets : messages regroupés par personne',
+        (tester) async {
+      _setScreen(tester, _portrait);
+      addTearDown(tester.view.reset);
+      final repo = _FakeChatRepository()
+        ..seed('Réunion chantier lundi', projectId: 'pA', sender: 'u2')
+        ..seed('Livraison béton Oran', projectId: 'pB', sender: 'u3')
+        ..seed('Bonjour à tous', sender: 'u2');
+      await tester.pumpWidget(_chatApp(
+        repo,
+        allProjects: true,
+        users: [
+          SettingsUserEntry(
+            id: 'u2',
+            companyId: 'c1',
+            displayName: 'Karim',
+            email: '',
+            role: 'chef_projet',
+            createdAt: DateTime(2026),
+          ),
+          SettingsUserEntry(
+            id: 'u3',
+            companyId: 'c1',
+            displayName: 'Nadia',
+            email: '',
+            role: 'acheteur',
+            createdAt: DateTime(2026),
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tous les projets'), findsWidgets);
+      // Tous les messages, tous chantiers confondus, avec leur chantier.
+      expect(find.textContaining('Réunion chantier lundi'), findsOneWidget);
+      expect(find.textContaining('Livraison béton Oran'), findsOneWidget);
+      expect(find.textContaining('Villa Hydra'), findsWidgets);
+
+      // Conversation avec Karim : ses messages uniquement.
+      await tester.tap(find.text('Karim'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Réunion chantier lundi'), findsOneWidget);
+      expect(find.textContaining('Bonjour à tous'), findsOneWidget);
+      expect(find.textContaining('Livraison béton Oran'), findsNothing);
+
+      // Un message écrit ici part dans le chat général (privé à Karim).
+      await tester.enterText(find.byType(TextField).last, 'Tu passes demain ?');
+      await tester.pump();
+      await tester.tap(find.byTooltip('Envoyer'));
+      await tester.pumpAndSettle();
+      expect(repo.sentProjectIds.last, isNull);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('historiques séparés : général / projet A / projet B',
         (tester) async {
       _setScreen(tester, _portrait);
@@ -399,7 +472,8 @@ void main() {
       'portrait + clavier': (_portrait, 330.0),
       'paysage + clavier': (_landscape, 200.0),
     }.entries) {
-      testWidgets('${entry.key} : aucun débordement, saisie et envoi accessibles',
+      testWidgets(
+          '${entry.key} : aucun débordement, saisie et envoi accessibles',
           (tester) async {
         _setScreen(tester, entry.value.$1, keyboard: entry.value.$2);
         addTearDown(tester.view.reset);
@@ -411,7 +485,8 @@ void main() {
             sender: i.isEven ? 'u1' : 'u2',
           );
         }
-        await tester.pumpWidget(_chatApp(repo, palette: AppPaletteId.ardoiseNuit));
+        await tester
+            .pumpWidget(_chatApp(repo, palette: AppPaletteId.ardoiseNuit));
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);

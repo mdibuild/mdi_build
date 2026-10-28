@@ -6,7 +6,7 @@ import '../../../../core/models/project_report.dart';
 import '../../../../core/models/project_report_section.dart';
 import '../../../../core/models/project_report_source.dart';
 import '../../data/reports_repository.dart';
-import '../../../projects/presentation/providers/selected_project_provider.dart';
+import '../../../projects/presentation/providers/project_scope_provider.dart';
 
 final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
   return ReportsRepository();
@@ -14,29 +14,25 @@ final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
 
 final activeReportsProvider = FutureProvider<List<ProjectReport>>((ref) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return const [];
-  }
-
-  return ref.read(reportsRepositoryProvider).fetchReportsByProject(
-        project.id,
-        archived: false,
-      );
+  // Chantier sélectionné, ou tous les projets.
+  return forScopedProjects(
+      ref,
+      (projectId) => ref.read(reportsRepositoryProvider).fetchReportsByProject(
+            projectId,
+            archived: false,
+          ));
 });
 
 final archivedReportsProvider =
     FutureProvider<List<ProjectReport>>((ref) async {
   ref.watch(moduleRefreshRevisionProvider);
-  final project = await ref.watch(selectedProjectProvider.future);
-  if (project == null) {
-    return const [];
-  }
-
-  return ref.read(reportsRepositoryProvider).fetchReportsByProject(
-        project.id,
-        archived: true,
-      );
+  // Chantier sélectionné, ou tous les projets.
+  return forScopedProjects(
+      ref,
+      (projectId) => ref.read(reportsRepositoryProvider).fetchReportsByProject(
+            projectId,
+            archived: true,
+          ));
 });
 
 final reportSectionsProvider =

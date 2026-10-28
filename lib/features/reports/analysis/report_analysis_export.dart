@@ -9,6 +9,7 @@ import 'package:printing/printing.dart';
 import '../../../core/models/company.dart';
 import '../../../core/services/pdf_letterhead.dart';
 import 'report_analysis.dart';
+import '../../planning/services/gantt_pdf.dart';
 
 /// Exports du rapport d'analyse. Ils sont construits à partir du MÊME objet
 /// [AnalysisReport] que l'écran : mêmes filtres, toutes les lignes (pas
@@ -118,6 +119,24 @@ class ReportAnalysisExport {
         ),
       ),
     );
+    // Annexe : Gantt complet sur autant de planches A4 paysage que nécessaire.
+    final planning = report.planning;
+    if (report.module == ReportModule.planning &&
+        planning != null &&
+        planning.rows.isNotEmpty) {
+      final rows = ganttRowsFromReport(planning);
+      for (final page in ganttPdfPages(
+        rows: rows,
+        scale: autoGanttScale(rows),
+        title: 'Gantt — ${report.projectName}',
+        subtitle: report.periodLabel,
+        companyName: PdfLetterhead.companyName(company),
+        regular: regularFont,
+        bold: boldFont,
+      )) {
+        doc.addPage(page);
+      }
+    }
     return Uint8List.fromList(await doc.save());
   }
 
@@ -311,7 +330,16 @@ class ReportAnalysisExport {
         final r = report.planning!;
         return [
           heading('Diagramme de Gantt (${r.rows.length} tâche(s) datée(s))'),
-          if (r.rows.isNotEmpty) pad(_pdfGantt(r, report.period, small), top: 6),
+          if (r.rows.isNotEmpty)
+            pad(
+              pw.Text(
+                'Le Gantt complet est imprimé en annexe, en A4 paysage '
+                '(${GanttPdfLayout(rows: ganttRowsFromReport(r), scale: autoGanttScale(ganttRowsFromReport(r))).sheets} '
+                'planche(s), échelle ${autoGanttScale(ganttRowsFromReport(r)).label.toLowerCase()}).',
+                style: small,
+              ),
+              top: 6,
+            ),
           heading('Détail des tâches (${r.total})'),
           pad(
             pw.TableHelper.fromTextArray(
@@ -404,90 +432,6 @@ class ReportAnalysisExport {
 
   /// Gantt simplifié pour le PDF : une barre par tâche datée, proportionnelle
   /// à ses dates prévues sur l'étendue des tâches du rapport.
-  pw.Widget _pdfGantt(PlanningReport r, ReportPeriod period, pw.TextStyle small) {
-    DateTime start(TaskRow row) =>
-        dateOnly(row.task.plannedStartDate ?? row.task.plannedEndDate!);
-    DateTime end(TaskRow row) =>
-        dateOnly(row.task.plannedEndDate ?? row.task.plannedStartDate!);
-    var min = start(r.rows.first);
-    var max = end(r.rows.first);
-    for (final row in r.rows) {
-      if (start(row).isBefore(min)) min = start(row);
-      if (end(row).isAfter(max)) max = end(row);
-    }
-    final span = max.difference(min).inDays + 1;
-    PdfColor color(TaskReportState s) {
-      switch (s) {
-        case TaskReportState.terminee:
-          return PdfColors.green500;
-        case TaskReportState.enRetard:
-          return PdfColors.red500;
-        case TaskReportState.enCours:
-          return PdfColors.blue500;
-        case TaskReportState.bloquee:
-          return PdfColors.orange600;
-        case TaskReportState.aVenir:
-          return PdfColors.blueGrey400;
-        case TaskReportState.annulee:
-          return PdfColors.grey400;
-      }
-    }
-
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-      children: [
-        pw.Text('Du ${formatDay(min)} au ${formatDay(max)} ($span jours)',
-            style: small),
-        pw.SizedBox(height: 4),
-        for (final row in r.rows)
-          pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
-            child: pw.Row(
-              children: [
-                pw.SizedBox(
-                  width: 150,
-                  child: pw.Text(
-                    row.task.title,
-                    maxLines: 1,
-                    style: const pw.TextStyle(fontSize: 8),
-                  ),
-                ),
-                pw.Expanded(
-                  child: pw.Row(
-                    children: [
-                      if (start(row).difference(min).inDays > 0)
-                        pw.Expanded(
-                          flex: start(row).difference(min).inDays,
-                          child: pw.SizedBox(),
-                        ),
-                      pw.Expanded(
-                        flex: end(row).difference(start(row)).inDays + 1,
-                        child: pw.Container(
-                          height: 8,
-                          color: color(row.state),
-                        ),
-                      ),
-                      if (max.difference(end(row)).inDays > 0)
-                        pw.Expanded(
-                          flex: max.difference(end(row)).inDays,
-                          child: pw.SizedBox(),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Légende : vert terminée · bleu en cours · rouge en retard · orange '
-          'bloquée · gris-bleu à faire · gris annulée',
-          style: small,
-        ),
-      ],
-    );
-  }
-
   // -------------------------------------------------------------------------
   // Excel
   // -------------------------------------------------------------------------
@@ -673,3 +617,26 @@ class ReportAnalysisExport {
     );
   }
 }
+
+/// Lignes du Gantt imprimé à partir du rapport de planning (mêmes règles
+/// d'état que l'écran et la synthèse).
+List<GanttPdfRow> ganttRowsFromReport(PlanningReport r) => [
+      for (final row in r.rows)
+        GanttPdfRow(
+          title: row.task.title,
+          start: row.task.plannedStartDate ?? row.task.plannedEndDate!,
+          end: row.task.plannedEndDate ?? row.task.plannedStartDate!,
+          progress: row.task.progress,
+          milestone: row.isMilestone,
+          phase: row.phaseTitle,
+          assignee: row.assigneeName,
+          state: switch (row.state) {
+            TaskReportState.terminee => GanttBarState.done,
+            TaskReportState.enRetard => GanttBarState.late,
+            TaskReportState.enCours => GanttBarState.inProgress,
+            TaskReportState.bloquee => GanttBarState.blocked,
+            TaskReportState.aVenir => GanttBarState.todo,
+            TaskReportState.annulee => GanttBarState.cancelled,
+          },
+        ),
+    ];

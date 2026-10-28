@@ -42,6 +42,7 @@ import 'package:mdi_build/features/settings/presentation/settings_page.dart';
 import 'package:mdi_build/features/settings/presentation/suppliers_page.dart';
 import 'package:mdi_build/features/settings/presentation/tax_rates_page.dart';
 import 'package:mdi_build/shared/presentation/project_workspace_toolbar.dart';
+import 'package:mdi_build/features/projects/presentation/providers/project_scope_provider.dart';
 
 const _projectA = Project(
   id: 'project-a',
@@ -69,6 +70,9 @@ ThemeData _theme() {
 /// Keep the real selected-project notifier and storage. All remote data is
 /// replaced locally so these tests do not initialize or contact Supabase.
 ProviderContainer _container() => ProviderContainer(overrides: [
+      // Tests écrits pour la vue « un chantier ».
+      projectScopeAllProvider
+          .overrideWith(() => ProjectScopeAll(initial: false)),
       projectsProvider.overrideWith((ref) async => [_projectA, _projectB]),
       currentProfileProvider.overrideWith((ref) async => null),
       companyProjectsProvider.overrideWith((ref) async => const []),

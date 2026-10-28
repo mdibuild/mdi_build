@@ -335,7 +335,9 @@ class _PurchaseFormState extends State<PurchaseForm> {
         ),
         const SizedBox(height: 16),
         if (editingPurchaseId != null)
-          PurchaseDocumentsSection(purchaseId: editingPurchaseId!)
+          PurchaseDocumentsSection(
+              purchaseId: editingPurchaseId!,
+              projectId: widget.initialPurchase?.projectId)
         else
           Card(
             child: Padding(
